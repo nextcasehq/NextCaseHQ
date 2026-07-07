@@ -15,6 +15,42 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 -- 1. Tenant
+-- 1. Country & Jurisdiction Configuration
+CREATE TABLE IF NOT EXISTS "CountryPack" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "country_iso" CHAR(2) UNIQUE NOT NULL,
+    "default_currency" CHAR(3) NOT NULL DEFAULT 'INR',
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "CourtPack" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "country_iso" CHAR(2) NOT NULL REFERENCES "CountryPack"("country_iso"),
+    "token" TEXT UNIQUE NOT NULL,
+    "name" TEXT NOT NULL,
+    "tier" INTEGER NOT NULL,
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "LawPack" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "country_iso" CHAR(2) NOT NULL REFERENCES "CountryPack"("country_iso"),
+    "token" TEXT UNIQUE NOT NULL,
+    "name" TEXT NOT NULL,
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "ProcedurePack" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "country_iso" CHAR(2) NOT NULL REFERENCES "CountryPack"("country_iso"),
+    "token" TEXT NOT NULL,
+    "sequence" INTEGER NOT NULL,
+    "name" TEXT NOT NULL,
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    UNIQUE("country_iso", "token")
+);
+
+-- 2. Tenant
 CREATE TABLE IF NOT EXISTS "Tenant" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "name" TEXT NOT NULL,
