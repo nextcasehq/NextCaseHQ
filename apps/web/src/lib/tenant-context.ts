@@ -6,13 +6,19 @@ import { cache } from 'react';
  */
 export const getActiveTenantId = cache((): string => {
   // In a real implementation, this would pull from headers, cookies, or session.
-  // For Phase 1, we simulate the check against a hypothetical session parameter.
+  // For Phase 1/2, we simulate the check against a hypothetical session parameter.
 
-  // Simulated session parameter check
+  // Simulated session parameter check (e.g., from a signed JWT or session cookie)
   const activeTenantId = process.env.NEXT_PUBLIC_SIMULATED_TENANT_ID;
 
-  if (!activeTenantId) {
-    throw new Error("SECURE_ACCESS_DENIED: Tenant context ID is missing. Multi-tenant boundary check failed.");
+  if (!activeTenantId || activeTenantId.trim() === "") {
+    throw new Error("SECURE_ACCESS_DENIED: No active tenant context found. Multi-tenant boundary check failed.");
+  }
+
+  // Ensure it matches the UUID format expected by get_active_session_tenant()
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(activeTenantId)) {
+    throw new Error("SECURE_ACCESS_DENIED: Invalid tenant context format.");
   }
 
   return activeTenantId;

@@ -17,9 +17,15 @@ describe('Tenant Context & Performance Budget', () => {
     expect(() => getActiveTenantId()).toThrow("SECURE_ACCESS_DENIED");
   });
 
-  test('getActiveTenantId should return tenant ID if present', () => {
-    process.env.NEXT_PUBLIC_SIMULATED_TENANT_ID = 'test-tenant-id';
-    expect(getActiveTenantId()).toBe('test-tenant-id');
+  test('getActiveTenantId should return tenant ID if present and valid UUID', () => {
+    const validUuid = '00000000-0000-4000-8000-000000000001';
+    process.env.NEXT_PUBLIC_SIMULATED_TENANT_ID = validUuid;
+    expect(getActiveTenantId()).toBe(validUuid);
+  });
+
+  test('getActiveTenantId should throw if tenant ID is invalid format', () => {
+    process.env.NEXT_PUBLIC_SIMULATED_TENANT_ID = 'invalid-uuid';
+    expect(() => getActiveTenantId()).toThrow("Invalid tenant context format");
   });
 
   test('executeSecureQuery should complete and log warning if budget exceeded', async () => {
