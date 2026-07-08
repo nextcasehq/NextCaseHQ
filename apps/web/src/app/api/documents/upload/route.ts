@@ -1,50 +1,62 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 
 /**
- * NCHQ Module 5: Next.js Upload API Entry Point
+ * NCHQ Module 10: Automated Intake & Document Ingestion API
+ * Handles encrypted binary streams and offloads to background workers.
  */
 
 export async function POST(request: Request) {
   const start = performance.now();
 
   try {
-    const payload = await request.json();
+    const headerList = await headers();
+    const tenantId = headerList.get('x-nextcase-tenant-id');
 
-    // 1. Validate payload presence
-    if (!payload || !payload.encryptedData || !payload.id) {
+    if (!tenantId) {
+      return NextResponse.json({ error: 'SECURE_ACCESS_DENIED' }, { status: 401 });
+    }
+
+    // Accept multipart/form-data for encrypted binary streams
+    const formData = await request.formData();
+    const file = formData.get('file') as Blob;
+    const envelopeMetadata = formData.get('metadata') as string;
+
+    if (!file || !envelopeMetadata) {
       return NextResponse.json({ error: 'INVALID_PAYLOAD' }, { status: 400 });
     }
 
-    // 2. Simulate environment variable check for secure processing
-    const isProcessingEnabled = process.env.ENABLE_DOCUMENT_INGESTION === 'true';
-    if (!isProcessingEnabled) {
-       // In Task 1 recovery, we default to ACCEPTED but log that processing is deferred
-       console.log('[API] Document ingestion deferred: processing disabled.');
-    }
+    const docId = crypto.randomUUID();
 
-    // 3. Simulated Queue Push
+    // 1. Simulate Database 'PROCESSING' status update
+    console.log(`[API] Document ${docId} received for tenant ${tenantId}. Setting status to PROCESSING.`);
+
+    // 2. Push to background queue (simulated via event-driven worker push)
+    // In a real system, we'd use BullMQ/Redis here.
     process.nextTick(() => {
-      console.log(`[API] Pushed document ${payload.id} to background queue.`);
+      console.log(`[API] Pushed document ${docId} to background worker for OCR & Semantic Parsing.`);
+      // Emit event to local worker if in-process, or push to Redis
     });
 
     const end = performance.now();
     const duration = end - start;
 
+    // Performance Budget Check: under 50ms
     if (duration > 50) {
-      console.warn(`[PERFORMANCE] Upload API took ${duration.toFixed(2)}ms`);
+      console.warn(`[PERFORMANCE] Intake API took ${duration.toFixed(2)}ms`);
     }
 
     return NextResponse.json({
       status: 'ACCEPTED',
-      id: payload.id,
+      id: docId,
+      upload_status: 'PROCESSING',
       processingTime: `${duration.toFixed(2)}ms`
     }, { status: 202 });
 
   } catch (error) {
-    // Secure structural exception handling
     return NextResponse.json({
       error: 'INGESTION_FAILURE',
-      message: 'A secure system error occurred during ingestion.'
+      message: 'A secure error occurred during document intake.'
     }, { status: 500 });
   }
 }
