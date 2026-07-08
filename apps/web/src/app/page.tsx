@@ -1,11 +1,19 @@
+import React from "react";
+import { CommandPalette } from "@/components/CommandPalette";
+import { TriPaneChamber } from "@/components/TriPaneChamber";
+
 export default function Page() {
   return (
-    <main className="p-8">
-      <h1 className="text-4xl font-bold text-brand">NextCaseHQ</h1>
-      <p className="mt-4">Foundation Kernel Phase 1 Active.</p>
-      <div className="mt-8 p-4 bg-surface rounded-md border border-brand">
-        Legal Case Management System
-      </div>
-    </main>
+    <div className="min-h-screen bg-bg-base">
+      <header className="h-16 border-b border-brand/10 flex items-center px-8 bg-surface">
+        <h1 className="text-xl font-bold text-brand">NextCaseHQ</h1>
+        <div className="ml-auto text-xs text-primary/40 font-mono">
+          PHASE 1 KERNEL // AI CHAMBER ACTIVE
+        </div>
+      </header>
+
+      <TriPaneChamber />
+      <CommandPalette />
+    </div>
   );
 }
