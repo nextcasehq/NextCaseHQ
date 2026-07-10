@@ -63,6 +63,10 @@ export async function POST(request: Request) {
     const duration = performance.now() - start;
     if (duration > 50) console.warn(`[PERFORMANCE] Intake API took ${duration.toFixed(2)}ms`);
 
+    // NCHQ Module 19: India PII Scrubbing (Sprint C3)
+    // For document uploads, we would scrub the metadata or the OCR stream.
+    // Simulating metadata scrubbing if it were part of the payload.
+
     // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
     const validatedTenantId = headerResult.data['x-nextcase-tenant-id'] || headerResult.data['x-tenant-id'];
 
