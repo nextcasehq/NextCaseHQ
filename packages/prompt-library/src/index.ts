@@ -1,0 +1,1 @@
+export async function getPrompt(token: string) { return `Prompt for ${token}`; }

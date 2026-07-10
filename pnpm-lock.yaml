@@ -86,6 +86,23 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/ai-kernel:
+    dependencies:
+      '@nextcase/ai-registry':
+        specifier: workspace:*
+        version: link:../ai-registry
+      '@nextcase/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@nextcase/prompt-library':
+        specifier: workspace:*
+        version: link:../prompt-library
+      '@nextcase/search-engine':
+        specifier: workspace:*
+        version: link:../search-engine
+
+  packages/ai-registry: {}
+
   packages/crypto:
     devDependencies:
       '@types/jest':
@@ -104,7 +121,24 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/event-bus: {}
+
   packages/ndl: {}
+
+  packages/observability: {}
+
+  packages/prompt-library: {}
+
+  packages/search-engine: {}
+
+  packages/workflow-engine:
+    dependencies:
+      '@nextcase/event-bus':
+        specifier: workspace:*
+        version: link:../event-bus
+      '@nextcase/observability':
+        specifier: workspace:*
+        version: link:../observability
 
 packages:
 

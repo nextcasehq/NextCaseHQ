@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nchq-web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nchq-web
+  template:
+    metadata:
+      labels:
+        app: nchq-web
+    spec:
+      containers:
+      - name: web
+        image: nchq/web:latest
+        ports:
+        - containerPort: 3000
