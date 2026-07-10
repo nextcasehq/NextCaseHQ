@@ -1,0 +1,1 @@
+export async function emitEvent(name: string, payload: any) { console.log(`[EVENT_BUS] ${name}`, payload); }

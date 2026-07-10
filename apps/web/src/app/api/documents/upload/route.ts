@@ -1,62 +1,90 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { z } from 'zod';
 
 /**
- * NCHQ Module 10: Automated Intake & Document Ingestion API
- * Handles encrypted binary streams and offloads to background workers.
+ * NCHQ Module 17: Advanced File Ingestion Controller
+ * Sprint B: Runtime Input Schema & Data Locking
  */
+
+const MAX_DOCUMENT_SIZE = 128 * 1024 * 1024; // 128MB
+
+const IngestHeadersSchema = z.object({
+  'x-nextcase-tenant-id': z.string().uuid().optional(),
+  'x-tenant-id': z.string().uuid().optional(),
+  'x-tenant-key-version': z.string().min(1),
+}).refine(data => data['x-nextcase-tenant-id'] || data['x-tenant-id'], {
+  message: "Tenant ID must be provided in 'x-nextcase-tenant-id' or 'x-tenant-id' header.",
+});
 
 export async function POST(request: Request) {
   const start = performance.now();
 
   try {
     const headerList = await headers();
-    const tenantId = headerList.get('x-nextcase-tenant-id');
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'SECURE_ACCESS_DENIED' }, { status: 401 });
+    // Extract headers for validation
+    const headerData = {
+      'x-nextcase-tenant-id': headerList.get('x-nextcase-tenant-id'),
+      'x-tenant-id': headerList.get('x-tenant-id') || headerList.get('X-Tenant-ID'),
+      'x-tenant-key-version': headerList.get('x-tenant-key-version') || headerList.get('X-Tenant-Key-Version'),
+    };
+
+    // Strict Zod validation for headers
+    const headerResult = IngestHeadersSchema.safeParse(headerData);
+    if (!headerResult.success) {
+      return NextResponse.json({
+        error: 'BAD_REQUEST',
+        message: 'Invalid or missing security headers.',
+        details: headerResult.error.format()
+      }, { status: 400 });
     }
 
-    // Accept multipart/form-data for encrypted binary streams
-    const formData = await request.formData();
-    const file = formData.get('file') as Blob;
-    const envelopeMetadata = formData.get('metadata') as string;
+    if (performance.now() - start > 5) console.warn('[INGEST] Header extraction exceeded 5ms budget');
 
-    if (!file || !envelopeMetadata) {
-      return NextResponse.json({ error: 'INVALID_PAYLOAD' }, { status: 400 });
+    if (!request.body) return NextResponse.json({ error: 'BAD_REQUEST', message: 'Empty request body.' }, { status: 400 });
+
+    const reader = request.body.getReader();
+    let totalBytesReceived = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytesReceived += value.length;
+      if (totalBytesReceived > MAX_DOCUMENT_SIZE) {
+        return NextResponse.json({
+          error: 'INGESTION_FAILURE',
+          reason: 'SIZE_EXCEEDED',
+          status: 'ABORTED'
+        }, { status: 413 });
+      }
     }
 
-    const docId = crypto.randomUUID();
+    const duration = performance.now() - start;
+    if (duration > 50) console.warn(`[PERFORMANCE] Intake API took ${duration.toFixed(2)}ms`);
 
-    // 1. Simulate Database 'PROCESSING' status update
-    console.log(`[API] Document ${docId} received for tenant ${tenantId}. Setting status to PROCESSING.`);
+    // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
+    const validatedTenantId = headerResult.data['x-nextcase-tenant-id'] || headerResult.data['x-tenant-id'];
 
-    // 2. Push to background queue (simulated via event-driven worker push)
-    // In a real system, we'd use BullMQ/Redis here.
-    process.nextTick(() => {
-      console.log(`[API] Pushed document ${docId} to background worker for OCR & Semantic Parsing.`);
-      // Emit event to local worker if in-process, or push to Redis
-    });
-
-    const end = performance.now();
-    const duration = end - start;
-
-    // Performance Budget Check: under 50ms
-    if (duration > 50) {
-      console.warn(`[PERFORMANCE] Intake API took ${duration.toFixed(2)}ms`);
+    // NCHQ Module 20: RLS Session Guard Verification
+    try {
+      console.log(`[DB_CONTEXT] SET LOCAL nextcase.current_tenant_id = '${validatedTenantId}'`);
+      // In a production Prisma context, this would be:
+      // await db.$executeRawUnsafe(`SET LOCAL nextcase.current_tenant_id = '${validatedTenantId}'`);
+    } catch (dbError) {
+      return NextResponse.json({ error: 'DB_ACCESS_VIOLATION', status: 'ABORTED' }, { status: 403 });
     }
 
     return NextResponse.json({
       status: 'ACCEPTED',
-      id: docId,
-      upload_status: 'PROCESSING',
-      processingTime: `${duration.toFixed(2)}ms`
+      id: crypto.randomUUID(),
+      bytes_received: totalBytesReceived
     }, { status: 202 });
 
   } catch (error) {
     return NextResponse.json({
       error: 'INGESTION_FAILURE',
-      message: 'A secure error occurred during document intake.'
+      status: 'ABORTED'
     }, { status: 500 });
   }
 }
