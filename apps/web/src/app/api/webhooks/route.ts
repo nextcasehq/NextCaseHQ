@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 const WebhookPayloadSchema = z.object({
   event_type: z.string(),
-  payload: z.record(z.any()),
+  payload: z.record(z.string(), z.any()),
   timestamp: z.string().datetime().optional(),
 });
 
