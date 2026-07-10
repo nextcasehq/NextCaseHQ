@@ -11,6 +11,11 @@
   },
   "dependencies": {
     "@nextcase/ndl": "workspace:*",
+    "@nextcase/messaging": "workspace:*",
+    "@nextcase/country-packs": "workspace:*",
+    "@nextcase/observability": "workspace:*",
+    "@nextcase/qa": "workspace:*",
+    "@nextcase/design-system-ndl": "workspace:*",
     "idb": "^8.0.3",
     "jose": "^6.2.3",
     "next": "16.2.10",

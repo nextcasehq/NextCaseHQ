@@ -17,9 +17,24 @@ importers:
 
   apps/web:
     dependencies:
+      '@nextcase/country-packs':
+        specifier: workspace:*
+        version: link:../../packages/country-packs
+      '@nextcase/design-system-ndl':
+        specifier: workspace:*
+        version: link:../../packages/design-system-ndl
+      '@nextcase/messaging':
+        specifier: workspace:*
+        version: link:../../packages/messaging
       '@nextcase/ndl':
         specifier: workspace:*
         version: link:../../packages/ndl
+      '@nextcase/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@nextcase/qa':
+        specifier: workspace:*
+        version: link:../../packages/qa
       idb:
         specifier: ^8.0.3
         version: 8.0.3
@@ -103,6 +118,8 @@ importers:
 
   packages/ai-registry: {}
 
+  packages/country-packs: {}
+
   packages/crypto:
     devDependencies:
       '@types/jest':
@@ -121,13 +138,19 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/design-system-ndl: {}
+
   packages/event-bus: {}
+
+  packages/messaging: {}
 
   packages/ndl: {}
 
   packages/observability: {}
 
   packages/prompt-library: {}
+
+  packages/qa: {}
 
   packages/search-engine: {}
 
