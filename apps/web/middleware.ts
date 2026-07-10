@@ -42,6 +42,9 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nextcase-tenant-id', tenantId);
 
+    // NCHQ Module 19: Zero-Trust Sanitization
+    requestHeaders.delete('authorization');
+
     const end = performance.now();
     const duration = end - start;
 

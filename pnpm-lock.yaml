@@ -17,9 +17,24 @@ importers:
 
   apps/web:
     dependencies:
+      '@nextcase/country-packs':
+        specifier: workspace:*
+        version: link:../../packages/country-packs
+      '@nextcase/design-system-ndl':
+        specifier: workspace:*
+        version: link:../../packages/design-system-ndl
+      '@nextcase/messaging':
+        specifier: workspace:*
+        version: link:../../packages/messaging
       '@nextcase/ndl':
         specifier: workspace:*
         version: link:../../packages/ndl
+      '@nextcase/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@nextcase/qa':
+        specifier: workspace:*
+        version: link:../../packages/qa
       idb:
         specifier: ^8.0.3
         version: 8.0.3
@@ -35,6 +50,9 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/jest':
         specifier: ^29.0.0
@@ -86,6 +104,25 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/ai-kernel:
+    dependencies:
+      '@nextcase/ai-registry':
+        specifier: workspace:*
+        version: link:../ai-registry
+      '@nextcase/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@nextcase/prompt-library':
+        specifier: workspace:*
+        version: link:../prompt-library
+      '@nextcase/search-engine':
+        specifier: workspace:*
+        version: link:../search-engine
+
+  packages/ai-registry: {}
+
+  packages/country-packs: {}
+
   packages/crypto:
     devDependencies:
       '@types/jest':
@@ -104,7 +141,30 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/design-system-ndl: {}
+
+  packages/event-bus: {}
+
+  packages/messaging: {}
+
   packages/ndl: {}
+
+  packages/observability: {}
+
+  packages/prompt-library: {}
+
+  packages/qa: {}
+
+  packages/search-engine: {}
+
+  packages/workflow-engine:
+    dependencies:
+      '@nextcase/event-bus':
+        specifier: workspace:*
+        version: link:../event-bus
+      '@nextcase/observability':
+        specifier: workspace:*
+        version: link:../observability
 
 packages:
 
@@ -2126,6 +2186,9 @@ packages:
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
+
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
 
@@ -4335,3 +4398,5 @@ snapshots:
   yn@3.1.1: {}
 
   yocto-queue@0.1.0: {}
+
+  zod@4.4.3: {}

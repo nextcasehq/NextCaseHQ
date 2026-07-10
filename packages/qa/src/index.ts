@@ -1,0 +1,1 @@
+export const QA_VERSION = '1.0.0';
