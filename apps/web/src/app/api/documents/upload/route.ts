@@ -68,18 +68,18 @@ export async function POST(request: Request) {
       .replace(/[A-Z]{5}[0-9]{4}[A-Z]{1}/g, '[REDACTED_INDIA_PII]')
       .replace(/[2-9]{1}[0-9]{3}\s[0-9]{4}\s[0-9]{4}/g, '[REDACTED_INDIA_PII]');
 
-    // For document uploads, we would scrub the metadata or the OCR stream.
-    // Simulating metadata scrubbing if it were part of the payload.
-    const rawMetadata = headerList.get('x-document-metadata') || '{}';
-    const scrubbedMetadata = scrubPII(rawMetadata);
-    console.log(`[INGEST] Document metadata scrubbed of India PII:`, scrubbedMetadata);
+    // We scrub the file name or document metadata from incoming headers if present
+    const rawFileName = headerList.get('x-file-name') || '';
+    const rawMetadata = headerList.get('x-document-metadata') || '';
 
-    let parsedMetadata = {};
-    try {
-      parsedMetadata = JSON.parse(scrubbedMetadata);
-    } catch (parseError) {
-      console.warn(`[INGEST] Failed to parse document metadata as JSON, falling back to raw scrubbed string.`);
-      parsedMetadata = { raw_scrubbed_metadata: scrubbedMetadata };
+    const scrubbedFileName = rawFileName ? scrubPII(rawFileName) : '';
+    const scrubbedMetadata = rawMetadata ? scrubPII(rawMetadata) : '';
+
+    if (rawFileName || rawMetadata) {
+      console.log('[INGEST] Metadata PII Scrubbed:', {
+        fileName: scrubbedFileName,
+        metadata: scrubbedMetadata
+      });
     }
 
     // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
@@ -98,7 +98,10 @@ export async function POST(request: Request) {
       status: 'ACCEPTED',
       id: crypto.randomUUID(),
       bytes_received: totalBytesReceived,
-      metadata: parsedMetadata
+      scrubbed_metadata: {
+        file_name: scrubbedFileName,
+        metadata: scrubbedMetadata
+      }
     }, { status: 202 });
 
   } catch (error) {
