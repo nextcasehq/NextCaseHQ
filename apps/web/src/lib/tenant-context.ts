@@ -1,0 +1,39 @@
+import { cache } from 'react';
+import { headers } from 'next/headers';
+
+/**
+ * Enforces the presence of a tenant context ID.
+ * Securely fails with an exception if tenant context ID is omitted.
+ */
+export const getActiveTenantId = cache(async (): Promise<string> => {
+  const headerList = await headers();
+  const activeTenantId = headerList.get('x-nextcase-tenant-id');
+
+  if (!activeTenantId || activeTenantId.trim() === "") {
+    throw new Error("SECURE_ACCESS_DENIED: No active tenant context found. Multi-tenant boundary check failed.");
+  }
+
+  // Ensure it matches the UUID format expected by get_active_session_tenant()
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(activeTenantId)) {
+    throw new Error("SECURE_ACCESS_DENIED: Invalid tenant context format.");
+  }
+
+  return activeTenantId;
+});
+
+/**
+ * Simulated database query runner with a 50ms performance budget.
+ */
+export async function executeSecureQuery<T>(queryName: string, queryFn: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+  const result = await queryFn();
+  const end = performance.now();
+  const duration = end - start;
+
+  if (duration > 50) {
+    console.warn(`PERFORMANCE_BUDGET_EXCEEDED: Query "${queryName}" took ${duration.toFixed(2)}ms`);
+  }
+
+  return result;
+}
