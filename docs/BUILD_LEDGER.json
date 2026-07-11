@@ -25,6 +25,8 @@
   },
   "sprint_b_data_locking": "ACTIVE",
   "sprint_c_hardening": "COMPLETE",
-  "last_updated": "2026-07-08T13:00:00Z",
+  "phase_3_rc1_staging": "ACTIVE",
+  "version": "v0.9.0-rc.1",
+  "last_updated": "2026-07-08T14:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE"
 }
