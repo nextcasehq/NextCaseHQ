@@ -74,6 +74,14 @@ export async function POST(request: Request) {
     const scrubbedMetadata = scrubPII(rawMetadata);
     console.log(`[INGEST] Document metadata scrubbed of India PII:`, scrubbedMetadata);
 
+    let parsedMetadata = {};
+    try {
+      parsedMetadata = JSON.parse(scrubbedMetadata);
+    } catch (parseError) {
+      console.warn(`[INGEST] Failed to parse document metadata as JSON, falling back to raw scrubbed string.`);
+      parsedMetadata = { raw_scrubbed_metadata: scrubbedMetadata };
+    }
+
     // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
     const validatedTenantId = headerResult.data['x-nextcase-tenant-id'] || headerResult.data['x-tenant-id'];
 
@@ -90,7 +98,7 @@ export async function POST(request: Request) {
       status: 'ACCEPTED',
       id: crypto.randomUUID(),
       bytes_received: totalBytesReceived,
-      metadata: JSON.parse(scrubbedMetadata)
+      metadata: parsedMetadata
     }, { status: 202 });
 
   } catch (error) {
