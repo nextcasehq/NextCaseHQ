@@ -1,0 +1,104 @@
+{
+  "timestamp": "2026-07-12T18:13:54.396Z",
+  "repository": "NextCaseHQ",
+  "branch": "feat/sentinel-framework-v0.1",
+  "commit": "966dc54da5444519867011701091c7885d438edf",
+  "status": "BLOCKED",
+  "reports": {
+    "Architecture Sentinel": {
+      "timestamp": "2026-07-12T18:13:54.392Z",
+      "sentinel": "Architecture Sentinel",
+      "repository": "NextCaseHQ",
+      "branch": "feat/sentinel-framework-v0.1",
+      "commit": "966dc54da5444519867011701091c7885d438edf",
+      "status": "FAIL",
+      "score": 50,
+      "findings": [
+        {
+          "id": "ARCH_RLS_GUARD_MISSING",
+          "message": "No RLS database current_tenant_id binding or active schema guard found in apps/web.",
+          "severity": "P0",
+          "file": "sentinels/shared/mocks/mock_page_no_rls.ts",
+          "rootCause": "Omission of PostgreSQL active session tenant validation.",
+          "recommendation": "Ensure set_active_session_tenant is bound to withTenantContext."
+        },
+        {
+          "id": "ARCH_PII_SCRUB_MISSING",
+          "message": "No edge-optimized India PAN/Aadhaar scrubbing filters or redact identifiers found in route handlers.",
+          "severity": "P1",
+          "file": "sentinels/shared/mocks/mock_page_no_rls.ts",
+          "rootCause": "Failure to scrub litigation telemetry streams before logs are emitted.",
+          "recommendation": "Implement scrubPII inside core endpoint controllers."
+        }
+      ]
+    },
+    "Build Sentinel": {
+      "timestamp": "2026-07-12T18:13:54.396Z",
+      "sentinel": "Build Sentinel",
+      "repository": "NextCaseHQ",
+      "branch": "feat/sentinel-framework-v0.1",
+      "commit": "966dc54da5444519867011701091c7885d438edf",
+      "status": "FAIL",
+      "score": 75,
+      "findings": [
+        {
+          "id": "BUILD_BOUNDARY_VIOLATION",
+          "message": "Illegal package boundary crossing. Monorepo packages must be imported via workspace exports instead of relative paths.",
+          "severity": "P0",
+          "file": "sentinels/shared/mocks/mock_boundary_violation.ts",
+          "rootCause": "Manual relative import of isolated sibling packages.",
+          "recommendation": "Import through @nextcase/ relative path mappings."
+        }
+      ]
+    },
+    "UI Sentinel": {
+      "timestamp": "2026-07-12T18:13:54.396Z",
+      "sentinel": "UI Sentinel",
+      "repository": "NextCaseHQ",
+      "branch": "feat/sentinel-framework-v0.1",
+      "commit": "966dc54da5444519867011701091c7885d438edf",
+      "status": "FAIL",
+      "score": 80,
+      "findings": [
+        {
+          "id": "UI_DEAD_LINK_VIOLATION",
+          "message": "Forbidden navigation token 'javascript:void(0)' found in high-focus sidebar.",
+          "severity": "P0",
+          "file": "sentinels/shared/mocks/mock_dashboard_dead_links.tsx",
+          "rootCause": "Dummy hash link or javascript:void(0) used as a placeholder in navigation.",
+          "recommendation": "Map navigation click target cleanly to absolute active page indices."
+        }
+      ]
+    }
+  },
+  "blockedIssues": [
+    {
+      "sentinel": "Architecture Sentinel",
+      "id": "ARCH_RLS_GUARD_MISSING",
+      "message": "No RLS database current_tenant_id binding or active schema guard found in apps/web.",
+      "file": "sentinels/shared/mocks/mock_page_no_rls.ts",
+      "severity": "P0"
+    },
+    {
+      "sentinel": "Architecture Sentinel",
+      "id": "ARCH_PII_SCRUB_MISSING",
+      "message": "No edge-optimized India PAN/Aadhaar scrubbing filters or redact identifiers found in route handlers.",
+      "file": "sentinels/shared/mocks/mock_page_no_rls.ts",
+      "severity": "P1"
+    },
+    {
+      "sentinel": "Build Sentinel",
+      "id": "BUILD_BOUNDARY_VIOLATION",
+      "message": "Illegal package boundary crossing. Monorepo packages must be imported via workspace exports instead of relative paths.",
+      "file": "sentinels/shared/mocks/mock_boundary_violation.ts",
+      "severity": "P0"
+    },
+    {
+      "sentinel": "UI Sentinel",
+      "id": "UI_DEAD_LINK_VIOLATION",
+      "message": "Forbidden navigation token 'javascript:void(0)' found in high-focus sidebar.",
+      "file": "sentinels/shared/mocks/mock_dashboard_dead_links.tsx",
+      "severity": "P0"
+    }
+  ]
+}
