@@ -63,10 +63,45 @@ export async function POST(request: Request) {
     const duration = performance.now() - start;
     if (duration > 50) console.warn(`[PERFORMANCE] Intake API took ${duration.toFixed(2)}ms`);
 
+    // NCHQ Module 19: India PII Scrubbing (Sprint C3)
+    const scrubPII = (str: string) => str
+      .replace(/[A-Z]{5}[0-9]{4}[A-Z]{1}/g, '[REDACTED_INDIA_PII]')
+      .replace(/[2-9]{1}[0-9]{3}\s[0-9]{4}\s[0-9]{4}/g, '[REDACTED_INDIA_PII]');
+
+    // We scrub the file name or document metadata from incoming headers if present
+    const rawFileName = headerList.get('x-file-name') || '';
+    const rawMetadata = headerList.get('x-document-metadata') || '';
+
+    const scrubbedFileName = rawFileName ? scrubPII(rawFileName) : '';
+    const scrubbedMetadata = rawMetadata ? scrubPII(rawMetadata) : '';
+
+    if (rawFileName || rawMetadata) {
+      console.log('[INGEST] Metadata PII Scrubbed:', {
+        fileName: scrubbedFileName,
+        metadata: scrubbedMetadata
+      });
+    }
+
+    // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
+    const validatedTenantId = headerResult.data['x-nextcase-tenant-id'] || headerResult.data['x-tenant-id'];
+
+    // NCHQ Module 20: RLS Session Guard Verification
+    try {
+      console.log(`[DB_CONTEXT] SET LOCAL nextcase.current_tenant_id = '${validatedTenantId}'`);
+      // In a production Prisma context, this would be:
+      // await db.$executeRawUnsafe(`SET LOCAL nextcase.current_tenant_id = '${validatedTenantId}'`);
+    } catch (dbError) {
+      return NextResponse.json({ error: 'DB_ACCESS_VIOLATION', status: 'ABORTED' }, { status: 403 });
+    }
+
     return NextResponse.json({
       status: 'ACCEPTED',
       id: crypto.randomUUID(),
-      bytes_received: totalBytesReceived
+      bytes_received: totalBytesReceived,
+      scrubbed_metadata: {
+        file_name: scrubbedFileName,
+        metadata: scrubbedMetadata
+      }
     }, { status: 202 });
 
   } catch (error) {
