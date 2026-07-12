@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "@nextcase/ndl";
 import "./globals.css";
+// Import your Navbar component
+import Navbar from "./components/Navbar"; 
 
 export const metadata: Metadata = {
   title: "NextCaseHQ",
@@ -14,7 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-base text-primary">{children}</body>
+      <body className="bg-base text-primary">
+        {/* Place Navbar here to share it across all routes */}
+        <Navbar /> 
+        <main>{children}</main>
+      </body>
     </html>
   );
 }
