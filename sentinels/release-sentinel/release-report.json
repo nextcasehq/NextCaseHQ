@@ -1,40 +1,134 @@
 {
-  "timestamp": "2026-07-12T16:53:38.771Z",
-  "repository": "NextCaseHQ",
-  "branch": "feat/sentinel-framework-v0.1",
-  "commit": "5133990da5444519867011701091c7885d438edf",
+  "timestamp": "2026-07-12T19:36:28.727Z",
   "status": "READY",
+  "mode": "Repository",
   "reports": {
     "Architecture Sentinel": {
-      "timestamp": "2026-07-12T16:53:38.737Z",
+      "timestamp": "2026-07-12T19:36:28.697Z",
       "sentinel": "Architecture Sentinel",
       "repository": "NextCaseHQ",
-      "branch": "feat/sentinel-framework-v0.1",
-      "commit": "5133990da5444519867011701091c7885d438edf",
+      "branch": "feat/sentinel-framework-v1.0",
+      "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
       "status": "PASS",
+      "mode": "Repository",
       "score": 100,
       "findings": []
     },
     "Build Sentinel": {
-      "timestamp": "2026-07-12T16:53:38.756Z",
+      "timestamp": "2026-07-12T19:36:28.714Z",
       "sentinel": "Build Sentinel",
       "repository": "NextCaseHQ",
-      "branch": "feat/sentinel-framework-v0.1",
-      "commit": "5133990da5444519867011701091c7885d438edf",
+      "branch": "feat/sentinel-framework-v1.0",
+      "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
       "status": "PASS",
+      "mode": "Repository",
       "score": 100,
       "findings": []
     },
     "UI Sentinel": {
-      "timestamp": "2026-07-12T16:53:38.771Z",
+      "timestamp": "2026-07-12T19:36:28.726Z",
       "sentinel": "UI Sentinel",
       "repository": "NextCaseHQ",
-      "branch": "feat/sentinel-framework-v0.1",
-      "commit": "5133990da5444519867011701091c7885d438edf",
+      "branch": "feat/sentinel-framework-v1.0",
+      "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
       "status": "PASS",
+      "mode": "Repository",
       "score": 100,
       "findings": []
     }
   },
-  "blockedIssues": []
+  "blockedIssues": [],
+  "frameworkHealth": {
+    "timestamp": "2026-07-12T19:36:28.727Z",
+    "overallStatus": "GREEN",
+    "sentinelHealths": {
+      "Architecture Sentinel": {
+        "sentinel": "Architecture Sentinel",
+        "status": "HEALTHY",
+        "lastRunSuccess": true,
+        "averageExecutionTimeMs": 17,
+        "consecutiveFailures": 0
+      },
+      "Build Sentinel": {
+        "sentinel": "Build Sentinel",
+        "status": "HEALTHY",
+        "lastRunSuccess": true,
+        "averageExecutionTimeMs": 16,
+        "consecutiveFailures": 0
+      },
+      "UI Sentinel": {
+        "sentinel": "UI Sentinel",
+        "status": "HEALTHY",
+        "lastRunSuccess": true,
+        "averageExecutionTimeMs": 13,
+        "consecutiveFailures": 0
+      }
+    }
+  },
+  "trends": [
+    {
+      "timestamp": "2026-07-12T19:23:59.944Z",
+      "overallStatus": "READY",
+      "totalFindings": 0,
+      "findingsBySeverity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 100,
+        "Build Sentinel": 100,
+        "UI Sentinel": 100
+      }
+    },
+    {
+      "timestamp": "2026-07-12T19:26:36.811Z",
+      "overallStatus": "READY WITH OBSERVATIONS",
+      "totalFindings": 0,
+      "findingsBySeverity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 0,
+        "Build Sentinel": 100,
+        "UI Sentinel": 100
+      }
+    },
+    {
+      "timestamp": "2026-07-12T19:27:18.984Z",
+      "overallStatus": "BLOCKED",
+      "totalFindings": 0,
+      "findingsBySeverity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 0,
+        "Build Sentinel": 100,
+        "UI Sentinel": 100
+      }
+    },
+    {
+      "timestamp": "2026-07-12T19:36:28.727Z",
+      "overallStatus": "READY",
+      "totalFindings": 0,
+      "findingsBySeverity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 100,
+        "Build Sentinel": 100,
+        "UI Sentinel": 100
+      }
+    }
+  ]
 }

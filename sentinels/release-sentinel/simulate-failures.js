@@ -1,26 +1,20 @@
 const fs = require('fs');
 const path = require('path');
-const archSentinel = require('../architecture-sentinel/run');
-const buildSentinel = require('../build-sentinel/run');
-const uiSentinel = require('../ui-sentinel/run');
 
 function runSimulation() {
   console.log('==================================================================');
-  console.log('🧪 RUNNING SENTINEL FAILURE SIMULATION MATRIX');
+  console.log('🧪 RUNNING SENTINEL FAILURE SIMULATION MATRIX v1.0');
   console.log('==================================================================');
 
-  // We temporarily patch findFilesInDir inside each sentinel script to use mock paths,
-  // or we can mock their input environment dynamically!
-  // Let's write customized simulation tests for each Sentinel:
-
-  // 1. Architecture Sentinel Failure Simulation
+  // 1. Architecture Sentinel Failure Simulation with detailed diagnostics and dependency impacts
   const mockReportArch = {
     timestamp: new Date().toISOString(),
     sentinel: "Architecture Sentinel",
     repository: "NextCaseHQ",
-    branch: "feat/sentinel-framework-v0.1",
+    branch: "feat/sentinel-framework-v1.0",
     commit: "966dc54da5444519867011701091c7885d438edf",
     status: "FAIL",
+    mode: "Repository",
     score: 50,
     findings: [
       {
@@ -28,16 +22,19 @@ function runSimulation() {
         message: "No RLS database current_tenant_id binding or active schema guard found in apps/web.",
         severity: "P0",
         file: "sentinels/shared/mocks/mock_page_no_rls.ts",
-        rootCause: "Omission of PostgreSQL active session tenant validation.",
-        recommendation: "Ensure set_active_session_tenant is bound to withTenantContext."
-      },
-      {
-        id: "ARCH_PII_SCRUB_MISSING",
-        message: "No edge-optimized India PAN/Aadhaar scrubbing filters or redact identifiers found in route handlers.",
-        severity: "P1",
-        file: "sentinels/shared/mocks/mock_page_no_rls.ts",
-        rootCause: "Failure to scrub litigation telemetry streams before logs are emitted.",
-        recommendation: "Implement scrubPII inside core endpoint controllers."
+        diagnostic: {
+          lineNumber: 42,
+          rootCause: "Omission of PostgreSQL active session tenant validation.",
+          remedy: "Ensure set_active_session_tenant is bound to withTenantContext.",
+          impact: "Unauthorized multi-tenant cross-talk could leak data across client scopes.",
+          confidenceScore: 99,
+          dependencyImpact: {
+            affectedFiles: ["apps/web/src/app/api/documents/upload/route.ts"],
+            affectedModules: ["Multi-tenant Isolation"],
+            affectedUserJourneys: ["Uploading legal briefs"],
+            productionRisk: "CRITICAL"
+          }
+        }
       }
     ]
   };
@@ -47,9 +44,10 @@ function runSimulation() {
     timestamp: new Date().toISOString(),
     sentinel: "Build Sentinel",
     repository: "NextCaseHQ",
-    branch: "feat/sentinel-framework-v0.1",
+    branch: "feat/sentinel-framework-v1.0",
     commit: "966dc54da5444519867011701091c7885d438edf",
     status: "FAIL",
+    mode: "Repository",
     score: 75,
     findings: [
       {
@@ -57,8 +55,19 @@ function runSimulation() {
         message: "Illegal package boundary crossing. Monorepo packages must be imported via workspace exports instead of relative paths.",
         severity: "P0",
         file: "sentinels/shared/mocks/mock_boundary_violation.ts",
-        rootCause: "Manual relative import of isolated sibling packages.",
-        recommendation: "Import through @nextcase/ relative path mappings."
+        diagnostic: {
+          lineNumber: 14,
+          rootCause: "Manual relative import of isolated sibling packages.",
+          remedy: "Import through @nextcase/ relative path mappings.",
+          impact: "Turborepo orchestrator cannot trace side-effects and compile dependency targets correctly.",
+          confidenceScore: 100,
+          dependencyImpact: {
+            affectedFiles: ["sentinels/shared/mocks/mock_boundary_violation.ts"],
+            affectedModules: ["Build Pipeline"],
+            affectedUserJourneys: ["CI compilation"],
+            productionRisk: "HIGH"
+          }
+        }
       }
     ]
   };
@@ -68,9 +77,10 @@ function runSimulation() {
     timestamp: new Date().toISOString(),
     sentinel: "UI Sentinel",
     repository: "NextCaseHQ",
-    branch: "feat/sentinel-framework-v0.1",
+    branch: "feat/sentinel-framework-v1.0",
     commit: "966dc54da5444519867011701091c7885d438edf",
     status: "FAIL",
+    mode: "Repository",
     score: 80,
     findings: [
       {
@@ -78,8 +88,19 @@ function runSimulation() {
         message: "Forbidden navigation token 'javascript:void(0)' found in high-focus sidebar.",
         severity: "P0",
         file: "sentinels/shared/mocks/mock_dashboard_dead_links.tsx",
-        rootCause: "Dummy hash link or javascript:void(0) used as a placeholder in navigation.",
-        recommendation: "Map navigation click target cleanly to absolute active page indices."
+        diagnostic: {
+          lineNumber: 102,
+          rootCause: "Dummy hash link or javascript:void(0) used as a placeholder in navigation.",
+          remedy: "Map navigation click target cleanly to absolute active page indices.",
+          impact: "Users will face broken clicks and visual disruptions in high-density views.",
+          confidenceScore: 98,
+          dependencyImpact: {
+            affectedFiles: ["sentinels/shared/mocks/mock_dashboard_dead_links.tsx"],
+            affectedModules: ["Dashboard Sidebar UI"],
+            affectedUserJourneys: ["Sidepanel click transitions"],
+            productionRisk: "HIGH"
+          }
+        }
       }
     ]
   };
@@ -100,20 +121,61 @@ function runSimulation() {
           id: f.id,
           message: f.message,
           file: f.file,
-          severity: f.severity
+          severity: f.severity,
+          diagnostic: f.diagnostic
         });
       }
     }
   }
 
+  const frameworkHealth = {
+    timestamp: new Date().toISOString(),
+    overallStatus: "YELLOW",
+    sentinelHealths: {
+      "Architecture Sentinel": {
+        sentinel: "Architecture Sentinel",
+        status: "DEGRADED",
+        lastRunSuccess: true,
+        averageExecutionTimeMs: 45,
+        consecutiveFailures: 1
+      },
+      "Build Sentinel": {
+        sentinel: "Build Sentinel",
+        status: "DEGRADED",
+        lastRunSuccess: true,
+        averageExecutionTimeMs: 38,
+        consecutiveFailures: 1
+      },
+      "UI Sentinel": {
+        sentinel: "UI Sentinel",
+        status: "DEGRADED",
+        lastRunSuccess: true,
+        averageExecutionTimeMs: 50,
+        consecutiveFailures: 1
+      }
+    }
+  };
+
   const consolidatedReport = {
     timestamp: new Date().toISOString(),
-    repository: "NextCaseHQ",
-    branch: "feat/sentinel-framework-v0.1",
-    commit: "966dc54da5444519867011701091c7885d438edf",
     status: "BLOCKED",
+    mode: "Repository",
     reports,
-    blockedIssues
+    blockedIssues,
+    frameworkHealth,
+    trends: [
+      {
+        timestamp: new Date().toISOString(),
+        overallStatus: "BLOCKED",
+        totalFindings: 3,
+        findingsBySeverity: { P0: 3, P1: 0, P2: 0, P3: 0 },
+        sentinelScores: {
+          "Architecture Sentinel": 50,
+          "Build Sentinel": 75,
+          "UI Sentinel": 80
+        }
+      }
+    ]
   };
 
   fs.writeFileSync(path.join(__dirname, 'simulated-release-report.json'), JSON.stringify(consolidatedReport, null, 2));

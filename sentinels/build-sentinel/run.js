@@ -3,14 +3,14 @@ const path = require('path');
 const utils = require('../shared/utils');
 const config = require('../shared/config.json');
 
-function run() {
+function run(mode = process.env.INSPECTION_MODE || 'Repository') {
   const metadata = utils.getGitMetadata();
   const findings = [];
   let score = 100;
 
-  console.log('[BUILD SENTINEL] Scanning build configurations, TypeScript setups, and imports...');
+  console.log(`[BUILD SENTINEL] Scanning build configurations and package boundary constraints in mode: ${mode}...`);
 
-  // 1. Check for TS Config setups across monorepo packages
+  // 1. Verify TypeScript setups across workspace packages
   const tsConfigPaths = [
     'apps/web/tsconfig.json',
     'apps/workers/tsconfig.json',
@@ -25,28 +25,86 @@ function run() {
         message: `TypeScript configuration file ${tsPath} is missing in workspace package.`,
         severity: 'P1',
         file: tsPath,
-        rootCause: 'TSConfig omitted or corrupted.',
-        recommendation: 'Ensure @nextcase/config is extended in tsconfig.json.'
+        diagnostic: {
+          rootCause: `Package directories do not contain a standalone tsconfig.json extending the base monorepo standard config.`,
+          remedy: `Create tsconfig.json and extend "@nextcase/config/tsconfig.base.json".`,
+          impact: 'Module type-checking and absolute imports resolution will fail in workspace scopes.',
+          confidenceScore: 100,
+          dependencyImpact: {
+            affectedFiles: [tsPath],
+            affectedModules: [tsPath.split('/')[0]],
+            affectedUserJourneys: ['Local development build checks', 'CI integration pipeline validation'],
+            productionRisk: 'LOW'
+          }
+        }
       });
       score -= 15;
     }
   }
 
-  // 2. Validate imports/exports package boundaries (no relative imports across monorepo packages)
+  // 2. Validate illegal sibling boundary crossings (must not bypass monorepo packages mappings)
+  const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_BUILD_FAILURE === 'true';
+
   const tsFiles = utils.findFilesInDir(path.join(__dirname, '../../apps/web/src'), /\.tsx?$/);
+  let violationFound = false;
+
   for (const tsFile of tsFiles) {
-    const content = fs.readFileSync(tsFile, 'utf8');
-    if (content.includes("from '../../packages/") || content.includes('from "../../../packages/')) {
-      findings.push({
-        id: 'BUILD_BOUNDARY_VIOLATION',
-        message: 'Illegal package boundary crossing. Monorepo packages must be imported via workspace exports instead of relative paths.',
-        severity: 'P0',
-        file: path.relative(path.join(__dirname, '../../'), tsFile),
-        rootCause: 'Manual relative import of isolated sibling packages.',
-        recommendation: "Import through @nextcase/ relative path mappings."
-      });
-      score -= 25;
+    if (tsFile.includes('node_modules') || tsFile.includes('.next') || tsFile.includes('dist')) continue;
+    try {
+      const content = fs.readFileSync(tsFile, 'utf8');
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes("from '../../packages/") || line.includes('from "../../../packages/')) {
+          violationFound = true;
+          findings.push({
+            id: 'BUILD_BOUNDARY_VIOLATION',
+            message: 'Illegal sibling package path boundary crossing detected.',
+            severity: 'P0',
+            file: path.relative(path.join(__dirname, '../../'), tsFile),
+            diagnostic: {
+              lineNumber: i + 1,
+              rootCause: 'Manual import using parent directory traversal bypasses Turborepo task orchestrations and bundler packaging limits.',
+              remedy: 'Replace relative package imports with their workspace exports schema, e.g., "@nextcase/crypto".',
+              impact: 'Changes made in package exports do not trigger standard turborepo rebuilds of web app bundles.',
+              confidenceScore: 99,
+              dependencyImpact: {
+                affectedFiles: [path.relative(path.join(__dirname, '../../'), tsFile)],
+                affectedModules: ['Web Server compilation', 'Monorepo Bundler pipeline'],
+                affectedUserJourneys: ['All user journeys reliant on packages updates'],
+                productionRisk: 'HIGH'
+              }
+            }
+          });
+          score -= 25;
+        }
+      }
+    } catch (err) {
+      // Ignored
     }
+  }
+
+  if (isSimulation && !violationFound) {
+    findings.push({
+      id: 'BUILD_BOUNDARY_VIOLATION',
+      message: 'Illegal sibling package path boundary crossing detected.',
+      severity: 'P0',
+      file: 'apps/web/src/app/page.tsx',
+      diagnostic: {
+        lineNumber: 12,
+        rootCause: 'Manual relative imports of sibling workspace directories instead of workspace resolution alias.',
+        remedy: 'Replace relative package imports with their workspace exports schema, e.g., "@nextcase/crypto".',
+        impact: 'Changes made in package exports do not trigger standard turborepo rebuilds of web app bundles.',
+        confidenceScore: 99,
+        dependencyImpact: {
+          affectedFiles: ['apps/web/src/app/page.tsx'],
+          affectedModules: ['Web Server compilation'],
+          affectedUserJourneys: ['Landing page navigation'],
+          productionRisk: 'HIGH'
+        }
+      }
+    });
+    score -= 25;
   }
 
   const report = {
@@ -56,6 +114,7 @@ function run() {
     branch: metadata.branch,
     commit: metadata.commit,
     status: score >= 80 ? 'PASS' : 'FAIL',
+    mode,
     score: Math.max(0, score),
     findings
   };

@@ -1,10 +1,11 @@
 {
-  "timestamp": "2026-07-12T16:53:38.756Z",
+  "timestamp": "2026-07-12T19:36:28.714Z",
   "sentinel": "Build Sentinel",
   "repository": "NextCaseHQ",
-  "branch": "feat/sentinel-framework-v0.1",
-  "commit": "5133990da5444519867011701091c7885d438edf",
+  "branch": "feat/sentinel-framework-v1.0",
+  "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
   "status": "PASS",
+  "mode": "Repository",
   "score": 100,
   "findings": []
 }
