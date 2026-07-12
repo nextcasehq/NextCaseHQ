@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-12T19:36:28.727Z",
+  "timestamp": "2026-07-12T20:25:59.618Z",
   "status": "READY",
   "mode": "Repository",
   "reports": {
     "Architecture Sentinel": {
-      "timestamp": "2026-07-12T19:36:28.697Z",
+      "timestamp": "2026-07-12T20:25:59.579Z",
       "sentinel": "Architecture Sentinel",
       "repository": "NextCaseHQ",
       "branch": "feat/sentinel-framework-v1.0",
@@ -15,7 +15,7 @@
       "findings": []
     },
     "Build Sentinel": {
-      "timestamp": "2026-07-12T19:36:28.714Z",
+      "timestamp": "2026-07-12T20:25:59.602Z",
       "sentinel": "Build Sentinel",
       "repository": "NextCaseHQ",
       "branch": "feat/sentinel-framework-v1.0",
@@ -26,7 +26,7 @@
       "findings": []
     },
     "UI Sentinel": {
-      "timestamp": "2026-07-12T19:36:28.726Z",
+      "timestamp": "2026-07-12T20:25:59.617Z",
       "sentinel": "UI Sentinel",
       "repository": "NextCaseHQ",
       "branch": "feat/sentinel-framework-v1.0",
@@ -38,29 +38,38 @@
     }
   },
   "blockedIssues": [],
+  "resolvedIssues": [
+    {
+      "id": "BUILD-001",
+      "status": "Resolved",
+      "resolutionTime": "2026-07-12T20:25:59.618Z",
+      "message": "Cannot resolve module \"@/components/NavbarXYZ\"",
+      "file": "apps/web/src/app/page.tsx"
+    }
+  ],
   "frameworkHealth": {
-    "timestamp": "2026-07-12T19:36:28.727Z",
+    "timestamp": "2026-07-12T20:25:59.618Z",
     "overallStatus": "GREEN",
     "sentinelHealths": {
       "Architecture Sentinel": {
         "sentinel": "Architecture Sentinel",
         "status": "HEALTHY",
         "lastRunSuccess": true,
-        "averageExecutionTimeMs": 17,
+        "averageExecutionTimeMs": 20,
         "consecutiveFailures": 0
       },
       "Build Sentinel": {
         "sentinel": "Build Sentinel",
         "status": "HEALTHY",
         "lastRunSuccess": true,
-        "averageExecutionTimeMs": 16,
+        "averageExecutionTimeMs": 23,
         "consecutiveFailures": 0
       },
       "UI Sentinel": {
         "sentinel": "UI Sentinel",
         "status": "HEALTHY",
         "lastRunSuccess": true,
-        "averageExecutionTimeMs": 13,
+        "averageExecutionTimeMs": 15,
         "consecutiveFailures": 0
       }
     }
@@ -129,6 +138,94 @@
         "Build Sentinel": 100,
         "UI Sentinel": 100
       }
+    },
+    {
+      "timestamp": "2026-07-12T20:17:26.088Z",
+      "overallStatus": "READY",
+      "totalFindings": 0,
+      "findingsBySeverity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 100,
+        "Build Sentinel": 100,
+        "UI Sentinel": 100
+      }
+    },
+    {
+      "timestamp": "2026-07-12T20:21:04.493Z",
+      "overallStatus": "READY",
+      "totalFindings": 0,
+      "findingsBySeverity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 100,
+        "Build Sentinel": 100,
+        "UI Sentinel": 100
+      },
+      "activeIssues": [],
+      "resolvedIssues": [],
+      "trend": "Stable"
+    },
+    {
+      "timestamp": "2026-07-12T20:22:51.258Z",
+      "overallStatus": "BLOCKED",
+      "totalFindings": 1,
+      "findingsBySeverity": {
+        "P0": 1,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 100,
+        "Build Sentinel": 70,
+        "UI Sentinel": 100
+      },
+      "activeIssues": [
+        {
+          "id": "BUILD-001",
+          "message": "Cannot resolve module \"@/components/NavbarXYZ\"",
+          "file": "apps/web/src/app/page.tsx",
+          "severity": "P0"
+        }
+      ],
+      "resolvedIssues": [],
+      "trend": "Stable"
+    },
+    {
+      "timestamp": "2026-07-12T20:25:59.618Z",
+      "overallStatus": "READY",
+      "totalFindings": 0,
+      "findingsBySeverity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sentinelScores": {
+        "Architecture Sentinel": 100,
+        "Build Sentinel": 100,
+        "UI Sentinel": 100
+      },
+      "activeIssues": [],
+      "resolvedIssues": [
+        {
+          "id": "BUILD-001",
+          "status": "Resolved",
+          "resolutionTime": "2026-07-12T20:25:59.618Z",
+          "message": "Cannot resolve module \"@/components/NavbarXYZ\"",
+          "file": "apps/web/src/app/page.tsx"
+        }
+      ],
+      "trend": "Improving"
     }
   ]
 }

@@ -42,11 +42,8 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     }
   }
 
-  // 2. Validate illegal sibling boundary crossings (must not bypass monorepo packages mappings)
-  const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_BUILD_FAILURE === 'true';
-
-  const tsFiles = utils.findFilesInDir(path.join(__dirname, '../../apps/web/src'), /\.tsx?$/);
-  let violationFound = false;
+  // 2. Validate illegal sibling boundary crossings and resolve ES/TS imports
+  const tsFiles = utils.findFilesInDir(path.join(__dirname, '../../apps/web/src'), /\.(tsx?|js|jsx)$/);
 
   for (const tsFile of tsFiles) {
     if (tsFile.includes('node_modules') || tsFile.includes('.next') || tsFile.includes('dist')) continue;
@@ -55,8 +52,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+
+        // Package boundary check
         if (line.includes("from '../../packages/") || line.includes('from "../../../packages/')) {
-          violationFound = true;
           findings.push({
             id: 'BUILD_BOUNDARY_VIOLATION',
             message: 'Illegal sibling package path boundary crossing detected.',
@@ -78,33 +76,64 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
           });
           score -= 25;
         }
+
+        // ES/TS Import resolution check
+        // Matches e.g. import { ... } from "..." or import ... from "..." or require("...")
+        const importMatch = line.match(/(?:import|from|require)\s*\(?\s*['"]([^'"]+)['"]\)?/);
+        if (importMatch) {
+          const importPath = importMatch[1];
+          // We only check internal project imports starting with "./", "../", or "@/":
+          if (importPath.startsWith('.') || importPath.startsWith('@/')) {
+            let resolvedPath = '';
+            if (importPath.startsWith('@/')) {
+              // Resolve Next.js @/ alias to apps/web/src/
+              resolvedPath = path.resolve(__dirname, '../../apps/web/src', importPath.slice(2));
+            } else {
+              resolvedPath = path.resolve(path.dirname(tsFile), importPath);
+            }
+
+            // Check files variations (.ts, .tsx, .js, .jsx, index.ts, /index.tsx etc)
+            const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'];
+            let resolved = false;
+            for (const ext of extensions) {
+              if (fs.existsSync(resolvedPath + ext) && !fs.statSync(resolvedPath + ext).isDirectory()) {
+                resolved = true;
+                break;
+              }
+            }
+
+            if (!resolved) {
+              const relPath = path.relative(path.join(__dirname, '../../'), tsFile);
+              findings.push({
+                id: 'BUILD-001',
+                message: `Cannot resolve module "${importPath}"`,
+                severity: 'P0',
+                file: relPath,
+                diagnostic: {
+                  lineNumber: i + 1,
+                  rootCause: 'Invalid import path',
+                  remedy: `Replace "${importPath}" with the correct path matching a valid source file in apps/web/src/components/`,
+                  impact: 'Homepage cannot compile',
+                  confidenceScore: 100,
+                  dependencyImpact: {
+                    affectedFiles: [
+                      relPath,
+                      'apps/web/src/components/Navbar.tsx'
+                    ],
+                    affectedModules: ['Homepage compilation'],
+                    affectedUserJourneys: ['Landing page navigation'],
+                    productionRisk: 'HIGH'
+                  }
+                }
+              });
+              score -= 30;
+            }
+          }
+        }
       }
     } catch (err) {
       // Ignored
     }
-  }
-
-  if (isSimulation && !violationFound) {
-    findings.push({
-      id: 'BUILD_BOUNDARY_VIOLATION',
-      message: 'Illegal sibling package path boundary crossing detected.',
-      severity: 'P0',
-      file: 'apps/web/src/app/page.tsx',
-      diagnostic: {
-        lineNumber: 12,
-        rootCause: 'Manual relative imports of sibling workspace directories instead of workspace resolution alias.',
-        remedy: 'Replace relative package imports with their workspace exports schema, e.g., "@nextcase/crypto".',
-        impact: 'Changes made in package exports do not trigger standard turborepo rebuilds of web app bundles.',
-        confidenceScore: 99,
-        dependencyImpact: {
-          affectedFiles: ['apps/web/src/app/page.tsx'],
-          affectedModules: ['Web Server compilation'],
-          affectedUserJourneys: ['Landing page navigation'],
-          productionRisk: 'HIGH'
-        }
-      }
-    });
-    score -= 25;
   }
 
   const report = {
