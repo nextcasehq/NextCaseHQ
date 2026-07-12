@@ -1,22 +1,25 @@
 import { MetadataRoute } from 'next';
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://oxiom.in';
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nextcasehq.com';
 
-  const routes = [
+  const marketingPages = [
     '',
-    '/about',
     '/features',
     '/solutions',
+    '/pricing',
+    '/about',
     '/resources',
     '/contact',
-    '/login',
-  ].map((route) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: route === '' ? 1.0 : 0.8,
-  }));
+    '/blog',
+    '/privacy',
+    '/terms',
+  ];
 
-  return routes;
+  return marketingPages.map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date().toISOString(),
+    changeFrequency: route === '' ? 'daily' : 'weekly',
+    priority: route === '' ? 1.0 : route === '/features' || route === '/solutions' ? 0.8 : 0.5,
+  }));
 }
