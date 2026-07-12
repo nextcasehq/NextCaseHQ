@@ -1,23 +1,55 @@
 import React from "react";
-import { CommandPalette } from "@/components/CommandPalette";
-import { TriPaneChamber } from "@/components/TriPaneChamber";
-import { MobileCourtMode } from "@/components/mobile/MobileCourtMode";
+import Link from "next/link";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
+/**
+ * NextCaseHQ: Premium Marketing Landing Page (Milestone 5.1)
+ * Adheres strictly to the project design tokens (Warm Ivory #FDFBF7, Obsidian Charcoal #111111)
+ */
 export default function Page() {
   return (
-    <div className="min-h-screen bg-bg-base">
-      <MobileCourtMode />
-      <header className="h-16 border-b border-brand/10 flex items-center px-8 bg-surface">
-        <h1 className="text-xl font-bold text-brand">NextCaseHQ</h1>
-        <div className="ml-auto text-xs text-primary/40 font-mono">
-          PHASE 1 KERNEL // AI CHAMBER ACTIVE
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
+      {/* Top Navigation Bar */}
+      <Navbar />
 
-      <div className="max-md:hidden">
-        <TriPaneChamber />
-      </div>
-      <CommandPalette />
+      {/* Hero Section */}
+      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
+        {/* Release Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#111111]/10 bg-[#111111]/5 text-xs font-mono tracking-wider uppercase mb-8">
+          <span className="w-2 h-2 rounded-full bg-[#111111] animate-pulse"></span>
+          Phase 5: Product Experience Walkthrough Active
+        </div>
+
+        {/* Hero Title */}
+        <h1 className="text-5xl lg:text-8xl font-black tracking-tight leading-[1.1] max-w-5xl mb-8 font-serif">
+          The AI-First Operating System for Litigation
+        </h1>
+
+        {/* Hero Description */}
+        <p className="text-xl lg:text-2xl font-serif leading-relaxed text-[#111111]/70 max-w-3xl mb-12 italic">
+          Empowering modern legal teams with zero-knowledge encrypted workspaces, real-time telemetry, automated document ingestion, and context-aware court workflows.
+        </p>
+
+        {/* Call to Actions (CTAs) */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
+          <Link
+            href="/login"
+            className="w-full sm:w-auto px-8 py-4 rounded bg-[#111111] text-[#FDFBF7] font-semibold text-lg font-sans uppercase text-center shadow-lg hover:bg-[#111111]/90 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            Get Started
+          </Link>
+          <Link
+            href="/contact"
+            className="w-full sm:w-auto px-8 py-4 rounded border border-[#111111] text-[#111111] font-semibold text-lg font-sans uppercase text-center hover:bg-[#111111]/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            Book a Demo
+          </Link>
+        </div>
+      </main>
+
+      {/* High-fidelity Brand Footer */}
+      <Footer />
     </div>
   );
 }
