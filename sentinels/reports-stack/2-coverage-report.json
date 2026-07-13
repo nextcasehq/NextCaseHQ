@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-07-13T12:36:39.274Z",
+  "timestamp": "2026-07-13T15:06:52.095Z",
   "totalFolders": 105,
-  "totalFiles": 158,
+  "totalFiles": 159,
   "supportedFileTypes": {
     "no-extension": 3,
     ".md": 15,
@@ -14,10 +14,11 @@
     ".sql": 2,
     ".yaml": 3,
     ".log": 2,
+    ".png": 1,
     ".sh": 1
   },
   "ignoredFilesCount": 0,
   "ignoredFoldersCount": 15,
   "coveragePercent": 100,
-  "scannedFiles": 158
+  "scannedFiles": 159
 }
