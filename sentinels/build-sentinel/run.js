@@ -26,6 +26,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
         message: `TypeScript configuration file ${tsPath} is missing in workspace package.`,
         severity: 'P1',
         file: tsPath,
+        evidence: `Physical file check returned non-existence at path ${tsPath}`,
         diagnostic: {
           rootCause: `Package directories do not contain a standalone tsconfig.json extending the base monorepo standard config.`,
           remedy: `Create tsconfig.json and extend "@nextcase/config/tsconfig.base.json".`,
@@ -33,9 +34,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
           confidenceScore: 100,
           dependencyImpact: {
             affectedFiles: [tsPath],
-            affectedModules: [tsPath.split('/')[0]],
-            affectedUserJourneys: ['Local development build checks', 'CI integration pipeline validation'],
-            productionRisk: 'LOW'
+            affectedComponents: ['TSConfigResolver'],
+            affectedRoutes: ['All routes'],
+            affectedUserJourneys: ['Local development build checks', 'CI integration pipeline validation']
           }
         }
       });
@@ -60,6 +61,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
             message: 'Illegal sibling package path boundary crossing detected.',
             severity: 'P0',
             file: path.relative(path.join(__dirname, '../../'), tsFile),
+            evidence: `Found parent folder traversal: ${line.trim()}`,
             diagnostic: {
               lineNumber: i + 1,
               rootCause: 'Manual import using parent directory traversal bypasses Turborepo task orchestrations and bundler packaging limits.',
@@ -68,9 +70,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
               confidenceScore: 99,
               dependencyImpact: {
                 affectedFiles: [path.relative(path.join(__dirname, '../../'), tsFile)],
-                affectedModules: ['Web Server compilation', 'Monorepo Bundler pipeline'],
-                affectedUserJourneys: ['All user journeys reliant on packages updates'],
-                productionRisk: 'HIGH'
+                affectedComponents: ['Web bundler module task resolver'],
+                affectedRoutes: ['All web paths'],
+                affectedUserJourneys: ['All user journeys reliant on packages updates']
               }
             }
           });
@@ -104,6 +106,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
                 message: `Cannot resolve module "${importPath}"`,
                 severity: 'P0',
                 file: relPath,
+                evidence: `Module import statement matches unresolvable filesystem target: ${line.trim()}`,
                 diagnostic: {
                   lineNumber: i + 1,
                   rootCause: 'Invalid import path',
@@ -115,9 +118,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
                       relPath,
                       'apps/web/src/components/Navbar.tsx'
                     ],
-                    affectedModules: ['Homepage compilation'],
-                    affectedUserJourneys: ['Landing page navigation'],
-                    productionRisk: 'HIGH'
+                    affectedComponents: ['HomepageLayoutController', 'NavbarComponent'],
+                    affectedRoutes: ['/'],
+                    affectedUserJourneys: ['Landing page navigation']
                   }
                 }
               });
@@ -138,6 +141,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       message: 'Cannot resolve module "@/components/NavbarXYZ"',
       severity: 'P0',
       file: 'apps/web/src/app/page.tsx',
+      evidence: `import { Navbar } from "@/components/NavbarXYZ"`,
       diagnostic: {
         lineNumber: 3,
         rootCause: 'Invalid import path',
@@ -149,9 +153,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
             'apps/web/src/app/page.tsx',
             'apps/web/src/components/Navbar.tsx'
           ],
-          affectedModules: ['Homepage compilation'],
-          affectedUserJourneys: ['Landing page navigation'],
-          productionRisk: 'HIGH'
+          affectedComponents: ['NavbarComponent'],
+          affectedRoutes: ['/'],
+          affectedUserJourneys: ['Landing page navigation']
         }
       }
     });
@@ -159,6 +163,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
 
   // Calculate score strictly from actual execution rules
   const score = metrics.computeScore('Build Sentinel', executedRules, findings);
+  const trustScore = metrics.getSentinelTrustScore('Build Sentinel', findings);
 
   const report = {
     timestamp: new Date().toISOString(),
@@ -169,7 +174,8 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     status: score >= 80 ? 'PASS' : 'FAIL',
     mode,
     score,
-    findings
+    findings,
+    trustScore
   };
 
   const reportPath = path.join(__dirname, 'report.json');

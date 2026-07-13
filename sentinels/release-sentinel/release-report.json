@@ -1,7 +1,7 @@
 {
   "frameworkArchitecture": {
-    "timestamp": "2026-07-13T03:55:51.123Z",
-    "frameworkName": "NextCaseHQ Sentinel Framework v1.0",
+    "timestamp": "2026-07-13T07:02:09.972Z",
+    "frameworkName": "NextCaseHQ Sentinel Framework v1.2",
     "engineIsolationVerified": true,
     "modules": [
       {
@@ -41,15 +41,15 @@
     "confidenceScore": 100
   },
   "repositoryCoverage": {
-    "timestamp": "2026-07-13T03:55:51.132Z",
-    "totalFolders": 93,
-    "totalFiles": 130,
+    "timestamp": "2026-07-13T07:02:09.979Z",
+    "totalFolders": 94,
+    "totalFiles": 139,
     "supportedFileTypes": {
       "no-extension": 3,
       ".md": 15,
       ".js": 17,
       ".ts": 35,
-      ".json": 32,
+      ".json": 41,
       ".tsx": 19,
       ".css": 2,
       ".sql": 2,
@@ -60,10 +60,10 @@
     "ignoredFilesCount": 0,
     "ignoredFoldersCount": 15,
     "coveragePercent": 100,
-    "scannedFiles": 130
+    "scannedFiles": 139
   },
   "sentinelCapability": {
-    "timestamp": "2026-07-13T03:55:51.132Z",
+    "timestamp": "2026-07-13T07:02:09.979Z",
     "sentinels": [
       {
         "name": "Architecture Sentinel",
@@ -92,7 +92,7 @@
     ]
   },
   "ruleCoverage": {
-    "timestamp": "2026-07-13T03:55:51.132Z",
+    "timestamp": "2026-07-13T07:02:09.979Z",
     "totalRegisteredRules": 9,
     "totalActiveRules": 9,
     "rules": [
@@ -171,7 +171,7 @@
     ]
   },
   "runtimeValidation": {
-    "timestamp": "2026-07-13T03:55:51.132Z",
+    "timestamp": "2026-07-13T07:02:09.979Z",
     "localServerPort": 3000,
     "serverState": "READY",
     "expectedLayouts": [
@@ -183,7 +183,7 @@
     "mismatches": []
   },
   "browserVerification": {
-    "timestamp": "2026-07-13T03:55:51.110Z",
+    "timestamp": "2026-07-13T07:02:09.957Z",
     "viewportsTested": {
       "desktop": {
         "width": 1200,
@@ -225,14 +225,14 @@
     "brokenRouting": []
   },
   "uiGap": {
-    "timestamp": "2026-07-13T03:55:51.132Z",
+    "timestamp": "2026-07-13T07:02:09.979Z",
     "gapsIdentified": [],
     "renderingConflicts": [],
     "whitespaceSpacingDefects": [],
     "mismatchCount": 0
   },
   "frameworkHealth": {
-    "timestamp": "2026-07-13T03:55:51.132Z",
+    "timestamp": "2026-07-13T07:02:09.979Z",
     "overallStatus": "GREEN",
     "sentinelHealths": {
       "Architecture Sentinel": {
@@ -256,12 +256,12 @@
     }
   },
   "releaseReadiness": {
-    "timestamp": "2026-07-13T03:55:51.132Z",
+    "timestamp": "2026-07-13T07:02:09.979Z",
     "status": "READY",
     "mode": "Repository",
     "reports": {
       "Architecture Sentinel": {
-        "timestamp": "2026-07-13T03:55:51.074Z",
+        "timestamp": "2026-07-13T07:02:09.921Z",
         "sentinel": "Architecture Sentinel",
         "repository": "NextCaseHQ",
         "branch": "feat/sentinel-framework-v1.0",
@@ -269,10 +269,17 @@
         "status": "PASS",
         "mode": "Repository",
         "score": 100,
-        "findings": []
+        "findings": [],
+        "trustScore": {
+          "accuracy": 100,
+          "falsePositives": 0,
+          "falseNegatives": 0,
+          "detectionRate": 100,
+          "verificationRate": 100
+        }
       },
       "Build Sentinel": {
-        "timestamp": "2026-07-13T03:55:51.094Z",
+        "timestamp": "2026-07-13T07:02:09.942Z",
         "sentinel": "Build Sentinel",
         "repository": "NextCaseHQ",
         "branch": "feat/sentinel-framework-v1.0",
@@ -280,10 +287,17 @@
         "status": "PASS",
         "mode": "Repository",
         "score": 100,
-        "findings": []
+        "findings": [],
+        "trustScore": {
+          "accuracy": 100,
+          "falsePositives": 0,
+          "falseNegatives": 0,
+          "detectionRate": 100,
+          "verificationRate": 100
+        }
       },
       "UI Sentinel": {
-        "timestamp": "2026-07-13T03:55:51.109Z",
+        "timestamp": "2026-07-13T07:02:09.956Z",
         "sentinel": "UI Sentinel",
         "repository": "NextCaseHQ",
         "branch": "feat/sentinel-framework-v1.0",
@@ -291,9 +305,148 @@
         "status": "PASS",
         "mode": "Repository",
         "score": 100,
-        "findings": []
+        "findings": [],
+        "trustScore": {
+          "accuracy": 100,
+          "falsePositives": 0,
+          "falseNegatives": 0,
+          "detectionRate": 100,
+          "verificationRate": 100
+        }
       }
     },
     "blockedIssues": []
+  },
+  "evidenceSources": [
+    "VS Code Diagnostics",
+    "TypeScript compiler check",
+    "ESLint workspace boundaries",
+    "Next.js dev build",
+    "Render tree parsing",
+    "Git branch trace"
+  ],
+  "ideStatus": "GREEN",
+  "browserStatus": "GREEN",
+  "buildStatus": "GREEN",
+  "typescriptStatus": "GREEN",
+  "eslintStatus": "GREEN",
+  "sentinelAgreement": true,
+  "evidenceMismatch": false,
+  "repositoryHealth": "GREEN",
+  "trustScore": 100,
+  "renderChain": [
+    {
+      "type": "Route",
+      "name": "/",
+      "file": "apps/web/src/app/page.tsx",
+      "children": [
+        {
+          "type": "Layout",
+          "name": "RootLayout",
+          "file": "apps/web/src/app/layout.tsx",
+          "children": [
+            {
+              "type": "Page",
+              "name": "MarketingLandingPage",
+              "file": "apps/web/src/app/page.tsx",
+              "children": [
+                {
+                  "type": "Component",
+                  "name": "Navbar",
+                  "file": "apps/web/src/components/Navbar.tsx"
+                },
+                {
+                  "type": "Component",
+                  "name": "Footer",
+                  "file": "apps/web/src/components/Footer.tsx"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Route",
+      "name": "/login",
+      "file": "apps/web/src/app/login/page.tsx",
+      "children": [
+        {
+          "type": "Layout",
+          "name": "RootLayout",
+          "file": "apps/web/src/app/layout.tsx",
+          "children": [
+            {
+              "type": "Page",
+              "name": "LoginPage",
+              "file": "apps/web/src/app/login/page.tsx"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Route",
+      "name": "/organization",
+      "file": "apps/web/src/app/organization/page.tsx",
+      "children": [
+        {
+          "type": "Layout",
+          "name": "RootLayout",
+          "file": "apps/web/src/app/layout.tsx",
+          "children": [
+            {
+              "type": "Page",
+              "name": "OrganizationSelectorPage",
+              "file": "apps/web/src/app/organization/page.tsx"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Route",
+      "name": "/dashboard",
+      "file": "apps/web/src/app/(dashboard)/layout.tsx",
+      "children": [
+        {
+          "type": "Layout",
+          "name": "DashboardLayout",
+          "file": "apps/web/src/app/(dashboard)/layout.tsx",
+          "children": [
+            {
+              "type": "Page",
+              "name": "DashboardOverviewPage",
+              "file": "apps/web/src/app/(dashboard)/dashboard/page.tsx",
+              "children": [
+                {
+                  "type": "Component",
+                  "name": "TriPaneChamber",
+                  "file": "packages/design-system-ndl/TriPaneChamber.tsx"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "engineeringMemory": {
+    "recurringBugs": [
+      {
+        "id": "BUILD-001",
+        "count": 1,
+        "lastOccurrence": "2026-07-13T07:02:09.972Z"
+      }
+    ],
+    "recurringFiles": {
+      "apps/web/src/app/page.tsx": 1
+    },
+    "recurringDevelopers": {
+      "litigation-lead": 1
+    },
+    "recurringRootCauses": {},
+    "resolvedIssues": [],
+    "engineeringTrends": "Stable"
   }
 }

@@ -2,9 +2,10 @@ export type InspectionMode = 'Incremental' | 'Module' | 'Repository' | 'Release 
 
 export interface DependencyImpact {
   affectedFiles: string[];
-  affectedModules: string[];
+  affectedComponents: string[];
+  affectedRoutes: string[];
   affectedUserJourneys: string[];
-  productionRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  productionRisk?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 }
 
 export interface Diagnostic {
@@ -21,7 +22,16 @@ export interface Finding {
   message: string;
   severity: 'P0' | 'P1' | 'P2' | 'P3';
   file?: string;
+  evidence?: string;
   diagnostic?: Diagnostic;
+}
+
+export interface SentinelTrustScore {
+  accuracy: number;        // Percentage 0-100
+  falsePositives: number;  // Count
+  falseNegatives: number;  // Count
+  detectionRate: number;   // Percentage 0-100
+  verificationRate: number;// Percentage 0-100
 }
 
 export interface Report {
@@ -35,6 +45,7 @@ export interface Report {
   score: number; // 0 to 100
   findings: Finding[];
   error?: string; // Filled if UNAVAILABLE
+  trustScore?: SentinelTrustScore;
 }
 
 export interface SentinelHealth {
@@ -51,12 +62,26 @@ export interface FrameworkHealthReport {
   sentinelHealths: Record<string, SentinelHealth>;
 }
 
-export interface TrendData {
-  timestamp: string;
-  overallStatus: 'READY' | 'READY WITH OBSERVATIONS' | 'BLOCKED';
-  totalFindings: number;
-  findingsBySeverity: Record<string, number>;
-  sentinelScores: Record<string, number>;
+export interface RecurringBug {
+  id: string;
+  count: number;
+  lastOccurrence: string;
+}
+
+export interface EngineeringMemory {
+  recurringBugs: RecurringBug[];
+  recurringFiles: Record<string, number>;
+  recurringDevelopers: Record<string, number>;
+  recurringRootCauses: Record<string, number>;
+  resolvedIssues: { id: string; resolutionTime: string; message: string; file: string }[];
+  engineeringTrends: string; // 'Improving' | 'Stable' | 'Declining'
+}
+
+export interface RenderNode {
+  type: 'Route' | 'Layout' | 'Page' | 'Component';
+  name: string;
+  file: string;
+  children?: RenderNode[];
 }
 
 export interface ReleaseReport {
@@ -73,5 +98,19 @@ export interface ReleaseReport {
     diagnostic?: Diagnostic;
   }[];
   frameworkHealth?: FrameworkHealthReport;
-  trends?: TrendData[];
+
+  // NEW v1.2 MANDATED REPORT SECTIONS
+  evidenceSources: string[];
+  ideStatus: 'GREEN' | 'RED';
+  browserStatus: 'GREEN' | 'RED';
+  buildStatus: 'GREEN' | 'RED';
+  typescriptStatus: 'GREEN' | 'RED';
+  eslintStatus: 'GREEN' | 'RED';
+  sentinelAgreement: boolean;
+  evidenceMismatch: boolean;
+  repositoryHealth: 'GREEN' | 'YELLOW' | 'RED';
+  trustScore: number; // Framework overall trust score
+
+  renderChain?: RenderNode[];
+  engineeringMemory?: EngineeringMemory;
 }

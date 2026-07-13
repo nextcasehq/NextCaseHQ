@@ -60,6 +60,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       message: 'No RLS database active tenant binding or session context isolation schema was found across routes.',
       severity: 'P0',
       file: 'apps/web/src/app/api/documents/upload/route.ts',
+      evidence: "Missing SET LOCAL nextcase.current_tenant_id wrapper in upload stream",
       diagnostic: {
         lineNumber: 92,
         rootCause: 'Omitting explicit session tenant validation via active context wrapper or Raw execution.',
@@ -71,9 +72,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
             'apps/web/src/app/api/documents/upload/route.ts',
             'apps/web/src/lib/db/tenant-client.ts'
           ],
-          affectedModules: ['Multi-tenant Isolation', 'PostgreSQL RLS Router', 'Vector Document DB'],
-          affectedUserJourneys: ['Uploading legal briefs', 'Ingesting evidence packages'],
-          productionRisk: 'CRITICAL'
+          affectedComponents: ['UploadRouteController', 'PrismaDatabaseClient'],
+          affectedRoutes: ['/api/documents/upload'],
+          affectedUserJourneys: ['Uploading legal briefs', 'Ingesting evidence packages']
         }
       }
     });
@@ -85,6 +86,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       message: 'No edge-optimized India PAN/Aadhaar scrubbing filters or redact identifiers found in telemetry channels.',
       severity: 'P1',
       file: 'apps/web/src/app/api/webhooks/route.ts',
+      evidence: "Missing scrubPII dynamic call inside telemetry processor stream",
       diagnostic: {
         lineNumber: 33,
         rootCause: 'Data processor logging inputs directly to the container stdio streams without scrubbing.',
@@ -95,9 +97,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
           affectedFiles: [
             'apps/web/src/app/api/webhooks/route.ts'
           ],
-          affectedModules: ['Audit Telemetry', 'PII Scrubbing compliance'],
-          affectedUserJourneys: ['Inbound litigation webhooks', 'Case lifecycle webhooks'],
-          productionRisk: 'HIGH'
+          affectedComponents: ['WebhookRouteController'],
+          affectedRoutes: ['/api/webhooks'],
+          affectedUserJourneys: ['Inbound litigation webhooks', 'Case lifecycle webhooks']
         }
       }
     });
@@ -109,17 +111,25 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       message: 'Polymorphic Regional Expansion Contract Violation in Country Packs.',
       severity: 'P2',
       file: 'packages/country-packs/src/index.ts',
+      evidence: "Country packs index does not extend base regional abstract classes",
       diagnostic: {
         rootCause: 'Country pack module lacks abstract polymorph hooks.',
         remedy: 'Refactor index.ts to export polymorphism methods.',
         impact: 'Addition of future country packs requires modifying monolithic logic.',
-        confidenceScore: 90
+        confidenceScore: 90,
+        dependencyImpact: {
+          affectedFiles: ['packages/country-packs/src/index.ts'],
+          affectedComponents: ['CountryPacksLoader'],
+          affectedRoutes: ['All routes'],
+          affectedUserJourneys: ['Multi-jurisdictional case management']
+        }
       }
     });
   }
 
   // Calculate score strictly from actual execution rules
   const score = metrics.computeScore('Architecture Sentinel', executedRules, findings);
+  const trustScore = metrics.getSentinelTrustScore('Architecture Sentinel', findings);
 
   const report = {
     timestamp: new Date().toISOString(),
@@ -130,7 +140,8 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     status: score >= 80 ? 'PASS' : 'FAIL',
     mode,
     score,
-    findings
+    findings,
+    trustScore
   };
 
   const reportPath = path.join(__dirname, 'report.json');

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-13T03:55:51.109Z",
+  "timestamp": "2026-07-13T07:02:09.956Z",
   "sentinel": "UI Sentinel",
   "repository": "NextCaseHQ",
   "branch": "feat/sentinel-framework-v1.0",
@@ -7,5 +7,12 @@
   "status": "PASS",
   "mode": "Repository",
   "score": 100,
-  "findings": []
+  "findings": [],
+  "trustScore": {
+    "accuracy": 100,
+    "falsePositives": 0,
+    "falseNegatives": 0,
+    "detectionRate": 100,
+    "verificationRate": 100
+  }
 }
