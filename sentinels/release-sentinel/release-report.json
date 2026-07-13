@@ -1,6 +1,6 @@
 {
   "frameworkArchitecture": {
-    "timestamp": "2026-07-13T10:20:21.263Z",
+    "timestamp": "2026-07-13T12:36:39.267Z",
     "frameworkName": "NextCaseHQ Sentinel Framework v2.0",
     "engineIsolationVerified": true,
     "modules": [
@@ -41,30 +41,30 @@
     "confidenceScore": 100
   },
   "repositoryCoverage": {
-    "timestamp": "2026-07-13T10:20:21.273Z",
-    "totalFolders": 95,
-    "totalFiles": 142,
+    "timestamp": "2026-07-13T12:36:39.274Z",
+    "totalFolders": 105,
+    "totalFiles": 158,
     "supportedFileTypes": {
       "no-extension": 3,
       ".md": 15,
       ".js": 18,
       ".ts": 35,
       ".json": 42,
-      ".tsx": 19,
+      ".tsx": 34,
       ".css": 2,
       ".tsbuildinfo": 1,
       ".sql": 2,
       ".yaml": 3,
-      ".log": 1,
+      ".log": 2,
       ".sh": 1
     },
     "ignoredFilesCount": 0,
     "ignoredFoldersCount": 15,
     "coveragePercent": 100,
-    "scannedFiles": 142
+    "scannedFiles": 158
   },
   "sentinelCapability": {
-    "timestamp": "2026-07-13T10:20:21.273Z",
+    "timestamp": "2026-07-13T12:36:39.274Z",
     "sentinels": [
       {
         "name": "Architecture Sentinel",
@@ -100,7 +100,7 @@
     ]
   },
   "ruleCoverage": {
-    "timestamp": "2026-07-13T10:20:21.273Z",
+    "timestamp": "2026-07-13T12:36:39.274Z",
     "totalRegisteredRules": 11,
     "totalActiveRules": 11,
     "rules": [
@@ -195,7 +195,7 @@
     ]
   },
   "runtimeValidation": {
-    "timestamp": "2026-07-13T10:20:21.274Z",
+    "timestamp": "2026-07-13T12:36:39.274Z",
     "localServerPort": 3000,
     "serverState": "READY",
     "expectedLayouts": [
@@ -207,7 +207,7 @@
     "mismatches": []
   },
   "browserVerification": {
-    "timestamp": "2026-07-13T10:20:21.238Z",
+    "timestamp": "2026-07-13T12:36:39.247Z",
     "viewportsTested": {
       "desktop": {
         "width": 1200,
@@ -249,14 +249,14 @@
     "brokenRouting": []
   },
   "uiGap": {
-    "timestamp": "2026-07-13T10:20:21.274Z",
+    "timestamp": "2026-07-13T12:36:39.275Z",
     "gapsIdentified": [],
     "renderingConflicts": [],
     "whitespaceSpacingDefects": [],
     "mismatchCount": 0
   },
   "frameworkHealth": {
-    "timestamp": "2026-07-13T10:20:21.274Z",
+    "timestamp": "2026-07-13T12:36:39.275Z",
     "overallStatus": "GREEN",
     "sentinelHealths": {
       "Architecture Sentinel": {
@@ -286,12 +286,12 @@
     }
   },
   "releaseReadiness": {
-    "timestamp": "2026-07-13T10:20:21.274Z",
+    "timestamp": "2026-07-13T12:36:39.275Z",
     "status": "READY",
     "mode": "Repository",
     "reports": {
       "Architecture Sentinel": {
-        "timestamp": "2026-07-13T10:20:16.277Z",
+        "timestamp": "2026-07-13T12:36:34.406Z",
         "sentinel": "Architecture Sentinel",
         "repository": "NextCaseHQ",
         "branch": "feat/sentinel-framework-v1.0",
@@ -309,7 +309,7 @@
         }
       },
       "Build Sentinel": {
-        "timestamp": "2026-07-13T10:20:16.841Z",
+        "timestamp": "2026-07-13T12:36:35.010Z",
         "sentinel": "Build Sentinel",
         "repository": "NextCaseHQ",
         "branch": "feat/sentinel-framework-v1.0",
@@ -327,7 +327,7 @@
         }
       },
       "UI Sentinel": {
-        "timestamp": "2026-07-13T10:20:16.856Z",
+        "timestamp": "2026-07-13T12:36:35.027Z",
         "sentinel": "UI Sentinel",
         "repository": "NextCaseHQ",
         "branch": "feat/sentinel-framework-v1.0",
@@ -345,7 +345,7 @@
         }
       },
       "Compiler Diagnostics Sentinel": {
-        "timestamp": "2026-07-13T10:20:21.237Z",
+        "timestamp": "2026-07-13T12:36:39.246Z",
         "sentinel": "Compiler Diagnostics Sentinel",
         "repository": "NextCaseHQ",
         "branch": "feat/sentinel-framework-v1.0",
@@ -484,7 +484,7 @@
       {
         "id": "BUILD-001",
         "count": 1,
-        "lastOccurrence": "2026-07-13T10:20:21.258Z"
+        "lastOccurrence": "2026-07-13T12:36:39.261Z"
       }
     ],
     "recurringFiles": {
@@ -534,6 +534,142 @@
       "confidenceScore": 100
     },
     {
+      "repositoryPath": "apps/web/src/app/about/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/about/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/about/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/about/page.tsx:7",
+      "importStatement": "import { Card } from '@/components/ui/Card';",
+      "expectedPath": "apps/web/src/components/ui/Card",
+      "resolvedPath": "apps/web/src/components/ui/Card.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/contact/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/contact/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/contact/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/contact/page.tsx:7",
+      "importStatement": "import { Button } from '@/components/ui/Button';",
+      "expectedPath": "apps/web/src/components/ui/Button",
+      "resolvedPath": "apps/web/src/components/ui/Button.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/contact/page.tsx:8",
+      "importStatement": "import { Input } from '@/components/ui/Input';",
+      "expectedPath": "apps/web/src/components/ui/Input",
+      "resolvedPath": "apps/web/src/components/ui/Input.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/docs/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/docs/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/docs/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/docs/page.tsx:7",
+      "importStatement": "import { Card } from '@/components/ui/Card';",
+      "expectedPath": "apps/web/src/components/ui/Card",
+      "resolvedPath": "apps/web/src/components/ui/Card.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/features/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/features/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/features/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/features/page.tsx:7",
+      "importStatement": "import { Card } from '@/components/ui/Card';",
+      "expectedPath": "apps/web/src/components/ui/Card",
+      "resolvedPath": "apps/web/src/components/ui/Card.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
       "repositoryPath": "apps/web/src/app/layout.tsx:3",
       "importStatement": "import \"./globals.css\";",
       "expectedPath": "apps/web/src/app/globals.css",
@@ -542,7 +678,7 @@
       "confidenceScore": 100
     },
     {
-      "repositoryPath": "apps/web/src/app/page.tsx:3",
+      "repositoryPath": "apps/web/src/app/page.tsx:5",
       "importStatement": "import { Navbar } from \"@/components/Navbar\";",
       "expectedPath": "apps/web/src/components/Navbar",
       "resolvedPath": "apps/web/src/components/Navbar.tsx",
@@ -550,10 +686,194 @@
       "confidenceScore": 100
     },
     {
-      "repositoryPath": "apps/web/src/app/page.tsx:4",
+      "repositoryPath": "apps/web/src/app/page.tsx:6",
       "importStatement": "import { Footer } from \"@/components/Footer\";",
       "expectedPath": "apps/web/src/components/Footer",
       "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/page.tsx:7",
+      "importStatement": "import { Button } from \"@/components/ui/Button\";",
+      "expectedPath": "apps/web/src/components/ui/Button",
+      "resolvedPath": "apps/web/src/components/ui/Button.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/page.tsx:8",
+      "importStatement": "import { Card } from \"@/components/ui/Card\";",
+      "expectedPath": "apps/web/src/components/ui/Card",
+      "resolvedPath": "apps/web/src/components/ui/Card.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/page.tsx:9",
+      "importStatement": "import { Badge } from \"@/components/ui/Badge\";",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/page.tsx:10",
+      "importStatement": "import { Accordion } from \"@/components/ui/Accordion\";",
+      "expectedPath": "apps/web/src/components/ui/Accordion",
+      "resolvedPath": "apps/web/src/components/ui/Accordion.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/pricing/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/pricing/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/pricing/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/pricing/page.tsx:7",
+      "importStatement": "import { Card } from '@/components/ui/Card';",
+      "expectedPath": "apps/web/src/components/ui/Card",
+      "resolvedPath": "apps/web/src/components/ui/Card.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/pricing/page.tsx:8",
+      "importStatement": "import { Button } from '@/components/ui/Button';",
+      "expectedPath": "apps/web/src/components/ui/Button",
+      "resolvedPath": "apps/web/src/components/ui/Button.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/privacy/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/privacy/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/privacy/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/resources/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/resources/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/resources/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/resources/page.tsx:7",
+      "importStatement": "import { Card } from '@/components/ui/Card';",
+      "expectedPath": "apps/web/src/components/ui/Card",
+      "resolvedPath": "apps/web/src/components/ui/Card.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/solutions/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/solutions/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/solutions/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/solutions/page.tsx:7",
+      "importStatement": "import { Card } from '@/components/ui/Card';",
+      "expectedPath": "apps/web/src/components/ui/Card",
+      "resolvedPath": "apps/web/src/components/ui/Card.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/terms/page.tsx:4",
+      "importStatement": "import { Navbar } from '@/components/Navbar';",
+      "expectedPath": "apps/web/src/components/Navbar",
+      "resolvedPath": "apps/web/src/components/Navbar.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/terms/page.tsx:5",
+      "importStatement": "import { Footer } from '@/components/Footer';",
+      "expectedPath": "apps/web/src/components/Footer",
+      "resolvedPath": "apps/web/src/components/Footer.tsx",
+      "resolutionStatus": "RESOLVED",
+      "confidenceScore": 100
+    },
+    {
+      "repositoryPath": "apps/web/src/app/terms/page.tsx:6",
+      "importStatement": "import { Badge } from '@/components/ui/Badge';",
+      "expectedPath": "apps/web/src/components/ui/Badge",
+      "resolvedPath": "apps/web/src/components/ui/Badge.tsx",
       "resolutionStatus": "RESOLVED",
       "confidenceScore": 100
     },
