@@ -1,21 +1,5 @@
 [
   {
-    "timestamp": "2026-07-12T19:36:28.727Z",
-    "overallStatus": "READY",
-    "totalFindings": 0,
-    "findingsBySeverity": {
-      "P0": 0,
-      "P1": 0,
-      "P2": 0,
-      "P3": 0
-    },
-    "sentinelScores": {
-      "Architecture Sentinel": 100,
-      "Build Sentinel": 100,
-      "UI Sentinel": 100
-    }
-  },
-  {
     "timestamp": "2026-07-12T20:17:26.088Z",
     "overallStatus": "READY",
     "totalFindings": 0,
@@ -193,6 +177,26 @@
       "Architecture Sentinel": 100,
       "Build Sentinel": 100,
       "UI Sentinel": 100
+    },
+    "activeIssues": [],
+    "resolvedIssues": [],
+    "trend": "Stable"
+  },
+  {
+    "timestamp": "2026-07-13T10:20:21.279Z",
+    "overallStatus": "READY",
+    "totalFindings": 0,
+    "findingsBySeverity": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "sentinelScores": {
+      "Architecture Sentinel": 100,
+      "Build Sentinel": 100,
+      "UI Sentinel": 100,
+      "Compiler Diagnostics Sentinel": 100
     },
     "activeIssues": [],
     "resolvedIssues": [],

@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-13T08:50:40.025Z",
+  "timestamp": "2026-07-13T10:20:21.274Z",
   "status": "READY",
   "mode": "Repository",
   "reports": {
     "Architecture Sentinel": {
-      "timestamp": "2026-07-13T08:50:39.967Z",
+      "timestamp": "2026-07-13T10:20:16.277Z",
       "sentinel": "Architecture Sentinel",
       "repository": "NextCaseHQ",
       "branch": "feat/sentinel-framework-v1.0",
@@ -22,7 +22,7 @@
       }
     },
     "Build Sentinel": {
-      "timestamp": "2026-07-13T08:50:39.987Z",
+      "timestamp": "2026-07-13T10:20:16.841Z",
       "sentinel": "Build Sentinel",
       "repository": "NextCaseHQ",
       "branch": "feat/sentinel-framework-v1.0",
@@ -40,8 +40,26 @@
       }
     },
     "UI Sentinel": {
-      "timestamp": "2026-07-13T08:50:40.003Z",
+      "timestamp": "2026-07-13T10:20:16.856Z",
       "sentinel": "UI Sentinel",
+      "repository": "NextCaseHQ",
+      "branch": "feat/sentinel-framework-v1.0",
+      "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
+      "status": "PASS",
+      "mode": "Repository",
+      "score": 100,
+      "findings": [],
+      "trustScore": {
+        "accuracy": 100,
+        "falsePositives": 0,
+        "falseNegatives": 0,
+        "detectionRate": 100,
+        "verificationRate": 100
+      }
+    },
+    "Compiler Diagnostics Sentinel": {
+      "timestamp": "2026-07-13T10:20:21.237Z",
+      "sentinel": "Compiler Diagnostics Sentinel",
       "repository": "NextCaseHQ",
       "branch": "feat/sentinel-framework-v1.0",
       "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",

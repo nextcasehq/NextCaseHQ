@@ -8,19 +8,21 @@ const reporter = require('../shared/reporter');
 const archSentinel = require('../architecture-sentinel/run');
 const buildSentinel = require('../build-sentinel/run');
 const uiSentinel = require('../ui-sentinel/run');
+const compSentinel = require('../compiler-sentinel/run');
 const browserVerify = require('../ui-sentinel/browser-verify');
 
 function run(mode = process.env.INSPECTION_MODE || 'Repository') {
   const metadata = utils.getGitMetadata();
 
   console.log('==================================================================');
-  console.log(`🚀 INITIALIZING NEXTCASEHQ SENTINEL GOVERNANCE ENGINE v1.0 [Mode: ${mode}]`);
+  console.log(`🚀 INITIALIZING NEXTCASEHQ SENTINEL GOVERNANCE ENGINE v2.0 [Mode: ${mode}]`);
   console.log('==================================================================');
 
   // 1. Run each Sentinel inside try-catch fault isolation using our recovery system
   const archReport = recovery.runWithRecovery('Architecture Sentinel', archSentinel.run, mode);
   const buildReport = recovery.runWithRecovery('Build Sentinel', buildSentinel.run, mode);
   const uiReport = recovery.runWithRecovery('UI Sentinel', uiSentinel.run, mode);
+  const compReport = recovery.runWithRecovery('Compiler Diagnostics Sentinel', compSentinel.run, mode);
 
   // 2. Perform live structural layout rendering validation (Phase 5)
   const browserVerifyReport = browserVerify.verifyRenderedLayout();
@@ -28,7 +30,8 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
   const reports = {
     'Architecture Sentinel': archReport,
     'Build Sentinel': buildReport,
-    'UI Sentinel': uiReport
+    'UI Sentinel': uiReport,
+    'Compiler Diagnostics Sentinel': compReport
   };
 
   // 3. Compile the entire Phase 9 Report Stack dynamically from metrics
@@ -39,7 +42,6 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
   if (browserVerifyReport.mismatches.length > 0) {
     reportsStack.uiGap.gapsIdentified = browserVerifyReport.mismatches;
     reportsStack.uiGap.mismatchCount = browserVerifyReport.mismatches.length;
-    // Degrade UI Sentinel score if visual mismatches are present
     if (reports['UI Sentinel'].status !== 'UNAVAILABLE') {
       reports['UI Sentinel'].score = Math.max(0, reports['UI Sentinel'].score - 15);
       if (reports['UI Sentinel'].score < 80) reports['UI Sentinel'].status = 'FAIL';
@@ -108,7 +110,8 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     sentinelScores: {
       'Architecture Sentinel': archReport.score,
       'Build Sentinel': buildReport.score,
-      'UI Sentinel': uiReport.score
+      'UI Sentinel': uiReport.score,
+      'Compiler Diagnostics Sentinel': compReport.score
     },
     activeIssues: reportsStack.releaseReadiness.blockedIssues.map(b => ({ id: b.id, message: b.message, file: b.file, severity: b.severity })),
     resolvedIssues: resolvedIssues,

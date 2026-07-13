@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const utils = require('../shared/utils');
 const config = require('../shared/config.json');
 const metrics = require('../shared/metrics');
@@ -133,9 +134,35 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     }
   }
 
+  // 3. Mandatory Build Verification (pnpm build)
+  let buildError = false;
+  try {
+    execSync('pnpm run build', { stdio: 'ignore' });
+  } catch (err) {
+    buildError = true;
+    findings.push({
+      id: 'BUILD-003',
+      message: 'Production compilation pnpm run build failed with critical error diagnostic.',
+      severity: 'P0',
+      evidence: err.message,
+      diagnostic: {
+        rootCause: 'Next.js build or package compilation step failed.',
+        remedy: 'Inspect compiler outputs and resolve typescript or bundler issues.',
+        impact: 'Repository cannot build and cannot be certified for release.',
+        confidenceScore: 100,
+        dependencyImpact: {
+          affectedFiles: ['All files'],
+          affectedComponents: ['Full Monorepo'],
+          affectedRoutes: ['All routes'],
+          affectedUserJourneys: ['All user journeys']
+        }
+      }
+    });
+  }
+
   // Handle simulation scenario specifically
   const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_BUILD_FAILURE === 'true';
-  if (isSimulation && !findings.some(f => f.id === 'BUILD-003')) {
+  if (isSimulation && !findings.some(f => f.message.includes('NavbarXYZ'))) {
     findings.push({
       id: 'BUILD-003',
       message: 'Cannot resolve module "@/components/NavbarXYZ"',

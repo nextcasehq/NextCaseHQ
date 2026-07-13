@@ -3,6 +3,7 @@ const path = require('path');
 const utils = require('../shared/utils');
 const config = require('../shared/config.json');
 const metrics = require('../shared/metrics');
+const browserVerify = require('./browser-verify');
 
 function run(mode = process.env.INSPECTION_MODE || 'Repository') {
   const metadata = utils.getGitMetadata();
@@ -15,6 +16,27 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
   const dashboardLayoutPath = path.join(__dirname, '../../apps/web/src/app/(dashboard)/layout.tsx');
 
   const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_UI_FAILURE === 'true';
+
+  // Run Browser Reality Gate Scan
+  const browserResults = browserVerify.verifyRenderedLayout();
+
+  if (browserResults.mismatches.length > 0) {
+    for (const mismatch of browserResults.mismatches) {
+      findings.push({
+        id: 'UI-003',
+        message: `${mismatch.component}: ${mismatch.error}`,
+        severity: 'P1',
+        file: 'apps/web/src/app/page.tsx',
+        evidence: mismatch.rootCause,
+        diagnostic: {
+          rootCause: mismatch.rootCause || 'Visual or markup spacing anomaly.',
+          remedy: mismatch.remedy,
+          impact: 'Degraded layout user experience.',
+          confidenceScore: 98
+        }
+      });
+    }
+  }
 
   // 1. Audit Homepage shell components, hierarchy, branding (UI-001)
   if (fs.existsSync(homepagePath)) {

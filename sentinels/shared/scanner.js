@@ -162,7 +162,82 @@ function buildRenderChain() {
   return renderChain;
 }
 
+// IMPORT RESOLUTION AUDIT
+// Audits every single import across application files, mapping statements to expected/resolved physical files.
+function auditAllImports(rootDir) {
+  const records = [];
+  const webSrc = path.join(rootDir, 'apps/web/src');
+
+  function findFilesInDir(dir, filter, fileList = []) {
+    if (!fs.existsSync(dir)) return fileList;
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        findFilesInDir(filePath, filter, fileList);
+      } else if (filePath.match(filter)) {
+        fileList.push(filePath);
+      }
+    }
+    return fileList;
+  }
+
+  const tsFiles = findFilesInDir(webSrc, /\.(tsx?|js|jsx)$/);
+
+  for (const tsFile of tsFiles) {
+    if (tsFile.includes('node_modules') || tsFile.includes('.next') || tsFile.includes('dist')) continue;
+    try {
+      const content = fs.readFileSync(tsFile, 'utf8');
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const importMatch = line.match(/(?:import|from|require)\s*\(?\s*['"]([^'"]+)['"]\)?/);
+        if (importMatch) {
+          const importPath = importMatch[1];
+          if (importPath.startsWith('.') || importPath.startsWith('@/')) {
+            let expectedPath = '';
+            if (importPath.startsWith('@/')) {
+              expectedPath = path.resolve(rootDir, 'apps/web/src', importPath.slice(2));
+            } else {
+              expectedPath = path.resolve(path.dirname(tsFile), importPath);
+            }
+
+            const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'];
+            let resolvedPath = '';
+            let resolved = false;
+            for (const ext of extensions) {
+              const checkPath = expectedPath + ext;
+              if (fs.existsSync(checkPath) && !fs.statSync(checkPath).isDirectory()) {
+                resolvedPath = checkPath;
+                resolved = true;
+                break;
+              }
+            }
+
+            records.push({
+              repositoryPath: path.relative(rootDir, tsFile) + ':' + (i + 1),
+              importStatement: line.trim(),
+              expectedPath: path.relative(rootDir, expectedPath),
+              resolvedPath: resolved ? path.relative(rootDir, resolvedPath) : 'UNRESOLVED',
+              resolutionStatus: resolved ? 'RESOLVED' : 'UNRESOLVED',
+              rootCause: resolved ? undefined : 'Unresolvable filesystem module reference.',
+              suggestedRemedy: resolved ? undefined : 'Update module import specifier to target a valid component or file path.',
+              confidenceScore: 100
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // Ignored
+    }
+  }
+
+  return records;
+}
+
 module.exports = {
   getCoverageStats,
-  buildRenderChain
+  buildRenderChain,
+  auditAllImports
 };

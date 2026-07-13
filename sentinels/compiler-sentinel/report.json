@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-07-13T10:20:16.856Z",
-  "sentinel": "UI Sentinel",
+  "timestamp": "2026-07-13T10:20:21.237Z",
+  "sentinel": "Compiler Diagnostics Sentinel",
   "repository": "NextCaseHQ",
   "branch": "feat/sentinel-framework-v1.0",
   "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",

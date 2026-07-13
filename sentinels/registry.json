@@ -71,6 +71,22 @@
       "sentinel": "UI Sentinel",
       "status": "Active",
       "severity": "P1"
+    },
+    {
+      "id": "COMP-001",
+      "name": "TypeScript Severe Typings Integrity",
+      "description": "Detect TS2307, TS2322, TS2554, TS2741 severe compile issues or import errors.",
+      "sentinel": "Compiler Diagnostics Sentinel",
+      "status": "Active",
+      "severity": "P0"
+    },
+    {
+      "id": "COMP-002",
+      "name": "IDE Problems Watch and Warnings",
+      "description": "Verify zero active VS Code red underlines or ESLint compilation errors.",
+      "sentinel": "Compiler Diagnostics Sentinel",
+      "status": "Active",
+      "severity": "P1"
     }
   ]
 }

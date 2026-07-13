@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-07-13T08:50:40.025Z",
-  "totalRegisteredRules": 9,
-  "totalActiveRules": 9,
+  "timestamp": "2026-07-13T10:20:21.273Z",
+  "totalRegisteredRules": 11,
+  "totalActiveRules": 11,
   "rules": [
     {
       "id": "ARCH-001",
@@ -71,6 +71,22 @@
       "id": "UI-003",
       "name": "Responsive Space and Whitespace consistency",
       "sentinel": "UI Sentinel",
+      "status": "Active",
+      "executed": true,
+      "result": "PASS"
+    },
+    {
+      "id": "COMP-001",
+      "name": "TypeScript Severe Typings Integrity",
+      "sentinel": "Compiler Diagnostics Sentinel",
+      "status": "Active",
+      "executed": true,
+      "result": "PASS"
+    },
+    {
+      "id": "COMP-002",
+      "name": "IDE Problems Watch and Warnings",
+      "sentinel": "Compiler Diagnostics Sentinel",
       "status": "Active",
       "executed": true,
       "result": "PASS"

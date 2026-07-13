@@ -10,6 +10,8 @@ export interface DependencyImpact {
 
 export interface Diagnostic {
   lineNumber?: number;
+  column?: number;
+  diagnosticCode?: string;
   rootCause: string;
   remedy: string;
   impact: string;
@@ -84,6 +86,18 @@ export interface RenderNode {
   children?: RenderNode[];
 }
 
+export interface ImportAuditRecord {
+  repositoryPath: string;
+  importStatement: string;
+  expectedPath: string;
+  resolvedPath: string;
+  resolutionStatus: 'RESOLVED' | 'UNRESOLVED';
+  rootCause?: string;
+  dependencyImpact?: DependencyImpact;
+  suggestedRemedy?: string;
+  confidenceScore: number;
+}
+
 export interface ReleaseReport {
   timestamp: string;
   status: 'READY' | 'READY WITH OBSERVATIONS' | 'BLOCKED';
@@ -99,7 +113,7 @@ export interface ReleaseReport {
   }[];
   frameworkHealth?: FrameworkHealthReport;
 
-  // NEW v1.2 MANDATED REPORT SECTIONS
+  // v1.2 MANDATED REPORT SECTIONS
   evidenceSources: string[];
   ideStatus: 'GREEN' | 'RED';
   browserStatus: 'GREEN' | 'RED';
@@ -113,4 +127,27 @@ export interface ReleaseReport {
 
   renderChain?: RenderNode[];
   engineeringMemory?: EngineeringMemory;
+
+  // v2.0 MANDATED ENFORCEMENTS
+  architectureStatus: 'PASS' | 'FAIL';
+  compilerStatus: 'PASS' | 'FAIL';
+  typescriptStatus2: 'PASS' | 'FAIL'; // Match typescriptStatus
+  typescriptErrorCount: number;
+  eslintStatus2: 'PASS' | 'FAIL';
+  eslintErrorCount: number;
+  importResolutionStatus: 'PASS' | 'FAIL';
+  importErrorCount: number;
+  runtimeStatus: 'PASS' | 'FAIL';
+  browserStatus2: 'PASS' | 'FAIL';
+  browserErrorCount: number;
+  playwrightStatus: 'PASS' | 'FAIL';
+  ideDiagnosticsCount: number;
+  compilerDiagnosticsCount: number;
+  evidenceAgreement: boolean;
+  repositoryHealthPercent: number;
+  readyForBuild: boolean;
+  readyForMerge: boolean;
+  readyForRelease: boolean;
+
+  importAuditRecords?: ImportAuditRecord[];
 }
