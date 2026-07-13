@@ -1,0 +1,41 @@
+{
+  "timestamp": "2026-07-13T03:55:51.132Z",
+  "status": "READY",
+  "mode": "Repository",
+  "reports": {
+    "Architecture Sentinel": {
+      "timestamp": "2026-07-13T03:55:51.074Z",
+      "sentinel": "Architecture Sentinel",
+      "repository": "NextCaseHQ",
+      "branch": "feat/sentinel-framework-v1.0",
+      "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
+      "status": "PASS",
+      "mode": "Repository",
+      "score": 100,
+      "findings": []
+    },
+    "Build Sentinel": {
+      "timestamp": "2026-07-13T03:55:51.094Z",
+      "sentinel": "Build Sentinel",
+      "repository": "NextCaseHQ",
+      "branch": "feat/sentinel-framework-v1.0",
+      "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
+      "status": "PASS",
+      "mode": "Repository",
+      "score": 100,
+      "findings": []
+    },
+    "UI Sentinel": {
+      "timestamp": "2026-07-13T03:55:51.109Z",
+      "sentinel": "UI Sentinel",
+      "repository": "NextCaseHQ",
+      "branch": "feat/sentinel-framework-v1.0",
+      "commit": "43bc3608c037f30b26ae77e71cc6958c4ad4f554",
+      "status": "PASS",
+      "mode": "Repository",
+      "score": 100,
+      "findings": []
+    }
+  },
+  "blockedIssues": []
+}

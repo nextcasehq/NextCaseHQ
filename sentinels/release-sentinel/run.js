@@ -2,31 +2,70 @@ const fs = require('fs');
 const path = require('path');
 const utils = require('../shared/utils');
 const config = require('../shared/config.json');
+const recovery = require('../shared/recovery');
+const reporter = require('../shared/reporter');
 
 const archSentinel = require('../architecture-sentinel/run');
 const buildSentinel = require('../build-sentinel/run');
 const uiSentinel = require('../ui-sentinel/run');
+const browserVerify = require('../ui-sentinel/browser-verify');
 
 function run(mode = process.env.INSPECTION_MODE || 'Repository') {
-  const start = Date.now();
   const metadata = utils.getGitMetadata();
 
   console.log('==================================================================');
   console.log(`🚀 INITIALIZING NEXTCASEHQ SENTINEL GOVERNANCE ENGINE v1.0 [Mode: ${mode}]`);
   console.log('==================================================================');
 
-  // Define active Sentinels and their runners
-  const sentinelRunners = [
-    { name: 'Architecture Sentinel', run: archSentinel.run },
-    { name: 'Build Sentinel', run: buildSentinel.run },
-    { name: 'UI Sentinel', run: uiSentinel.run }
-  ];
+  // 1. Run each Sentinel inside try-catch fault isolation using our recovery system
+  const archReport = recovery.runWithRecovery('Architecture Sentinel', archSentinel.run, mode);
+  const buildReport = recovery.runWithRecovery('Build Sentinel', buildSentinel.run, mode);
+  const uiReport = recovery.runWithRecovery('UI Sentinel', uiSentinel.run, mode);
 
-  const reports = {};
-  const sentinelHealths = {};
-  let overallStatus = 'GREEN';
+  // 2. Perform live structural layout rendering validation (Phase 5)
+  const browserVerifyReport = browserVerify.verifyRenderedLayout();
 
-  // Read previous execution history if any
+  const reports = {
+    'Architecture Sentinel': archReport,
+    'Build Sentinel': buildReport,
+    'UI Sentinel': uiReport
+  };
+
+  // 3. Compile the entire Phase 9 Report Stack dynamically from metrics
+  const reportsStack = reporter.compileReportsStack(reports, mode);
+
+  // Inject browser results into report
+  reportsStack.browserVerification = browserVerifyReport;
+  if (browserVerifyReport.mismatches.length > 0) {
+    reportsStack.uiGap.gapsIdentified = browserVerifyReport.mismatches;
+    reportsStack.uiGap.mismatchCount = browserVerifyReport.mismatches.length;
+    // Degrade UI Sentinel score if visual mismatches are present
+    if (reports['UI Sentinel'].status !== 'UNAVAILABLE') {
+      reports['UI Sentinel'].score = Math.max(0, reports['UI Sentinel'].score - 15);
+      if (reports['UI Sentinel'].score < 80) reports['UI Sentinel'].status = 'FAIL';
+    }
+  }
+
+  // 4. Persistence: Write reports stack files to disk
+  const outputDir = path.join(__dirname, '../reports-stack');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  fs.writeFileSync(path.join(outputDir, '1-architecture-report.json'), JSON.stringify(reportsStack.frameworkArchitecture, null, 2));
+  fs.writeFileSync(path.join(outputDir, '2-coverage-report.json'), JSON.stringify(reportsStack.repositoryCoverage, null, 2));
+  fs.writeFileSync(path.join(outputDir, '3-capability-matrix.json'), JSON.stringify(reportsStack.sentinelCapability, null, 2));
+  fs.writeFileSync(path.join(outputDir, '4-rule-matrix.json'), JSON.stringify(reportsStack.ruleCoverage, null, 2));
+  fs.writeFileSync(path.join(outputDir, '5-runtime-validation.json'), JSON.stringify(reportsStack.runtimeValidation, null, 2));
+  fs.writeFileSync(path.join(outputDir, '6-browser-verification.json'), JSON.stringify(reportsStack.browserVerification, null, 2));
+  fs.writeFileSync(path.join(outputDir, '7-ui-gap.json'), JSON.stringify(reportsStack.uiGap, null, 2));
+  fs.writeFileSync(path.join(outputDir, '8-framework-health.json'), JSON.stringify(reportsStack.frameworkHealth, null, 2));
+  fs.writeFileSync(path.join(outputDir, '9-release-readiness.json'), JSON.stringify(reportsStack.releaseReadiness, null, 2));
+
+  // Write central consolidated report file
+  fs.writeFileSync(path.join(__dirname, 'release-report.json'), JSON.stringify(reportsStack, null, 2));
+
+  // Read previous execution trends from history
   const historyPath = path.join(__dirname, '../shared/history.json');
   let history = [];
   if (fs.existsSync(historyPath)) {
@@ -37,101 +76,8 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     }
   }
 
-  // Self-Monitoring Run with Try-Catch isolation
-  for (const runner of sentinelRunners) {
-    const sentinelStart = Date.now();
-    try {
-      // If simulate crash requested
-      if (process.env.SENTINEL_SIMULATE_CRASH === 'true' && runner.name === 'Architecture Sentinel') {
-        throw new Error('Simulated hard engine exception on Architecture Sentinel runtime.');
-      }
-
-      console.log(`[FRAMEWORK HEALTH] Invoking ${runner.name}...`);
-      const report = runner.run(mode);
-      const elapsed = Date.now() - sentinelStart;
-
-      reports[runner.name] = report;
-      sentinelHealths[runner.name] = {
-        sentinel: runner.name,
-        status: report.status === 'FAIL' ? 'DEGRADED' : 'HEALTHY',
-        lastRunSuccess: true,
-        averageExecutionTimeMs: elapsed,
-        consecutiveFailures: report.status === 'FAIL' ? 1 : 0
-      };
-    } catch (err) {
-      console.error(`💥 [FRAMEWORK HEALTH] ${runner.name} crashed during execution:`, err.message);
-      overallStatus = 'YELLOW';
-
-      reports[runner.name] = {
-        timestamp: new Date().toISOString(),
-        sentinel: runner.name,
-        repository: config.repository,
-        branch: metadata.branch,
-        commit: metadata.commit,
-        status: 'UNAVAILABLE',
-        mode,
-        score: 0,
-        findings: [],
-        error: err.message
-      };
-
-      sentinelHealths[runner.name] = {
-        sentinel: runner.name,
-        status: 'UNAVAILABLE',
-        lastRunSuccess: false,
-        consecutiveFailures: 1
-      };
-    }
-  }
-
-  if (Object.values(sentinelHealths).every(h => h.status === 'UNAVAILABLE')) {
-    overallStatus = 'RED';
-  }
-
-  const frameworkHealth = {
-    timestamp: new Date().toISOString(),
-    overallStatus,
-    sentinelHealths
-  };
-
-  const blockedIssues = [];
-  let finalStatus = 'READY';
-
-  // Consolidate findings across non-crashed Sentinels
-  for (const [name, r] of Object.entries(reports)) {
-    if (r.status === 'UNAVAILABLE') continue;
-    for (const f of r.findings) {
-      if (f.severity === 'P0' || f.severity === 'P1') {
-        blockedIssues.push({
-          sentinel: name,
-          id: f.id,
-          message: f.message,
-          file: f.file,
-          severity: f.severity,
-          diagnostic: f.diagnostic
-        });
-      }
-    }
-  }
-
-  // Any Sentinel unavailable blocks the release if release certification is strict
-  const isStrictRelease = mode === 'Release Certification';
-  const hasUnavailable = Object.values(sentinelHealths).some(h => h.status === 'UNAVAILABLE');
-
-  if (blockedIssues.length > 0 || (isStrictRelease && hasUnavailable)) {
-    finalStatus = 'BLOCKED';
-  } else if (
-    Object.values(reports).some(r => r.score < 100 && r.status !== 'UNAVAILABLE') ||
-    hasUnavailable
-  ) {
-    finalStatus = 'READY WITH OBSERVATIONS';
-  }
-
-  // Build the current active snapshot
-  const activeIds = blockedIssues.map(b => b.id);
+  const activeIds = reportsStack.releaseReadiness.blockedIssues.map(b => b.id);
   const resolvedIssues = [];
-
-  // Track resolved issues by comparing with previous trend snapshot
   if (history.length > 0) {
     const lastSnap = history[history.length - 1];
     if (lastSnap.activeIssues) {
@@ -149,10 +95,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     }
   }
 
-  // Append trends data
   const currentTrend = {
     timestamp: new Date().toISOString(),
-    overallStatus: finalStatus,
+    overallStatus: reportsStack.releaseReadiness.status,
     totalFindings: Object.values(reports).reduce((acc, r) => acc + (r.findings ? r.findings.length : 0), 0),
     findingsBySeverity: {
       P0: Object.values(reports).reduce((acc, r) => acc + (r.findings ? r.findings.filter(f => f.severity === 'P0').length : 0), 0),
@@ -161,50 +106,35 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       P3: Object.values(reports).reduce((acc, r) => acc + (r.findings ? r.findings.filter(f => f.severity === 'P3').length : 0), 0)
     },
     sentinelScores: {
-      'Architecture Sentinel': reports['Architecture Sentinel'] ? reports['Architecture Sentinel'].score : 0,
-      'Build Sentinel': reports['Build Sentinel'] ? reports['Build Sentinel'].score : 0,
-      'UI Sentinel': reports['UI Sentinel'] ? reports['UI Sentinel'].score : 0
+      'Architecture Sentinel': archReport.score,
+      'Build Sentinel': buildReport.score,
+      'UI Sentinel': uiReport.score
     },
-    activeIssues: blockedIssues.map(b => ({ id: b.id, message: b.message, file: b.file, severity: b.severity })),
+    activeIssues: reportsStack.releaseReadiness.blockedIssues.map(b => ({ id: b.id, message: b.message, file: b.file, severity: b.severity })),
     resolvedIssues: resolvedIssues,
     trend: resolvedIssues.length > 0 ? 'Improving' : 'Stable'
   };
 
   history.push(currentTrend);
-  if (history.length > 10) history.shift(); // Keep last 10 execution trend snapshots
-
+  if (history.length > 10) history.shift();
   try {
     fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
   } catch (err) {
     // Ignored
   }
 
-  const releaseReport = {
-    timestamp: new Date().toISOString(),
-    status: finalStatus,
-    mode,
-    reports,
-    blockedIssues,
-    resolvedIssues,
-    frameworkHealth,
-    trends: history
-  };
-
-  const reportPath = path.join(__dirname, 'release-report.json');
-  fs.writeFileSync(reportPath, JSON.stringify(releaseReport, null, 2));
-
   console.log('\n==================================================================');
   console.log('📊 NEXTCASEHQ RELEASE READINESS SUMMARY');
   console.log('==================================================================');
-  console.log(`TIMESTAMP:        ${releaseReport.timestamp}`);
-  console.log(`MODE:             ${releaseReport.mode}`);
-  console.log(`STATUS:           ${releaseReport.status}`);
-  console.log(`FRAMEWORK HEALTH: ${frameworkHealth.overallStatus}`);
+  console.log(`TIMESTAMP:        ${reportsStack.releaseReadiness.timestamp}`);
+  console.log(`MODE:             ${reportsStack.releaseReadiness.mode}`);
+  console.log(`STATUS:           ${reportsStack.releaseReadiness.status}`);
+  console.log(`FRAMEWORK HEALTH: ${reportsStack.frameworkHealth.overallStatus}`);
   console.log(`TREND:            ${currentTrend.trend}`);
   console.log('==================================================================');
 
-  for (const [name, h] of Object.entries(sentinelHealths)) {
-    console.log(`- ${name}: [${h.status}] (Last success: ${h.lastRunSuccess}, Latency: ${h.averageExecutionTimeMs || 'N/A'}ms)`);
+  for (const [name, h] of Object.entries(reportsStack.frameworkHealth.sentinelHealths)) {
+    console.log(`- ${name}: [${h.status}] (Last success: ${h.lastRunSuccess})`);
   }
   console.log('==================================================================');
 
@@ -216,9 +146,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     console.log('==================================================================');
   }
 
-  if (releaseReport.status === 'BLOCKED') {
+  if (reportsStack.releaseReadiness.status === 'BLOCKED') {
     console.log('🛑 RELEASE IS BLOCKED BY CRITICAL CONSTITUTIONAL OR FRAMEWORK HEALTH DEFECTS:\n');
-    releaseReport.blockedIssues.forEach((issue) => {
+    reportsStack.releaseReadiness.blockedIssues.forEach((issue) => {
       console.log(`- [${issue.severity}] [${issue.sentinel}] ${issue.id}: ${issue.message}`);
       if (issue.file) console.log(`  File: ${issue.file}`);
       if (issue.diagnostic) {
@@ -233,7 +163,6 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       }
     });
     console.log('\n==================================================================');
-    // We exit gracefully under local/development mode to allow downstream assertions
     if (process.env.SENTINEL_STRICT_EXIT === 'true') {
       process.exit(1);
     }
@@ -242,7 +171,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     console.log('==================================================================');
   }
 
-  return releaseReport;
+  return reportsStack;
 }
 
 if (require.main === module) {

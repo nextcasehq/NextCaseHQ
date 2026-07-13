@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-07-13T03:55:51.132Z",
+  "overallStatus": "GREEN",
+  "sentinelHealths": {
+    "Architecture Sentinel": {
+      "sentinel": "Architecture Sentinel",
+      "status": "HEALTHY",
+      "lastRunSuccess": true,
+      "consecutiveFailures": 0
+    },
+    "Build Sentinel": {
+      "sentinel": "Build Sentinel",
+      "status": "HEALTHY",
+      "lastRunSuccess": true,
+      "consecutiveFailures": 0
+    },
+    "UI Sentinel": {
+      "sentinel": "UI Sentinel",
+      "status": "HEALTHY",
+      "lastRunSuccess": true,
+      "consecutiveFailures": 0
+    }
+  }
+}

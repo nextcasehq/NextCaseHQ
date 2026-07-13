@@ -2,11 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const utils = require('../shared/utils');
 const config = require('../shared/config.json');
+const metrics = require('../shared/metrics');
 
 function run(mode = process.env.INSPECTION_MODE || 'Repository') {
   const metadata = utils.getGitMetadata();
   const findings = [];
-  let score = 100;
+  const executedRules = ['UI-001', 'UI-002', 'UI-003'];
 
   console.log(`[UI SENTINEL] Analyzing frontend layout boundaries and navigation integrity in mode: ${mode}...`);
 
@@ -15,7 +16,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
 
   const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_UI_FAILURE === 'true';
 
-  // 1. Verify Homepage exists and renders key components
+  // 1. Audit Homepage shell components, hierarchy, branding (UI-001)
   if (fs.existsSync(homepagePath)) {
     const contents = fs.readFileSync(homepagePath, 'utf8');
     const lines = contents.split('\n');
@@ -45,7 +46,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
 
     if (!navbarFound || isSimulation) {
       findings.push({
-        id: 'UI_NAVBAR_MISSING',
+        id: 'UI-001',
         message: 'Navbar component or header boundary was not resolved or mapped in page tree.',
         severity: 'P0',
         file: 'apps/web/src/app/page.tsx',
@@ -63,12 +64,11 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
           }
         }
       });
-      score -= 25;
     }
 
     if (!footerFound || isSimulation) {
       findings.push({
-        id: 'UI_FOOTER_MISSING',
+        id: 'UI-001',
         message: 'Footer component is completely missing or omitted from the homepage.',
         severity: 'P1',
         file: 'apps/web/src/app/page.tsx',
@@ -86,12 +86,11 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
           }
         }
       });
-      score -= 15;
     }
 
     if (!loginCtaFound || isSimulation) {
       findings.push({
-        id: 'UI_CTA_SIGNIN_MISSING',
+        id: 'UI-001',
         message: 'No login portal link or primary Call To Action was found on the root homepage layout.',
         severity: 'P0',
         file: 'apps/web/src/app/page.tsx',
@@ -109,11 +108,10 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
           }
         }
       });
-      score -= 20;
     }
   } else {
     findings.push({
-      id: 'UI_HOMEPAGE_MISSING',
+      id: 'UI-001',
       message: 'Homepage file page.tsx is completely missing from NextCaseHQ workspace.',
       severity: 'P0',
       file: 'apps/web/src/app/page.tsx',
@@ -130,10 +128,9 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
         }
       }
     });
-    score = 0;
   }
 
-  // 2. Audit Dashboard Sidebar Layout for zero dead link rules
+  // 2. Audit Sidebar placeholders/deadlinks (UI-002)
   if (fs.existsSync(dashboardLayoutPath)) {
     const contents = fs.readFileSync(dashboardLayoutPath, 'utf8');
     const lines = contents.split('\n');
@@ -143,7 +140,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
       for (const pattern of config.forbiddenPatterns) {
         if (line.includes(pattern) || (isSimulation && pattern === 'href="#"')) {
           findings.push({
-            id: 'UI_DEAD_LINK_VIOLATION',
+            id: 'UI-002',
             message: `Forbidden navigation token '${pattern}' found in high-focus sidebar.`,
             severity: 'P0',
             file: 'apps/web/src/app/(dashboard)/layout.tsx',
@@ -161,11 +158,39 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
               }
             }
           });
-          score -= 20;
         }
       }
     }
   }
+
+  // 3. Spacing, mobile viewports, touch targets and whitespace audit (UI-003)
+  if (fs.existsSync(homepagePath)) {
+    const contents = fs.readFileSync(homepagePath, 'utf8');
+    // Check if spatial grid classes are standard tailwind
+    if (!contents.includes('min-h-screen') || !contents.includes('mx-auto')) {
+      findings.push({
+        id: 'UI-003',
+        message: 'Whitespace spacing anomaly or missing responsive container wrappers on the root page.',
+        severity: 'P1',
+        file: 'apps/web/src/app/page.tsx',
+        diagnostic: {
+          rootCause: 'Missing structural utility classes preventing consistent vertical spacing or content alignment.',
+          remedy: 'Apply proper min-h-screen, mx-auto, and container grid structures to center content layouts cleanly.',
+          impact: 'Fluid viewports might experience horizontal clipping or vertical overlaps.',
+          confidenceScore: 95,
+          dependencyImpact: {
+            affectedFiles: ['apps/web/src/app/page.tsx'],
+            affectedModules: ['Main Brand Shell Layout'],
+            affectedUserJourneys: ['Responsive viewport scaling'],
+            productionRisk: 'LOW'
+          }
+        }
+      });
+    }
+  }
+
+  // Calculate score strictly from actual execution rules
+  const score = metrics.computeScore('UI Sentinel', executedRules, findings);
 
   const report = {
     timestamp: new Date().toISOString(),
@@ -175,7 +200,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     commit: metadata.commit,
     status: score >= 80 ? 'PASS' : 'FAIL',
     mode,
-    score: Math.max(0, score),
+    score,
     findings
   };
 

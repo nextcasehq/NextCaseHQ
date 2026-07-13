@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-07-13T03:55:51.132Z",
+  "totalFolders": 93,
+  "totalFiles": 130,
+  "supportedFileTypes": {
+    "no-extension": 3,
+    ".md": 15,
+    ".js": 17,
+    ".ts": 35,
+    ".json": 32,
+    ".tsx": 19,
+    ".css": 2,
+    ".sql": 2,
+    ".yaml": 3,
+    ".log": 1,
+    ".sh": 1
+  },
+  "ignoredFilesCount": 0,
+  "ignoredFoldersCount": 15,
+  "coveragePercent": 100,
+  "scannedFiles": 130
+}

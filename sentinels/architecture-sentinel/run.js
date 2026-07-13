@@ -2,71 +2,61 @@ const fs = require('fs');
 const path = require('path');
 const utils = require('../shared/utils');
 const config = require('../shared/config.json');
+const metrics = require('../shared/metrics');
 
 function run(mode = process.env.INSPECTION_MODE || 'Repository') {
-  const start = Date.now();
   const metadata = utils.getGitMetadata();
   const findings = [];
-  let score = 100;
+  const executedRules = ['ARCH-001', 'ARCH-002', 'ARCH-003'];
 
   console.log(`[ARCHITECTURE SENTINEL] Beginning inspection of repository boundaries in mode: ${mode}...`);
 
-  // 1. RLS tenant guard scanning
+  // 1. RLS tenant guard scanning (ARCH-001)
   const appFiles = utils.findFilesInDir(path.join(__dirname, '../../apps/web/src'), /\.ts$/);
   let rlsFound = false;
-  let rlsCheckpoints = [];
 
   for (const file of appFiles) {
     if (file.includes('node_modules') || file.includes('.next') || file.includes('dist')) continue;
     try {
       const contents = fs.readFileSync(file, 'utf8');
-      const lines = contents.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.includes('nextcase.current_tenant_id') || line.includes('nextcase.active_tenant_id')) {
-          rlsFound = true;
-          rlsCheckpoints.push({
-            file: path.relative(path.join(__dirname, '../../'), file),
-            lineNumber: i + 1,
-            matchedText: line.trim()
-          });
-        }
-      }
-    } catch (err) {
-      // Ignored for deleted or locked files
-    }
-  }
-
-  // 2. India PII Scrubbing Scanning
-  let piiFound = false;
-  let piiCheckpoints = [];
-  for (const file of appFiles) {
-    if (file.includes('node_modules') || file.includes('.next') || file.includes('dist')) continue;
-    try {
-      const contents = fs.readFileSync(file, 'utf8');
-      const lines = contents.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.includes('[REDACTED_INDIA_PII]') || line.includes('scrubPII')) {
-          piiFound = true;
-          piiCheckpoints.push({
-            file: path.relative(path.join(__dirname, '../../'), file),
-            lineNumber: i + 1,
-            matchedText: line.trim()
-          });
-        }
+      if (contents.includes('nextcase.current_tenant_id') || contents.includes('nextcase.active_tenant_id')) {
+        rlsFound = true;
       }
     } catch (err) {
       // Ignored
     }
   }
 
-  // If mock environment is simulated or we are forcing a failure scenario
+  // 2. India PII Scrubbing Scanning (ARCH-002)
+  let piiFound = false;
+  for (const file of appFiles) {
+    if (file.includes('node_modules') || file.includes('.next') || file.includes('dist')) continue;
+    try {
+      const contents = fs.readFileSync(file, 'utf8');
+      if (contents.includes('[REDACTED_INDIA_PII]') || contents.includes('scrubPII')) {
+        piiFound = true;
+      }
+    } catch (err) {
+      // Ignored
+    }
+  }
+
+  // 3. Regional Polymorphism checks (ARCH-003)
+  const countryPacksIndex = path.join(__dirname, '../../packages/country-packs/src/index.ts');
+  let polymorphismValid = false;
+  if (fs.existsSync(countryPacksIndex)) {
+    const contents = fs.readFileSync(countryPacksIndex, 'utf8');
+    if (contents.includes('jurisdiction') || contents.includes('pack')) {
+      polymorphismValid = true;
+    }
+  }
+
+  // Simulated architecture violation request
   const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_ARCH_FAILURE === 'true';
 
   if (!rlsFound || isSimulation) {
     findings.push({
-      id: 'ARCH_RLS_GUARD_MISSING',
+      id: 'ARCH-001',
       message: 'No RLS database active tenant binding or session context isolation schema was found across routes.',
       severity: 'P0',
       file: 'apps/web/src/app/api/documents/upload/route.ts',
@@ -87,12 +77,11 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
         }
       }
     });
-    score -= 30;
   }
 
   if (!piiFound || isSimulation) {
     findings.push({
-      id: 'ARCH_PII_SCRUB_MISSING',
+      id: 'ARCH-002',
       message: 'No edge-optimized India PAN/Aadhaar scrubbing filters or redact identifiers found in telemetry channels.',
       severity: 'P1',
       file: 'apps/web/src/app/api/webhooks/route.ts',
@@ -112,17 +101,25 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
         }
       }
     });
-    score -= 20;
   }
 
-  // Check country pack polymorphism
-  const countryPacksIndex = path.join(__dirname, '../../packages/country-packs/src/index.ts');
-  if (fs.existsSync(countryPacksIndex)) {
-    const content = fs.readFileSync(countryPacksIndex, 'utf8');
-    if (content.includes('jurisdiction') && content.includes('pack')) {
-      // Correct regional multi-pack polymorphism verified
-    }
+  if (!polymorphismValid) {
+    findings.push({
+      id: 'ARCH-003',
+      message: 'Polymorphic Regional Expansion Contract Violation in Country Packs.',
+      severity: 'P2',
+      file: 'packages/country-packs/src/index.ts',
+      diagnostic: {
+        rootCause: 'Country pack module lacks abstract polymorph hooks.',
+        remedy: 'Refactor index.ts to export polymorphism methods.',
+        impact: 'Addition of future country packs requires modifying monolithic logic.',
+        confidenceScore: 90
+      }
+    });
   }
+
+  // Calculate score strictly from actual execution rules
+  const score = metrics.computeScore('Architecture Sentinel', executedRules, findings);
 
   const report = {
     timestamp: new Date().toISOString(),
@@ -132,7 +129,7 @@ function run(mode = process.env.INSPECTION_MODE || 'Repository') {
     commit: metadata.commit,
     status: score >= 80 ? 'PASS' : 'FAIL',
     mode,
-    score: Math.max(0, score),
+    score,
     findings
   };
 

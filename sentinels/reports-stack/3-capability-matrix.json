@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-07-13T03:55:51.132Z",
+  "sentinels": [
+    {
+      "name": "Architecture Sentinel",
+      "capabilities": [
+        "PostgreSQL Multi-Tenant Session Validation Scans",
+        "India PII (Aadhaar & PAN) Telemetry Scrubbing Checks",
+        "Polymorphic Regional Expansion Compliance Audits"
+      ]
+    },
+    {
+      "name": "Build Sentinel",
+      "capabilities": [
+        "TSConfig Monorepo Option Extension Validations",
+        "Package Directory Relative Traversal Bounds Scans",
+        "ES/TS Local and Path Alias Module Resolution Checks"
+      ]
+    },
+    {
+      "name": "UI Sentinel",
+      "capabilities": [
+        "HTML/JSX Shell Navbar, Hero, Footer, and CTA Validation",
+        "Sidebar Placeholder and Dead Links Hash Checks",
+        "Responsive Whitespace Layout and Space Compliance Scans"
+      ]
+    }
+  ]
+}

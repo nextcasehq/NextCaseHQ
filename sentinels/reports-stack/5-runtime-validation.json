@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-07-13T03:55:51.132Z",
+  "localServerPort": 3000,
+  "serverState": "READY",
+  "expectedLayouts": [
+    "Landing page visual header contains Logo and /login CTA link.",
+    "Footer contains trademark and /contact CTA.",
+    "Selected organization cookies bound and persistent sameSite:Strict context set."
+  ],
+  "renderedLayoutStatus": "VERIFIED",
+  "mismatches": []
+}
