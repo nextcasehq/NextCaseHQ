@@ -8,7 +8,7 @@
   {
     "id": "CONSOLE_ERRORS_DETECTED",
     "type": "EXPERIENCE",
-    "message": "Console errors detected during rendering: 2 unique logs recorded.",
+    "message": "Console errors detected during rendering: 11 unique logs recorded.",
     "recommendation": "Check hydration state, console warnings, and resolve console error logs."
   }
 ]
