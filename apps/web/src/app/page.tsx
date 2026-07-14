@@ -2,116 +2,97 @@ import React from "react";
 import Link from "next/link";
 
 /**
- * NextCaseHQ: Premium Marketing Landing Page v1.0 (UI Constitution Standard)
- * Strict Adherence to Design Language:
- * - White-first background
- * - Black typography
+ * NextCaseHQ: Premium Approved Landing Page v1.0
+ * Strict Adherence to UI Constitution:
+ * - White-first background with Warm Ivory (#FDFBF7)
+ * - Obsidian Charcoal (#111111) text and headings
  * - Single Indigo/Violet accent
- * - Minimalist, Premium, Clean, Spacious
- * - Apple × Linear × Notion quality
+ * - Law-inspired "N" logo
+ * - Central intelligent search bar
+ * - Minimal navigation and absolute brand consistency
  */
 export default function Page() {
-  const features = [
-    {
-      title: "Zero-Knowledge Vault",
-      description: "End-to-end encrypted workspaces securing sensitive litigation evidence, ensuring absolute multi-tenant isolation.",
-      icon: "🛡️"
-    },
-    {
-      title: "AI Litigation Engine",
-      description: "Perform legal research, evidence analysis, and case timeline synthesis using context-aware dialogue streams.",
-      icon: "⚡"
-    },
-    {
-      title: "Direct Ingestion Pipeline",
-      description: "High-performance file ingestion supporting encrypted binaries with instant validation and secure logging.",
-      icon: "📥"
-    }
-  ];
-
-  const footerLinks = [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-    { label: "Documentation", href: "/docs" },
-    { label: "Support", href: "/support" },
-  ];
-
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-white text-neutral-900 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
-      {/* Hero Section */}
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-24 md:py-36 max-w-5xl mx-auto text-center">
-        {/* Release Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-100 bg-indigo-50/50 text-xs font-semibold text-indigo-700 tracking-wide uppercase mb-10">
-          <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
-          NextCaseHQ v1.0 • Built for Litigation
+    <div className="min-h-[calc(100vh-64px)] bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+      {/* Central Search Hero Section */}
+      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
+
+        {/* Law-inspired "N" logo container */}
+        <div className="mb-8 p-4 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center">
+          <svg
+            className="w-14 h-14 text-[#111111]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            {/* Courthouse pillars forming N */}
+            <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
 
-        {/* Hero Title */}
-        <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight leading-[1.1] text-neutral-900 max-w-4xl mb-8 font-sans">
-          The AI-First Operating System <br />
-          <span className="text-indigo-600">for Modern Litigation</span>
+        {/* Minimalist Heading */}
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] mb-4">
+          NextCase<span className="text-indigo-600">HQ</span>
         </h1>
 
-        {/* Hero Description */}
-        <p className="text-lg md:text-xl leading-relaxed text-neutral-500 max-w-2xl mb-12 font-medium">
-          Secure multi-tenant workspaces, high-performance case search, automated document ingestion, and context-aware court workflows.
+        <p className="text-sm md:text-base text-neutral-500 max-w-md mx-auto mb-10 font-medium">
+          Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings in unified context.
         </p>
 
-        {/* Call to Actions (CTAs) targeting /login */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md mb-24">
+        {/* Central Intelligent Search Bar */}
+        <div className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl p-2 shadow-lg shadow-neutral-100/50 flex items-center gap-2 mb-12 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-600/10 transition-all">
+          <span className="pl-3 text-neutral-400 text-lg">🔍</span>
+          <input
+            type="text"
+            placeholder="Search active cases, statutes, NI Act precedents..."
+            className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-neutral-400 py-2.5"
+            disabled
+          />
           <Link
             href="/login"
-            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-indigo-600 text-white font-semibold text-base text-center shadow-lg shadow-indigo-600/15 hover:bg-indigo-700 transition-all duration-200"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-xl transition-all"
           >
-            Get Started Free
-          </Link>
-          <Link
-            href="/login"
-            className="w-full sm:w-auto px-8 py-4 rounded-xl border border-neutral-200 text-neutral-700 bg-white font-semibold text-base text-center hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200"
-          >
-            Book a Demo
+            Search
           </Link>
         </div>
 
-        {/* Interactive Features Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl text-left border-t border-neutral-100 pt-20">
-          {features.map((feature, idx) => (
-            <div
-              key={idx}
-              className="p-8 rounded-2xl border border-neutral-100 bg-white hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-600/[0.02] transition-all duration-300 flex flex-col h-full"
-            >
-              <div className="text-3xl mb-5 text-indigo-600">{feature.icon}</div>
-              <h3 className="text-lg font-bold text-neutral-900 mb-3">{feature.title}</h3>
-              <p className="text-sm leading-relaxed text-neutral-500 font-medium flex-1">{feature.description}</p>
-            </div>
-          ))}
-        </section>
+        {/* Quick links to login */}
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs md:text-sm font-semibold text-neutral-400">
+          <span className="text-neutral-500 font-bold uppercase tracking-wider">Quick Actions:</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Access Active Chamber</Link>
+          <span className="text-neutral-200">•</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Ingest New File</Link>
+          <span className="text-neutral-200">•</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Audit Immutable Ledger</Link>
+        </div>
+
       </main>
 
-      {/* High-fidelity Brand Footer */}
-      <footer className="border-t border-neutral-100 bg-neutral-50/50 px-6 lg:px-16 py-12">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          {/* Copyright Information */}
-          <div className="flex flex-col gap-2 items-center md:items-start">
-            <span className="font-bold text-base tracking-tight text-neutral-900">
+      {/* Spacious Premium Footer */}
+      <footer className="border-t border-neutral-100 bg-white px-6 md:px-12 py-10 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <svg
+              className="w-5 h-5 text-[#111111]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="font-bold text-sm text-[#111111]">
               NextCaseHQ<span className="text-indigo-600">.</span>
             </span>
-            <span className="text-xs text-neutral-400 font-medium">
-              © {new Date().getFullYear()} NextCaseHQ. All rights reserved. Zero-Knowledge. Infinite Context.
-            </span>
           </div>
-
-          {/* Footer Links */}
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">
-            {footerLinks.map((link) => (
-              <Link
-                key={link.label}
-                href="/login" // Ensure all CTAs on landing page link to login per directive
-                className="hover:text-indigo-600 transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+          <p className="text-xs text-neutral-400 font-medium">
+            © {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
+          </p>
+          <div className="flex gap-6 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+            <Link href="/login" className="hover:text-indigo-600 transition-colors">Privacy</Link>
+            <Link href="/login" className="hover:text-indigo-600 transition-colors">Terms</Link>
+            <Link href="/login" className="hover:text-indigo-600 transition-colors">Support</Link>
           </div>
         </div>
       </footer>

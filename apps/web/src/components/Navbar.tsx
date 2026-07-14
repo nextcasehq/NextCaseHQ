@@ -16,12 +16,23 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="w-full h-16 bg-white/80 backdrop-blur-md border-b border-neutral-100 sticky top-0 z-50 px-6 md:px-12 flex items-center justify-between font-sans">
-      {/* Brand Identity */}
+    <header className="w-full h-16 bg-white/90 backdrop-blur-md border-b border-neutral-100 sticky top-0 z-50 px-6 md:px-12 flex items-center justify-between font-sans">
+      {/* Brand Identity with Law-inspired "N" logo */}
       <div className="flex items-center gap-3">
-        <Link href={`${baseUrl}/`} className="font-bold text-lg text-neutral-900 tracking-tight hover:opacity-80 transition-opacity flex items-center gap-1.5">
-          <span>NextCaseHQ</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+        <Link href={`${baseUrl}/`} className="flex items-center gap-2.5 hover:opacity-85 transition-opacity group">
+          <svg
+            className="w-7 h-7 text-[#111111] group-hover:text-indigo-600 transition-colors"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            {/* Courthouse-inspired vertical pillars forming the letter N */}
+            <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="font-bold text-lg text-[#111111] tracking-tight">
+            NextCase<span className="text-indigo-600">HQ</span>
+          </span>
         </Link>
       </div>
       
@@ -30,8 +41,8 @@ export default function Navbar() {
         {menuItems.map((item) => (
           <Link 
             key={item.path} 
-            href={`${baseUrl}${item.path}`}
-            className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded px-2 py-1"
+            href={`${baseUrl}/login`}
+            className="text-sm font-medium text-neutral-500 hover:text-[#111111] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded px-2 py-1"
           >
             {item.label}
           </Link>
@@ -42,13 +53,13 @@ export default function Navbar() {
       <div className="hidden md:flex items-center gap-4">
         <Link
           href={`${baseUrl}/dashboard`}
-          className="text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors mr-2"
+          className="text-sm font-medium text-neutral-500 hover:text-[#111111] transition-colors mr-2"
         >
           Dashboard
         </Link>
         <Link
           href={`${baseUrl}/login`}
-          className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
+          className="bg-[#111111] text-[#FDFBF7] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-neutral-800 hover:text-white transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
         >
           Sign In
         </Link>
@@ -71,7 +82,7 @@ export default function Navbar() {
           {menuItems.map((item) => (
             <Link
               key={item.path}
-              href={`${baseUrl}${item.path}`}
+              href={`${baseUrl}/login`}
               onClick={() => setMobileMenuOpen(false)}
               className="text-base font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
             >
@@ -82,14 +93,14 @@ export default function Navbar() {
           <Link
             href={`${baseUrl}/dashboard`}
             onClick={() => setMobileMenuOpen(false)}
-            className="text-base font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+            className="text-base font-medium text-neutral-600 hover:text-[#111111] transition-colors"
           >
             Dashboard
           </Link>
           <Link
             href={`${baseUrl}/login`}
             onClick={() => setMobileMenuOpen(false)}
-            className="bg-indigo-600 text-white text-center text-base font-medium py-3 rounded-lg hover:bg-indigo-700 transition-all"
+            className="bg-[#111111] text-[#FDFBF7] text-center text-base font-medium py-3 rounded-lg hover:bg-neutral-800 hover:text-white transition-all"
           >
             Sign In
           </Link>
