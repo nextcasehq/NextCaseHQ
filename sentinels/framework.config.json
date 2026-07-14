@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "environment": "staging",
+  "thresholds": {
+    "max_p99_latency_ms": 5,
+    "max_rls_violations": 0
+  }
+}
