@@ -6,12 +6,7 @@ import { jwtVerify } from 'jose';
  * NCHQ Module 9: Secure Multi-Tenant API Gateway (Edge Middleware)
  */
 
-// Secure JWT secret handling with mandatory environment variable check
-const secret = process.env.JWT_SECRET;
-if (!secret && process.env.NODE_ENV === 'production') {
-  throw new Error('FATAL: JWT_SECRET environment variable is not set in production.');
-}
-const JWT_SECRET = new TextEncoder().encode(secret || 'nchq-dev-secret-unsafe');
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');
 
 export async function middleware(request: NextRequest) {
   const start = performance.now();
@@ -46,6 +41,9 @@ export async function middleware(request: NextRequest) {
     // 4. Inject verified tenant ID into a secure custom header
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nextcase-tenant-id', tenantId);
+
+    // NCHQ Module 19: Zero-Trust Sanitization
+    requestHeaders.delete('authorization');
 
     const end = performance.now();
     const duration = end - start;

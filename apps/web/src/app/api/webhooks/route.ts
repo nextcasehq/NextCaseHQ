@@ -1,35 +1,57 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 /**
- * Webhook Receiver API Endpoint
- * Handles external event data packets with PII scrubbing and signature verification.
+ * NCHQ Module 13: Core Webhook Entry Point (Edge Runtime)
+ * Sprint B: Runtime Input Schema & Data Locking
  */
+
+const WebhookPayloadSchema = z.object({
+  event_type: z.string(),
+  payload: z.record(z.string(), z.any()),
+  timestamp: z.string().datetime().optional(),
+});
+
 export async function POST(request: Request) {
+  const start = performance.now();
+
   try {
-    const payload = await request.json();
+    const rawPayload = await request.json();
 
-    // India PII Scrubbing (PAN and Aadhaar data redaction)
-    const scrubbedPayload = scrubPIIData(payload);
+    // Strict Zod validation
+    const result = WebhookPayloadSchema.safeParse(rawPayload);
 
-    return NextResponse.json({ status: 'ACCEPTED', event: scrubbedPayload.event_type }, { status: 202 });
+    if (!result.success) {
+      return NextResponse.json({
+        error: 'BAD_REQUEST',
+        message: 'Invalid webhook payload structure.',
+        details: result.error.format()
+      }, { status: 400 });
+    }
+
+    // NCHQ Module 19: India PII Scrubbing (Sprint C3)
+    const scrubPII = (str: string) => str
+      .replace(/[A-Z]{5}[0-9]{4}[A-Z]{1}/g, '[REDACTED_INDIA_PII]')
+      .replace(/[2-9]{1}[0-9]{3}\s[0-9]{4}\s[0-9]{4}/g, '[REDACTED_INDIA_PII]');
+
+    const scrubbedPayload = JSON.parse(scrubPII(JSON.stringify(result.data.payload)));
+
+    console.log(`[WEBHOOK] ${result.data.event_type} received. Payload scrubbed:`, JSON.stringify(scrubbedPayload));
+
+    const duration = performance.now() - start;
+    return NextResponse.json({
+      status: 'ACCEPTED',
+      event: result.data.event_type,
+      latency: `${duration.toFixed(2)}ms`,
+      processed_payload: scrubbedPayload
+    }, { status: 202 });
+
   } catch (error) {
-    return NextResponse.json({ error: 'INVALID_PAYLOAD' }, { status: 400 });
+    return NextResponse.json({
+      error: 'BAD_REQUEST',
+      message: 'Malformed JSON payload.'
+    }, { status: 400 });
   }
 }
 
-/**
- * Scrub Indian PII data from payload using RegExp string scrubbers.
- */
-function scrubPIIData(data: any): any {
-  let stringified = JSON.stringify(data);
-
-  // PAN Card (e.g., ABCDE1234F)
-  const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]{1}/g;
-  // Aadhaar Card (e.g., 1234 5678 9012)
-  const aadhaarRegex = /[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{4}/g;
-
-  stringified = stringified.replace(panRegex, '[PAN_REDACTED]');
-  stringified = stringified.replace(aadhaarRegex, '[AADHAAR_REDACTED]');
-
-  return JSON.parse(stringified);
-}
+export const runtime = 'edge';

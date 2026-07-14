@@ -1,85 +1,108 @@
 'use client';
 
 import React, { useState } from 'react';
-import { z } from 'zod';
-
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-type LoginErrors = { email?: string; password?: string };
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<LoginErrors>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
 
-    const result = loginSchema.safeParse({ email, password });
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      setErrors({
-        email: fieldErrors.email?.[0],
-        password: fieldErrors.password?.[0]
-      });
-      return;
-    }
-
-    setErrors({});
-
-    try {
-      const res = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result.data),
-      });
-
-      if (res.ok) {
-        window.location.href = '/';
+    // Simulate enterprise authentication delay
+    setTimeout(() => {
+      if (!email.includes('@')) {
+        setError('Please enter a valid enterprise email address.');
+        setIsLoading(false);
+      } else {
+        router.push('/organization');
       }
-    } catch (err) {
-      // Security: No client-side leakage of error metadata
-      console.error('Authentication attempt failed.');
-    }
+    }, 800);
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-base text-text-primary p-4">
-      <div className="w-full max-w-md p-8 bg-bg-surface border border-brand/10 rounded-md shadow-xl">
-        <h1 className="text-2xl font-bold text-brand mb-6 text-center">NextCaseHQ Access</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col justify-center items-center px-6 py-12 font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
+      {/* Brand Header */}
+      <div className="mb-8 text-center">
+        <Link href="/" className="text-3xl font-black tracking-tight text-[#111111]">
+          NextCase<span className="text-[#111111]/60">HQ</span>
+        </Link>
+        <p className="mt-2 text-sm text-[#111111]/50 font-serif italic">
+          AI-First Operating System for Litigation
+        </p>
+      </div>
+
+      {/* Main Login Card */}
+      <div className="w-full max-w-md bg-[#FDFBF7] border border-[#111111]/10 rounded shadow-sm p-8">
+        <h2 className="text-xl font-bold uppercase tracking-wider text-center mb-6">
+          Enterprise Sign In
+        </h2>
+
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-700 text-xs rounded mb-4 font-semibold">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">
+              Email Address
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-bg-base border border-brand/20 rounded p-2 outline-none focus:border-brand"
+              placeholder="name@firm.com"
               required
+              disabled={isLoading}
+              className="w-full px-4 py-3 bg-[#111111]/5 border border-[#111111]/10 rounded outline-none focus:border-[#111111] disabled:opacity-50 transition-all font-sans text-sm"
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">
+              Security Key / Password
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-bg-base border border-brand/20 rounded p-2 outline-none focus:border-brand"
+              placeholder="••••••••"
               required
+              disabled={isLoading}
+              className="w-full px-4 py-3 bg-[#111111]/5 border border-[#111111]/10 rounded outline-none focus:border-[#111111] disabled:opacity-50 transition-all font-sans text-sm"
             />
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
           </div>
+
           <button
             type="submit"
-            className="w-full h-12 bg-brand text-white font-bold rounded mt-4 hover:opacity-90 transition-opacity"
+            disabled={isLoading}
+            className="w-full py-4 bg-[#111111] text-[#FDFBF7] font-semibold tracking-wider uppercase text-sm rounded shadow hover:bg-[#111111]/90 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
           >
-            Authenticate
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-[#FDFBF7] border-t-transparent rounded-full animate-spin"></span>
+                Authenticating...
+              </span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
+      </div>
+
+      <div className="mt-8 text-center">
+        <Link href="/" className="text-xs uppercase tracking-wider font-bold text-[#111111]/50 hover:text-[#111111] transition-colors">
+          ← Back to Marketing Site
+        </Link>
       </div>
     </div>
   );

@@ -102,6 +102,7 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-web_modules/
-yarn-debug.log*
-yarn-error.log*
+.vite/
+
+# Turborepo
+.turbo/

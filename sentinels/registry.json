@@ -1,0 +1,9 @@
+{
+  "sentinels": [
+    "architecture",
+    "build",
+    "ui",
+    "release"
+  ],
+  "last_run": null
+}

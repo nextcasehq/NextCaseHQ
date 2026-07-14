@@ -1,5 +1,5 @@
 /**
- * NCHQ Module 4: Zero-Knowledge Cryptographic Lifecycle
+ * NCHQ Module 4 & 18: Zero-Knowledge Cryptographic Lifecycle & Key Management
  * Production-grade Cryptographic Utility (Agnostic Browser/Node Context)
  */
 

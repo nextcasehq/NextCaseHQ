@@ -1,33 +1,31 @@
 import { getActiveTenantId, executeSecureQuery } from '../tenant-context';
-import { headers } from 'next/headers';
-
-jest.mock('next/headers', () => ({
-  headers: jest.fn(),
-}));
 
 describe('Tenant Context & Performance Budget', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.resetModules();
+    process.env = { ...originalEnv };
   });
 
-  test('getActiveTenantId should throw if tenant ID is missing', async () => {
-    (headers as jest.Mock).mockResolvedValue(new Map());
-    await expect(getActiveTenantId()).rejects.toThrow("SECURE_ACCESS_DENIED");
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
-  test('getActiveTenantId should return tenant ID if present and valid UUID', async () => {
+  test('getActiveTenantId should throw if tenant ID is missing', () => {
+    delete process.env.NEXT_PUBLIC_SIMULATED_TENANT_ID;
+    expect(() => getActiveTenantId()).toThrow("SECURE_ACCESS_DENIED");
+  });
+
+  test('getActiveTenantId should return tenant ID if present and valid UUID', () => {
     const validUuid = '00000000-0000-4000-8000-000000000001';
-    const mockHeaders = new Map([['x-nextcase-tenant-id', validUuid]]);
-    (headers as jest.Mock).mockResolvedValue(mockHeaders);
-
-    expect(await getActiveTenantId()).toBe(validUuid);
+    process.env.NEXT_PUBLIC_SIMULATED_TENANT_ID = validUuid;
+    expect(getActiveTenantId()).toBe(validUuid);
   });
 
-  test('getActiveTenantId should throw if tenant ID is invalid format', async () => {
-    const mockHeaders = new Map([['x-nextcase-tenant-id', 'invalid-uuid']]);
-    (headers as jest.Mock).mockResolvedValue(mockHeaders);
-
-    await expect(getActiveTenantId()).rejects.toThrow("Invalid tenant context format");
+  test('getActiveTenantId should throw if tenant ID is invalid format', () => {
+    process.env.NEXT_PUBLIC_SIMULATED_TENANT_ID = 'invalid-uuid';
+    expect(() => getActiveTenantId()).toThrow("Invalid tenant context format");
   });
 
   test('executeSecureQuery should complete and log warning if budget exceeded', async () => {

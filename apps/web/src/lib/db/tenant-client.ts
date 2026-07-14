@@ -7,9 +7,8 @@ import { headers } from 'next/headers';
 
 // Placeholder for a real DB client (e.g., Prisma or pg-promise)
 const db = {
-  $executeRaw: async (query: TemplateStringsArray, ...values: any[]) => {
-    // Simulated safe execution using tagged templates to prevent injection
-    console.log(`[DB_CLIENT] Safely Executing: ${query.join('?')}`);
+  $executeRawUnsafe: async (query: string) => {
+    console.log(`[DB_CLIENT] Executing: ${query}`);
     return true;
   },
   query: async (sql: string, params: any[]) => {
@@ -32,8 +31,8 @@ export async function withTenantContext<T>(
   }
 
   // 1. Initialize PostgreSQL session transaction with local state rule
-  // Tagged template prevents SQL injection.
-  await db.$executeRaw`SET LOCAL nextcase.active_tenant_id = ${tenantId}`;
+  // In a real implementation, this would be part of a client.$transaction block.
+  await db.$executeRawUnsafe(`SET LOCAL nextcase.active_tenant_id = '${tenantId}'`);
 
   // 2. Execute the actual operation
   return operation(db);
