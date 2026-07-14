@@ -92,7 +92,7 @@ export default function Page() {
               </span>
             </div>
             <p className="text-xs text-neutral-400 font-medium">
-              © {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
+              {"\u00A9"} {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
             </p>
             <div className="flex gap-6 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
               <Link href="/login" className="hover:text-indigo-600 transition-colors">Privacy</Link>
