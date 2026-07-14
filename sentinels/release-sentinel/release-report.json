@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-14T15:54:00.366Z",
+  "timestamp": "2026-07-14T15:44:27.927Z",
   "git": {
     "branch": "jules-6342272504500680798-bd2d35b0",
     "commit": "bef8c750d495b0a3519693b18359276cf12da4d2"
@@ -16,7 +16,7 @@
     "UI Sentinel": "ACTIVE"
   },
   "governance": {
-    "repositoryHealth": "PASS",
+    "repositoryHealth": "FAIL",
     "mergeGovernance": "PASS",
     "deploymentGovernance": "PASS",
     "architectureGovernance": "PASS",
@@ -24,10 +24,22 @@
     "experienceVerification": "PASS"
   },
   "metrics": {
-    "overallHealthScore": 100,
-    "readyForRelease": "YES"
+    "overallHealthScore": 94,
+    "readyForRelease": "NO"
   },
   "findings": [
+    {
+      "id": "BUILD_COMPILATION_FAILURE",
+      "type": "BUILD_FAILURE",
+      "message": "Monorepo build contains syntax, type, or compiler errors.",
+      "recommendation": "Inspect Next.js or Turborepo build logs, fix underlying syntax/import issues."
+    },
+    {
+      "id": "TEST_SUITE_FAILURE",
+      "type": "TEST_FAILURE",
+      "message": "One or more test suites failed: web, @nextcase/crypto",
+      "recommendation": "Run tests locally and address assertion failures or import/environment issues."
+    },
     {
       "id": "COLOR_TOKEN_DRIFT",
       "type": "UI_CONSTITUTION",
@@ -36,6 +48,22 @@
     }
   ],
   "diagnostics": [
+    {
+      "id": "BUILD_COMPILATION_FAILURE",
+      "name": "Monorepo Compilation Failure",
+      "rootCause": "Fatal compilation or syntax errors within Next.js apps/web or workers.",
+      "impact": "Prevents deployment pipeline and deployment artifact generation entirely.",
+      "recommendedFix": "Resolve local compilation errors before push. Run 'pnpm run build' locally to troubleshoot.",
+      "confidenceLevel": "100%"
+    },
+    {
+      "id": "TEST_SUITE_FAILURE",
+      "name": "Unit / Regression Test Failure",
+      "rootCause": "Failing assertions, missing mocks, or incorrect business logic handling.",
+      "impact": "Indicates potential business logic regression or UI color token alignment violation.",
+      "recommendedFix": "Locate the failing test files in the specified package and fix logic or test expectations.",
+      "confidenceLevel": "100%"
+    },
     {
       "id": "COLOR_TOKEN_DRIFT",
       "name": "Color Token Deviation",
