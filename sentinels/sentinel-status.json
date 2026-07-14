@@ -1,0 +1,11 @@
+{
+  "frameworkVersion": "2.0.0",
+  "operationalStatus": "ACTIVE",
+  "repositoryHealth": 100,
+  "lastRun": "2026-07-14T10:38:53.579Z",
+  "filesScanned": 1845,
+  "issuesOpen": 0,
+  "issuesResolved": 129,
+  "inspectionCoverage": "100%",
+  "frameworkHealth": "HEALTHY"
+}
