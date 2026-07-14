@@ -1,0 +1,8 @@
+[
+  {
+    "id": "COLOR_TOKEN_DRIFT",
+    "type": "UI_CONSTITUTION",
+    "message": "Color token drift detected. Off-spec hex color references found in: apps/web/src/app/manifest.ts",
+    "recommendation": "Replace raw hex colors with design token variables from design-system-ndl."
+  }
+]
