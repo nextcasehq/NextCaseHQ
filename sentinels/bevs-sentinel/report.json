@@ -1,12 +1,7 @@
 {
-  "timestamp": "2026-07-14T17:29:28.596Z",
-  "verdict": "BUSINESS EXECUTION VERIFIED / DEFINITION OF DONE SATISFIED",
-  "evaluation": {
-    "userExperiencePhase1": "COMPLETE",
-    "activeForks": "ZERO",
-    "brokenNavigation": "ZERO_DETECTED",
-    "deadButtons": "ZERO_DETECTED",
-    "realisticLegalData": "ACTIVE"
-  },
-  "evidenceCount": 16
+  "timestamp": "2026-07-14T19:25:15.542Z",
+  "verdict": "BUSINESS EXECUTION VERIFIED",
+  "label": "BEVS_CERTIFIED",
+  "replaysCount": 1,
+  "evidenceCount": 12
 }

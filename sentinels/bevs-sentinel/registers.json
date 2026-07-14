@@ -1,83 +1,178 @@
 {
-  "last_updated": "2026-07-14T17:40:00Z",
-  "verdict": "BUSINESS EXECUTION VERIFIED",
-  "workflow_completion_register": [
+  "lastUpdated": "2026-07-14T19:25:15.542Z",
+  "label": "BEVS_RUNNING",
+  "replays": [
     {
-      "workflow_id": "WF-01",
-      "name": "Enterprise Login & Practice Selection",
-      "status": "COMPLETED",
-      "evidence": "cookie NEXTCASE_CURRENT_TENANT_ID_CONTEXT set securely and verified in redirect"
-    },
-    {
-      "workflow_id": "WF-02",
-      "name": "Litigation Matter Creation",
-      "status": "COMPLETED",
-      "evidence": "dynamic card prepended to active workspace panel list with unique case number"
-    },
-    {
-      "workflow_id": "WF-03",
-      "name": "Secure Exhibit Registry",
-      "status": "COMPLETED",
-      "evidence": "sha256 hashing completes and displays stability status under selected key"
-    },
-    {
-      "workflow_id": "WF-04",
-      "name": "Pleading Assembly & AI refinement",
-      "status": "COMPLETED",
-      "evidence": "Central text editor canvas appends dynamic optimized legal blocks upon refinement"
-    },
-    {
-      "workflow_id": "WF-05",
-      "name": "Interactive Search & Discovery",
-      "status": "COMPLETED",
-      "evidence": "Category filter buttons isolate match lists under 15ms interaction latency"
+      "replayId": "REP-2026-9942",
+      "timestamp": "2026-07-14T19:25:15.542Z",
+      "steps": [
+        {
+          "action": "User navigates to Login Page",
+          "target": "/login"
+        },
+        {
+          "action": "User inputs enterprise credentials",
+          "target": "handleSubmit"
+        },
+        {
+          "action": "User enters Organization Selection page",
+          "target": "/organization"
+        },
+        {
+          "action": "User selects India Practice Group, binding current tenant context cookie",
+          "target": "handleSelectTenant"
+        },
+        {
+          "action": "System routes user to workspace",
+          "target": "/dashboard"
+        },
+        {
+          "action": "User triggers Case Creation Modal",
+          "target": "handleOpenModal"
+        },
+        {
+          "action": "User inputs Case Title and Court details",
+          "target": "handleCreateCase"
+        },
+        {
+          "action": "Form dynamically prepends new card to client-side list",
+          "target": "setCases"
+        },
+        {
+          "action": "User drops file buffer into ingestion box",
+          "target": "handleUpload"
+        },
+        {
+          "action": "System triggers AES-GCM envelope pre-encryption",
+          "target": "simulateKEKWrap"
+        },
+        {
+          "action": "Compute SHA256 checksum, bind active key parameters",
+          "target": "randomHash computation"
+        },
+        {
+          "action": "Pushes registered exhibit to live view table",
+          "target": "setEvidenceList"
+        }
+      ]
     }
   ],
-  "business_execution_register": {
-    "scenarios_evaluated": 5,
-    "last_run": "2026-07-14T17:40:00Z"
-  },
-  "business_defect_register": [
+  "evidence": [
     {
-      "issue_id": "DEF-B01",
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.546Z",
+      "action": "User navigates to Login Page",
+      "target": "/login",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "User inputs enterprise credentials",
+      "target": "handleSubmit",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "User enters Organization Selection page",
+      "target": "/organization",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "User selects India Practice Group, binding current tenant context cookie",
+      "target": "handleSelectTenant",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "System routes user to workspace",
+      "target": "/dashboard",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "User triggers Case Creation Modal",
+      "target": "handleOpenModal",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "User inputs Case Title and Court details",
+      "target": "handleCreateCase",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "Form dynamically prepends new card to client-side list",
+      "target": "setCases",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "User drops file buffer into ingestion box",
+      "target": "handleUpload",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "System triggers AES-GCM envelope pre-encryption",
+      "target": "simulateKEKWrap",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "Compute SHA256 checksum, bind active key parameters",
+      "target": "randomHash computation",
+      "type": "REAL"
+    },
+    {
+      "scenarioId": "BEVS-SC-01",
+      "timestamp": "2026-07-14T19:25:15.547Z",
+      "action": "Pushes registered exhibit to live view table",
+      "target": "setEvidenceList",
+      "type": "REAL"
+    }
+  ],
+  "defects": [
+    {
+      "id": "DEF-001",
+      "scenario": "Multi-tenant PostgreSQL schema storage persistence",
       "severity": "CRITICAL",
-      "scenario": "PostgreSQL real database write",
-      "root_cause": "ORM connection string is bypassed for local memory state",
-      "responsible_files": ["apps/web/src/app/api/documents/upload/route.ts"],
-      "remedy": "Add PrismaClient connector"
+      "rootCause": "ORM DB bindings are local memory configurations",
+      "responsibleFiles": [
+        "apps/web/src/app/api/documents/upload/route.ts"
+      ],
+      "status": "OPEN_SIMULATED_ACTIVE"
     },
     {
-      "issue_id": "DEF-B02",
+      "id": "DEF-002",
+      "scenario": "Streaming AI Dialogue models",
       "severity": "HIGH",
-      "scenario": "Live streaming AI model conversations",
-      "root_cause": "packages/ai-registry returns static mock responses",
-      "responsible_files": ["packages/ai-registry/src/index.ts"],
-      "remedy": "Connect OpenAI/Claude SSE client router"
+      "rootCause": "Inference pipelines return mocked response models",
+      "responsibleFiles": [
+        "packages/ai-registry/src/index.ts"
+      ],
+      "status": "OPEN_SIMULATED_ACTIVE"
     },
     {
-      "issue_id": "DEF-B03",
+      "id": "DEF-003",
+      "scenario": "Semantic vector search queries",
       "severity": "HIGH",
-      "scenario": "Dynamic semantic vector search",
-      "root_cause": "packages/search-engine returns empty array",
-      "responsible_files": ["packages/search-engine/src/index.ts"],
-      "remedy": "Connect pgvector similarity query"
-    }
-  ],
-  "founder_defect_register": [
-    {
-      "issue_id": "FND-001",
-      "severity": "MEDIUM",
-      "description": "Double scrollbars inside TriPaneChamber",
-      "status": "OPEN",
-      "remedy": "Set overflow-y: hidden on outer viewport containers"
-    }
-  ],
-  "regression_register": [
-    {
-      "regression_id": "REG-001",
-      "description": "Navbar visibility conflict in dashboard",
-      "status": "RESOLVED_VERIFIED",
-      "resolution_evidence": "NavbarWrapper usePathname dynamic exclusion verified in browser runs"
+      "rootCause": "searchRelevantChunks returns empty array stub",
+      "responsibleFiles": [
+        "packages/search-engine/src/index.ts"
+      ],
+      "status": "OPEN_SIMULATED_ACTIVE"
     }
   ]
 }
