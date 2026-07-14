@@ -22,15 +22,15 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#FDFBF7] text-[#111111] font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
+    <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans selection:bg-indigo-600 selection:text-white">
       {/* High-density Left Sidebar */}
-      <aside className="w-64 border-r border-[#111111]/10 bg-white flex flex-col z-20 flex-none h-full">
+      <aside className="w-64 border-r border-neutral-100 bg-white flex flex-col z-20 flex-none h-full">
         {/* Sidebar Header */}
-        <div className="h-16 px-6 border-b border-[#111111]/10 flex items-center justify-between">
-          <Link href="/dashboard" className="text-xl font-black tracking-tight text-[#111111]">
-            NextCase<span className="text-[#111111]/60">HQ</span>
+        <div className="h-16 px-6 border-b border-neutral-100 flex items-center justify-between">
+          <Link href="/dashboard" className="text-xl font-black tracking-tight text-neutral-900 flex items-center gap-1">
+            <span>NextCase</span><span className="text-indigo-600">HQ</span>
           </Link>
-          <span className="text-[10px] font-mono border border-[#111111]/20 rounded px-1.5 py-0.5 uppercase bg-[#111111]/5">
+          <span className="text-[10px] font-mono border border-neutral-200 text-neutral-500 rounded px-1.5 py-0.5 uppercase bg-neutral-50">
             HQ // PRO
           </span>
         </div>
@@ -46,8 +46,8 @@ export default function DashboardLayout({
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded text-sm font-semibold tracking-wide uppercase transition-all
                   ${isActive
-                    ? 'bg-[#111111] text-[#FDFBF7]'
-                    : 'text-[#111111]/60 hover:text-[#111111] hover:bg-[#111111]/5'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/10'
+                    : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50'
                   }
                 `}
               >
@@ -59,14 +59,14 @@ export default function DashboardLayout({
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-[#111111]/10 bg-[#111111]/5">
+        <div className="p-4 border-t border-neutral-100 bg-neutral-50/50">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#111111] text-[#FDFBF7] flex items-center justify-center font-bold text-xs uppercase">
+            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
               NC
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#111111]">Counsel Session</p>
-              <p className="text-[10px] text-[#111111]/50 font-mono">Bound Context: ACTIVE</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-neutral-800">Counsel Session</p>
+              <p className="text-[10px] text-neutral-400 font-mono">Bound Context: ACTIVE</p>
             </div>
           </div>
         </div>
@@ -75,10 +75,10 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden h-full">
         {/* Top Header Row */}
-        <header className="h-16 border-b border-[#111111]/10 bg-white px-8 flex items-center justify-between z-10 flex-none">
+        <header className="h-16 border-b border-neutral-100 bg-white px-8 flex items-center justify-between z-10 flex-none">
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="text-xs uppercase tracking-widest font-black text-[#111111]/60">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-xs uppercase tracking-widest font-black text-neutral-400">
               PostgreSQL Session RLS Active
             </span>
           </div>
@@ -86,7 +86,7 @@ export default function DashboardLayout({
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="text-xs font-bold uppercase tracking-wider text-[#111111]/60 hover:text-[#111111] transition-colors"
+              className="text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-800 transition-colors"
             >
               Log Out
             </Link>
@@ -94,7 +94,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Dynamic Route Content */}
-        <main className="flex-1 overflow-auto bg-[#FDFBF7] h-[calc(100vh-64px)] w-full">
+        <main className="flex-1 overflow-auto bg-white h-[calc(100vh-64px)] w-full">
           {children}
         </main>
       </div>

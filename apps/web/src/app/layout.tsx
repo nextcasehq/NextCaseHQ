@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "@nextcase/ndl";
 import "./globals.css";
 // Import your Navbar component
-import Navbar from "./components/Navbar"; 
+import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "NextCaseHQ",

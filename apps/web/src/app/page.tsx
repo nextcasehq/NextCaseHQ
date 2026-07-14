@@ -2,16 +2,31 @@ import React from "react";
 import Link from "next/link";
 
 /**
- * NextCaseHQ: Premium Marketing Landing Page (Milestone 5.1)
- * Adheres strictly to the project design tokens (Warm Ivory #FDFBF7, Obsidian Charcoal #111111)
+ * NextCaseHQ: Premium Marketing Landing Page v1.0 (UI Constitution Standard)
+ * Strict Adherence to Design Language:
+ * - White-first background
+ * - Black typography
+ * - Single Indigo/Violet accent
+ * - Minimalist, Premium, Clean, Spacious
+ * - Apple × Linear × Notion quality
  */
 export default function Page() {
-  const navLinks = [
-    { label: "Features", href: "/features" },
-    { label: "Solutions", href: "/solutions" },
-    { label: "Resources", href: "/resources" },
-    { label: "About Us", href: "/about" },
-    { label: "Contact", href: "/contact" },
+  const features = [
+    {
+      title: "Zero-Knowledge Vault",
+      description: "End-to-end encrypted workspaces securing sensitive litigation evidence, ensuring absolute multi-tenant isolation.",
+      icon: "🛡️"
+    },
+    {
+      title: "AI Litigation Engine",
+      description: "Perform legal research, evidence analysis, and case timeline synthesis using context-aware dialogue streams.",
+      icon: "⚡"
+    },
+    {
+      title: "Direct Ingestion Pipeline",
+      description: "High-performance file ingestion supporting encrypted binaries with instant validation and secure logging.",
+      icon: "📥"
+    }
   ];
 
   const footerLinks = [
@@ -22,94 +37,77 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-[#FDFBF7]/80 border-b border-[#111111]/10 px-6 lg:px-16 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
-          <span className="text-2xl font-black tracking-tight text-[#111111] font-sans">
-            NextCase<span className="text-[#111111]/60">HQ</span>
-          </span>
-        </Link>
-
-        {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-sans tracking-wide uppercase font-semibold text-[#111111]/80">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="hover:text-[#111111] transition-colors relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-[2px] after:bg-[#111111] hover:after:w-full after:transition-all"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Top Navigation CTA */}
-        <div className="flex items-center gap-4">
-          <Link
-            href="/login"
-            className="px-6 py-2.5 rounded border border-[#111111] text-sm font-semibold font-sans uppercase hover:bg-[#111111] hover:text-[#FDFBF7] transition-all"
-          >
-            Sign In
-          </Link>
-        </div>
-      </header>
-
+    <div className="min-h-[calc(100vh-64px)] bg-white text-neutral-900 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
       {/* Hero Section */}
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
+      <main className="flex-1 flex flex-col justify-center items-center px-6 py-24 md:py-36 max-w-5xl mx-auto text-center">
         {/* Release Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#111111]/10 bg-[#111111]/5 text-xs font-mono tracking-wider uppercase mb-8 animate-fade-in">
-          <span className="w-2 h-2 rounded-full bg-[#111111] animate-pulse"></span>
-          Phase 5: Product Experience Walkthrough Active
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-100 bg-indigo-50/50 text-xs font-semibold text-indigo-700 tracking-wide uppercase mb-10">
+          <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+          NextCaseHQ v1.0 • Built for Litigation
         </div>
 
         {/* Hero Title */}
-        <h1 className="text-5xl lg:text-8xl font-black tracking-tight leading-[1.1] max-w-5xl mb-8 font-serif">
-          The AI-First Operating System for Litigation
+        <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight leading-[1.1] text-neutral-900 max-w-4xl mb-8 font-sans">
+          The AI-First Operating System <br />
+          <span className="text-indigo-600">for Modern Litigation</span>
         </h1>
 
         {/* Hero Description */}
-        <p className="text-xl lg:text-2xl font-serif leading-relaxed text-[#111111]/70 max-w-3xl mb-12 italic">
-          Empowering modern legal teams with zero-knowledge encrypted workspaces, real-time telemetry, automated document ingestion, and context-aware court workflows.
+        <p className="text-lg md:text-xl leading-relaxed text-neutral-500 max-w-2xl mb-12 font-medium">
+          Secure multi-tenant workspaces, high-performance case search, automated document ingestion, and context-aware court workflows.
         </p>
 
-        {/* Call to Actions (CTAs) */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
+        {/* Call to Actions (CTAs) targeting /login */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md mb-24">
           <Link
             href="/login"
-            className="w-full sm:w-auto px-8 py-4 rounded bg-[#111111] text-[#FDFBF7] font-semibold text-lg font-sans uppercase text-center shadow-lg hover:bg-[#111111]/90 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-indigo-600 text-white font-semibold text-base text-center shadow-lg shadow-indigo-600/15 hover:bg-indigo-700 transition-all duration-200"
           >
-            Get Started
+            Get Started Free
           </Link>
           <Link
-            href="/contact"
-            className="w-full sm:w-auto px-8 py-4 rounded border border-[#111111] text-[#111111] font-semibold text-lg font-sans uppercase text-center hover:bg-[#111111]/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            href="/login"
+            className="w-full sm:w-auto px-8 py-4 rounded-xl border border-neutral-200 text-neutral-700 bg-white font-semibold text-base text-center hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200"
           >
             Book a Demo
           </Link>
         </div>
+
+        {/* Interactive Features Grid */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl text-left border-t border-neutral-100 pt-20">
+          {features.map((feature, idx) => (
+            <div
+              key={idx}
+              className="p-8 rounded-2xl border border-neutral-100 bg-white hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-600/[0.02] transition-all duration-300 flex flex-col h-full"
+            >
+              <div className="text-3xl mb-5 text-indigo-600">{feature.icon}</div>
+              <h3 className="text-lg font-bold text-neutral-900 mb-3">{feature.title}</h3>
+              <p className="text-sm leading-relaxed text-neutral-500 font-medium flex-1">{feature.description}</p>
+            </div>
+          ))}
+        </section>
       </main>
 
       {/* High-fidelity Brand Footer */}
-      <footer className="border-t border-[#111111]/10 bg-[#111111]/5 px-6 lg:px-16 py-12">
+      <footer className="border-t border-neutral-100 bg-neutral-50/50 px-6 lg:px-16 py-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
           {/* Copyright Information */}
           <div className="flex flex-col gap-2 items-center md:items-start">
-            <span className="font-sans font-bold text-lg tracking-tight text-[#111111]">
-              NextCaseHQ
+            <span className="font-bold text-base tracking-tight text-neutral-900">
+              NextCaseHQ<span className="text-indigo-600">.</span>
             </span>
-            <span className="text-xs font-sans text-[#111111]/60">
+            <span className="text-xs text-neutral-400 font-medium">
               © {new Date().getFullYear()} NextCaseHQ. All rights reserved. Zero-Knowledge. Infinite Context.
             </span>
           </div>
 
           {/* Footer Links */}
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-xs font-sans uppercase font-bold text-[#111111]/70">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">
             {footerLinks.map((link) => (
               <Link
                 key={link.label}
-                href={link.href}
-                className="hover:text-[#111111] transition-colors"
+                href="/login" // Ensure all CTAs on landing page link to login per directive
+                className="hover:text-indigo-600 transition-colors"
               >
                 {link.label}
               </Link>
