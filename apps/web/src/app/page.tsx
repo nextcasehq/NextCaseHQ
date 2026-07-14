@@ -98,8 +98,8 @@ export default function Page() {
             <Link href="/login" className="hover:text-indigo-600 transition-colors">Terms</Link>
             <Link href="/login" className="hover:text-indigo-600 transition-colors">Support</Link>
           </div>
-        </footer>
-      </div>
-    </>
+        </div>
+      </footer>
+    </div>
   );
 }
