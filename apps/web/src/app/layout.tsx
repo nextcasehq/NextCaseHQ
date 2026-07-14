@@ -16,7 +16,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-base text-primary">
-        {/* Place Navbar here to share it across all routes */}
         <Navbar /> 
         <main>{children}</main>
       </body>

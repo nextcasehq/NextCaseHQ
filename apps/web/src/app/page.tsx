@@ -4,16 +4,9 @@ import Link from "next/link";
 /**
  * NextCaseHQ: Premium Marketing Landing Page (Milestone 5.1)
  * Adheres strictly to the project design tokens (Warm Ivory #FDFBF7, Obsidian Charcoal #111111)
+ * Cleaned of duplicate headers, navbars, and mains.
  */
 export default function Page() {
-  const navLinks = [
-    { label: "Features", href: "/features" },
-    { label: "Solutions", href: "/solutions" },
-    { label: "Resources", href: "/resources" },
-    { label: "About Us", href: "/about" },
-    { label: "Contact", href: "/contact" },
-  ];
-
   const footerLinks = [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
@@ -22,7 +15,7 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
+    <div className="min-h-[calc(100vh-64px)] bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
       {/* Hero Section */}
       <div className="flex-1 flex flex-col justify-center items-center px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
         {/* Release Badge */}

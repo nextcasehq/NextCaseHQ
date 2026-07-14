@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 
 export default function Navbar() {
-  // Hardened fallback ensures mapping execution even if environment tokens are absent
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
 
   const menuItems = [
