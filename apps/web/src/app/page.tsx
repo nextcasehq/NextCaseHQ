@@ -1,80 +1,102 @@
 import React from "react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 /**
- * NextCaseHQ: Premium Marketing Landing Page (Milestone 5.1)
- * Adheres strictly to the project design tokens (Warm Ivory #FDFBF7, Obsidian Charcoal #111111)
- * Cleaned of duplicate headers, navbars, and mains.
+ * NextCaseHQ: Premium Approved Landing Page v1.0
+ * Strict Adherence to UI Constitution:
+ * - White-first background with Warm Ivory (#FDFBF7)
+ * - Obsidian Charcoal (#111111) text and headings
+ * - Single Indigo/Violet accent
+ * - Law-inspired "N" logo
+ * - Central intelligent search bar
+ * - Minimal navigation and absolute brand consistency
  */
 export default function Page() {
-  const footerLinks = [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-    { label: "Documentation", href: "/docs" },
-    { label: "Support", href: "/support" },
-  ];
-
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      {/* Hero Section */}
-      <div className="flex-1 flex flex-col justify-center items-center px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
-        {/* Release Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#111111]/10 bg-[#111111]/5 text-xs font-mono tracking-wider uppercase mb-8 animate-fade-in">
-          <span className="w-2 h-2 rounded-full bg-[#111111] animate-pulse"></span>
-          Phase 5: Product Experience Walkthrough Active
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+      {/* Navbar rendered directly at the top of the Landing Page */}
+      <Navbar />
+
+      {/* Central Search Hero Section */}
+      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
+
+        {/* Law-inspired "N" logo container */}
+        <div className="mb-8 p-4 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center">
+          <svg
+            className="w-14 h-14 text-[#111111]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            {/* Courthouse pillars forming N */}
+            <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
 
-        {/* Hero Title */}
-        <h1 className="text-5xl lg:text-8xl font-black tracking-tight leading-[1.1] max-w-5xl mb-8 font-serif">
-          The AI-First Operating System for Litigation
+        {/* Minimalist Heading */}
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] mb-4">
+          NextCase<span className="text-indigo-600">HQ</span>
         </h1>
 
-        {/* Hero Description */}
-        <p className="text-xl lg:text-2xl font-serif leading-relaxed text-[#111111]/70 max-w-3xl mb-12 italic">
-          Empowering modern legal teams with zero-knowledge encrypted workspaces, real-time telemetry, automated document ingestion, and context-aware court workflows.
+        <p className="text-sm md:text-base text-neutral-500 max-w-md mx-auto mb-10 font-medium">
+          Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings in unified context.
         </p>
 
-        {/* Call to Actions (CTAs) */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
+        {/* Central Intelligent Search Bar */}
+        <div className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl p-2 shadow-lg shadow-neutral-100/50 flex items-center gap-2 mb-12 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-600/10 transition-all">
+          <span className="pl-3 text-neutral-400 text-lg">🔍</span>
+          <input
+            type="text"
+            placeholder="Search active cases, statutes, NI Act precedents..."
+            className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-neutral-400 py-2.5"
+            disabled
+          />
           <Link
             href="/login"
-            className="w-full sm:w-auto px-8 py-4 rounded bg-[#111111] text-[#FDFBF7] font-semibold text-lg font-sans uppercase text-center shadow-lg hover:bg-[#111111]/90 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-xl transition-all"
           >
-            Get Started
-          </Link>
-          <Link
-            href="/contact"
-            className="w-full sm:w-auto px-8 py-4 rounded border border-[#111111] text-[#111111] font-semibold text-lg font-sans uppercase text-center hover:bg-[#111111]/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            Book a Demo
+            Search
           </Link>
         </div>
-      </div>
 
-      {/* High-fidelity Brand Footer */}
-      <footer className="border-t border-[#111111]/10 bg-[#111111]/5 px-6 lg:px-16 py-12">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          {/* Copyright Information */}
-          <div className="flex flex-col gap-2 items-center md:items-start">
-            <span className="font-sans font-bold text-lg tracking-tight text-[#111111]">
-              NextCaseHQ
-            </span>
-            <span className="text-xs font-sans text-[#111111]/60">
-              © {new Date().getFullYear()} NextCaseHQ. All rights reserved. Zero-Knowledge. Infinite Context.
+        {/* Quick links to login */}
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs md:text-sm font-semibold text-neutral-400">
+          <span className="text-neutral-500 font-bold uppercase tracking-wider">Quick Actions:</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Access Active Chamber</Link>
+          <span className="text-neutral-200">•</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Ingest New File</Link>
+          <span className="text-neutral-200">•</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Audit Immutable Ledger</Link>
+        </div>
+
+      </main>
+
+      {/* Spacious Premium Footer */}
+      <footer className="border-t border-neutral-100 bg-white px-6 md:px-12 py-10 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <svg
+              className="w-5 h-5 text-[#111111]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="font-bold text-sm text-[#111111]">
+              NextCaseHQ<span className="text-indigo-600">.</span>
             </span>
           </div>
-
-          {/* Footer Links */}
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-xs font-sans uppercase font-bold text-[#111111]/70">
-            {footerLinks.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="hover:text-[#111111] transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+          <p className="text-xs text-neutral-400 font-medium">
+            © {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
+          </p>
+          <div className="flex gap-6 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+            <Link href="/login" className="hover:text-indigo-600 transition-colors">Privacy</Link>
+            <Link href="/login" className="hover:text-indigo-600 transition-colors">Terms</Link>
+            <Link href="/login" className="hover:text-indigo-600 transition-colors">Support</Link>
           </div>
         </div>
       </footer>
