@@ -23,40 +23,8 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-[#FDFBF7]/80 border-b border-[#111111]/10 px-6 lg:px-16 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
-          <span className="text-2xl font-black tracking-tight text-[#111111] font-sans">
-            NextCase<span className="text-[#111111]/60">HQ</span>
-          </span>
-        </Link>
-
-        {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-sans tracking-wide uppercase font-semibold text-[#111111]/80">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="hover:text-[#111111] transition-colors relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-[2px] after:bg-[#111111] hover:after:w-full after:transition-all"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Top Navigation CTA */}
-        <div className="flex items-center gap-4">
-          <Link
-            href="/login"
-            className="px-6 py-2.5 rounded border border-[#111111] text-sm font-semibold font-sans uppercase hover:bg-[#111111] hover:text-[#FDFBF7] transition-all"
-          >
-            Sign In
-          </Link>
-        </div>
-      </header>
-
       {/* Hero Section */}
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 py-20 lg:py-32 max-w-7xl mx-auto text-center">
         {/* Release Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#111111]/10 bg-[#111111]/5 text-xs font-mono tracking-wider uppercase mb-8 animate-fade-in">
           <span className="w-2 h-2 rounded-full bg-[#111111] animate-pulse"></span>
@@ -88,7 +56,7 @@ export default function Page() {
             Book a Demo
           </Link>
         </div>
-      </main>
+      </div>
 
       {/* High-fidelity Brand Footer */}
       <footer className="border-t border-[#111111]/10 bg-[#111111]/5 px-6 lg:px-16 py-12">
