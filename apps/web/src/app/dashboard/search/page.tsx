@@ -1,45 +1,59 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { LitigationDb, Matter, Case } from '@/lib/db/litigation-db';
 
-export default function SearchPage() {
-  const [query, setQuery] = useState('');
+import { useSearchParams } from 'next/navigation';
+
+function SearchPageContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+
+  const [query, setQuery] = useState(initialQuery);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(!!initialQuery);
 
   const [matchedMatters, setMatchedMatters] = useState<Matter[]>([]);
   const [matchedCases, setMatchedCases] = useState<Case[]>([]);
 
-  const handleSearch = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!query.trim()) return;
+  useEffect(() => {
+    if (initialQuery) {
+      triggerSearch(initialQuery);
+    }
+  }, [initialQuery]);
 
+  const triggerSearch = (searchVal: string) => {
     setIsLoading(true);
     setHasSearched(true);
 
-    // Simulate fast 200ms index lookup
     setTimeout(() => {
       const allMatters = LitigationDb.getMatters();
       const allCases = LitigationDb.getCases();
 
       const mResult = allMatters.filter(m =>
-        m.title.toLowerCase().includes(query.toLowerCase()) ||
-        m.clientName.toLowerCase().includes(query.toLowerCase()) ||
-        m.id.toLowerCase().includes(query.toLowerCase())
+        m.title.toLowerCase().includes(searchVal.toLowerCase()) ||
+        m.clientName.toLowerCase().includes(searchVal.toLowerCase()) ||
+        m.id.toLowerCase().includes(searchVal.toLowerCase())
       );
 
       const cResult = allCases.filter(c =>
-        c.title.toLowerCase().includes(query.toLowerCase()) ||
-        c.court.toLowerCase().includes(query.toLowerCase()) ||
-        c.id.toLowerCase().includes(query.toLowerCase())
+        c.title.toLowerCase().includes(searchVal.toLowerCase()) ||
+        c.court.toLowerCase().includes(searchVal.toLowerCase()) ||
+        c.id.toLowerCase().includes(searchVal.toLowerCase())
       );
 
       setMatchedMatters(mResult);
       setMatchedCases(cResult);
       setIsLoading(false);
     }, 250);
+  };
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!query.trim()) return;
+
+    triggerSearch(query);
   };
 
   return (
@@ -146,5 +160,19 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+import { Suspense } from 'react';
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex justify-center items-center py-20">
+        <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }
