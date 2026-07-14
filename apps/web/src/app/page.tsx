@@ -14,7 +14,7 @@ import Navbar from "@/components/Navbar";
  */
 export default function Page() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans pt-16 selection:bg-indigo-600 selection:text-white">
       {/* Navbar rendered directly at the top of the Landing Page */}
       <Navbar />
 
