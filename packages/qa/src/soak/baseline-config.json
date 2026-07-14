@@ -1,0 +1,37 @@
+{
+  "phase": "4.1A",
+  "name": "Baseline Production Soak",
+  "duration_hours": 72,
+  "concurrent_tenants": 5,
+  "workflow": [
+    "AUTHENTICATE",
+    "CASE_CREATE",
+    "DOCUMENT_UPLOAD",
+    "SEARCH",
+    "AUDIT_LOG_VERIFY"
+  ],
+  "pacing": {
+    "min_think_time_sec": 2,
+    "max_think_time_sec": 5,
+    "pattern": "LINEAR_STEADY"
+  },
+  "metrics": {
+    "security": [
+      "cross_tenant_rls_violations",
+      "pii_scrubbing_efficiency"
+    ],
+    "performance": [
+      "p50_latency",
+      "p95_latency",
+      "p99_latency"
+    ],
+    "infrastructure": [
+      "db_pool_saturation",
+      "tenant_context_stability"
+    ]
+  },
+  "thresholds": {
+    "edge_ingest_p99_ms": 5,
+    "rls_violations_max": 0
+  }
+}

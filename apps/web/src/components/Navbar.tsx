@@ -16,7 +16,7 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 w-full h-16 bg-white/90 backdrop-blur-md border-b border-neutral-100 z-50 px-6 md:px-12 flex items-center justify-between font-sans">
+    <header className="w-full h-16 bg-white/90 backdrop-blur-md border-b border-neutral-100 sticky top-0 z-50 px-6 md:px-12 flex items-center justify-between font-sans">
       {/* Brand Identity with Law-inspired "N" logo */}
       <div className="flex items-center gap-3">
         <Link href={`${baseUrl}/`} className="flex items-center gap-2.5 hover:opacity-85 transition-opacity group">
