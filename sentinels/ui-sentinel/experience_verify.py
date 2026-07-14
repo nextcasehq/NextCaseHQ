@@ -30,7 +30,7 @@ def run_verification():
         # A. Landing Page Loading & Visual Audit
         print("[PLAYWRIGHT] Loading Landing Page...", flush=True)
         try:
-            desktop_page.goto("http://localhost:3002", timeout=15000)
+            desktop_page.goto("http://localhost:3006", timeout=15000)
             time.sleep(2)
             # Take desktop landing snapshot
             desktop_page.screenshot(path="/home/jules/verification/screenshots/landing_desktop.png")
@@ -47,7 +47,7 @@ def run_verification():
 
         # B. Authentication & Tenant Binding Flow
         print("[PLAYWRIGHT] Navigating to Sign In...", flush=True)
-        desktop_page.goto("http://localhost:3002/login")
+        desktop_page.goto("http://localhost:3006/login")
 
         # WAIT FOR HYDRATION to prevent native HTML GET form reloads
         print("[PLAYWRIGHT] Waiting for client-side JS hydration...", flush=True)
@@ -88,12 +88,12 @@ def run_verification():
         desktop_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/dashboard_desktop.png")
         print("[PLAYWRIGHT] Captured dashboard_desktop.png successfully.", flush=True)
 
-        assert desktop_page.locator("text=Evidence & Citations").first.is_visible() or desktop_page.locator("text=AI Dialogue Stream").first.is_visible(), "TriPaneChamber dashboard panels should render"
+        assert desktop_page.locator("text=Chamber").first.is_visible() or desktop_page.locator("text=Command").first.is_visible(), "Advocate Intelligence Dashboard should render"
 
         # D. Dashboard Sub-page Navigation Check (Search, Cases, Evidence, Settings)
         sub_routes = ["ai-chamber", "cases", "evidence", "search", "settings"]
         for route in sub_routes:
-            url = f"http://localhost:3002/dashboard/{route}"
+            url = f"http://localhost:3006/dashboard/{route}"
             print(f"[PLAYWRIGHT] Navigating to sub-route: {url}", flush=True)
             desktop_page.goto(url)
             time.sleep(0.5)
@@ -115,14 +115,14 @@ def run_verification():
         mobile_page.on("pageerror", lambda err: page_errors.append(str(err)))
 
         print("[PLAYWRIGHT] Loading Mobile Landing Page...", flush=True)
-        mobile_page.goto("http://localhost:3002")
+        mobile_page.goto("http://localhost:3006")
         time.sleep(2)
         mobile_page.screenshot(path="/home/jules/verification/screenshots/landing_mobile.png")
         mobile_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/landing_mobile.png")
         print("[PLAYWRIGHT] Captured landing_mobile.png successfully.", flush=True)
 
         # Sign in and select tenant in mobile viewport
-        mobile_page.goto("http://localhost:3002/login")
+        mobile_page.goto("http://localhost:3006/login")
         time.sleep(3) # Wait for mobile hydration
         mobile_page.fill("input[type='email']", "mobile@firm.com")
         mobile_page.fill("input[type='password']", "password123")
