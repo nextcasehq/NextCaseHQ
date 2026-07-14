@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 /**
  * NextCaseHQ: Premium Approved Landing Page v1.0
@@ -13,7 +14,10 @@ import Link from "next/link";
  */
 export default function Page() {
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+      {/* Navbar rendered directly at the top of the Landing Page */}
+      <Navbar />
+
       {/* Central Search Hero Section */}
       <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
 
