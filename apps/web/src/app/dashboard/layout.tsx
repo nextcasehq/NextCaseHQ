@@ -12,13 +12,13 @@ export default function DashboardLayout({
   const pathname = usePathname();
 
   const sidebarItems = [
-    { label: 'AI Chamber', href: '/ai-chamber', icon: '⚡' },
-    { label: 'Cases / Litigation', href: '/cases', icon: '📁' },
-    { label: 'Search Engine', href: '/search', icon: '🔍' },
-    { label: 'Compliance Audit', href: '/audit', icon: '🛡️' },
-    { label: 'Evidence Register', href: '/evidence', icon: '⛓️' },
-    { label: 'Draft Builder', href: '/draft-builder', icon: '✍️' },
-    { label: 'System Settings', href: '/settings', icon: '⚙️' },
+    { label: 'AI Chamber', href: '/dashboard/ai-chamber', icon: '⚡' },
+    { label: 'Cases / Litigation', href: '/dashboard/cases', icon: '📁' },
+    { label: 'Search Engine', href: '/dashboard/search', icon: '🔍' },
+    { label: 'Compliance Audit', href: '/dashboard/audit', icon: '🛡️' },
+    { label: 'Evidence Register', href: '/dashboard/evidence', icon: '⛓️' },
+    { label: 'Draft Builder', href: '/dashboard/draft-builder', icon: '✍️' },
+    { label: 'System Settings', href: '/dashboard/settings', icon: '⚙️' },
   ];
 
   return (
