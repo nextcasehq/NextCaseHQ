@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   const start = performance.now();
 
   // 1. Only intercept /api/* routes (excluding auth)
-  if (!request.nextUrl.pathname.startsWith('/api/') || request.nextUrl.pathname.startsWith('/api/auth')) {
+  if (!request.nextUrl.pathname.startsWith('/api/all') && (!request.nextUrl.pathname.startsWith('/api/') || request.nextUrl.pathname.startsWith('/api/auth'))) {
     return NextResponse.next();
   }
 
@@ -41,6 +41,9 @@ export async function middleware(request: NextRequest) {
     // 4. Inject verified tenant ID into a secure custom header
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nextcase-tenant-id', tenantId);
+
+    // NCHQ Module 19: Zero-Trust Sanitization
+    requestHeaders.delete('authorization');
 
     const end = performance.now();
     const duration = end - start;

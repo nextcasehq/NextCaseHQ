@@ -4,7 +4,8 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "sentinel": "node scripts/merge_deployment_sentinel.js"
   },
   "devDependencies": {
     "turbo": "latest",
