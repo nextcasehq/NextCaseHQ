@@ -106,3 +106,14 @@ vite.config.ts.timestamp-*
 
 # Turborepo
 .turbo/
+
+# Sentinel Runtime Artifacts
+sentinels/**/report.json
+sentinels/**/findings.json
+sentinels/**/diagnostics.json
+sentinels/**/framework-health.json
+sentinels/**/release-report.json
+sentinels/**/playwright_result.json
+sentinels/ui-sentinel/evidence/*
+sentinels/shared/history.json
+sentinels/sentinel-status.json

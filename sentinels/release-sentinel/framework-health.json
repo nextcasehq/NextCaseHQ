@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-07-14T14:50:13.558Z",
-  "frameworkHealth": "WARNING",
-  "runnerHealth": {
-    "Architecture Sentinel": "ACTIVE",
-    "Build Sentinel": "ACTIVE",
-    "UI Sentinel": "ACTIVE"
-  }
-}
