@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@nextcase/ndl";
 import "./globals.css";
+import NavbarWrapper from "@/components/NavbarWrapper";
 
 export const metadata: Metadata = {
   title: "NextCaseHQ",
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-base text-primary">
+        <NavbarWrapper />
         <main>{children}</main>
       </body>
     </html>
