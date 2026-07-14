@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "BUILD_COMPILATION_FAILURE",
+    "name": "Monorepo Compilation Failure",
+    "rootCause": "Fatal compilation or syntax errors within Next.js apps/web or workers.",
+    "impact": "Prevents deployment pipeline and deployment artifact generation entirely.",
+    "recommendedFix": "Resolve local compilation errors before push. Run 'pnpm run build' locally to troubleshoot.",
+    "confidenceLevel": "100%"
+  },
+  {
+    "id": "TEST_SUITE_FAILURE",
+    "name": "Unit / Regression Test Failure",
+    "rootCause": "Failing assertions, missing mocks, or incorrect business logic handling.",
+    "impact": "Indicates potential business logic regression or UI color token alignment violation.",
+    "recommendedFix": "Locate the failing test files in the specified package and fix logic or test expectations.",
+    "confidenceLevel": "100%"
+  }
+]
