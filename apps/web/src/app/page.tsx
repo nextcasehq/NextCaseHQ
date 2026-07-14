@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 /**
  * NextCaseHQ: Premium Approved Landing Page v1.0
@@ -15,19 +16,11 @@ import Link from "next/link";
  * - Minimal navigation and absolute brand consistency
  */
 export default function Page() {
-  const router = useRouter();
-  const [query, setQuery] = useState("");
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) {
-      // Direct navigation to Dashboard Search with query param for seamless continuity
-      router.push(`/dashboard/search?q=${encodeURIComponent(query.trim())}`);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans pt-16 selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+      {/* Navbar rendered directly at the top of the Landing Page */}
+      <Navbar />
+
       {/* Central Search Hero Section */}
       <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
 
@@ -55,25 +48,21 @@ export default function Page() {
         </p>
 
         {/* Central Intelligent Search Bar */}
-        <form
-          onSubmit={handleSearchSubmit}
-          className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl p-2 shadow-lg shadow-neutral-100/50 flex items-center gap-2 mb-12 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-600/10 transition-all"
-        >
+        <div className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl p-2 shadow-lg shadow-neutral-100/50 flex items-center gap-2 mb-12 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-600/10 transition-all">
           <span className="pl-3 text-neutral-400 text-lg">🔍</span>
           <input
             type="text"
             placeholder="Search active cases, statutes, NI Act precedents..."
             className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-neutral-400 py-2.5"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            disabled
           />
-          <button
-            type="submit"
+          <Link
+            href="/login"
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-xl transition-all"
           >
             Search
-          </button>
-        </form>
+          </Link>
+        </div>
 
         {/* Quick links to login */}
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs md:text-sm font-semibold text-neutral-400">
@@ -105,7 +94,7 @@ export default function Page() {
             </span>
           </div>
           <p className="text-xs text-neutral-400 font-medium">
-            {"\u00A9"} {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
+            © {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
           </p>
           <div className="flex gap-6 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
             <Link href="/login" className="hover:text-indigo-600 transition-colors">Privacy</Link>
