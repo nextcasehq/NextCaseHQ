@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * NextCaseHQ: Premium High-Focus Tri-Pane AI Chamber Canvas (v1.0 UI Constitution)
@@ -47,6 +47,10 @@ export const TriPaneChamber = () => {
       text: 'Analysis of the timeline in Exhibit B suggests that the limitation period remains within strict statutory bounds. The notice was served on 12-Jan-2026, creating a 15-day compliance window expiring on 27-Jan-2026. The cause of action arose on 28-Jan-2026, allowing the 30-day filing window under Section 142 to run until 27-Feb-2026. To ensure zero procedural risk, I recommend drafting the petition concurrently.'
     }
   ];
+
+  const Skeleton = ({ className }: { className?: string }) => (
+    <div className={`animate-pulse bg-brand/5 rounded ${className}`} />
+  );
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-white font-sans text-neutral-900">
