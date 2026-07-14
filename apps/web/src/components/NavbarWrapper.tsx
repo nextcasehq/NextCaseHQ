@@ -9,11 +9,7 @@ export default function NavbarWrapper() {
 
   // Conditionally hide Navbar on dashboard, login, and organization routes
   const hideNavbarRoutes = ['/login', '/organization'];
-
-  // Safely evaluate pathname to prevent crashes during static generation or SSR
-  const shouldHide = pathname
-    ? (hideNavbarRoutes.includes(pathname) || pathname.startsWith('/dashboard'))
-    : false;
+  const shouldHide = hideNavbarRoutes.includes(pathname) || pathname.startsWith('/dashboard');
 
   if (shouldHide) {
     return null;

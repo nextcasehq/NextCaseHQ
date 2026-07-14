@@ -19,5 +19,5 @@ const args = process.argv.slice(2);
 if (args.length > 0) {
   runSentinel(args[0]);
 } else {
-  console.log('Usage: node sentinel-cli.js <architecture|build|ui|release>');
+  console.log('Usage: node sentinel-cli.js <architecture|build|ui|release|bevs>');
 }

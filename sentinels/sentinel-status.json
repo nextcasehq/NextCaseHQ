@@ -1,11 +1,11 @@
 {
-  "frameworkVersion": "1.1.0",
+  "frameworkVersion": "2.0.0",
   "operationalStatus": "ACTIVE",
-  "repositoryHealth": 97.8,
-  "lastRun": "2026-07-12T10:00:00Z",
-  "filesScanned": 1842,
-  "issuesOpen": 3,
-  "issuesResolved": 127,
+  "repositoryHealth": 94,
+  "lastRun": "2026-07-14T15:44:27.927Z",
+  "filesScanned": 1845,
+  "issuesOpen": 2,
+  "issuesResolved": 129,
   "inspectionCoverage": "100%",
-  "frameworkHealth": "HEALTHY"
+  "frameworkHealth": "WARNING"
 }

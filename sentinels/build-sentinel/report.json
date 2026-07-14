@@ -1,0 +1,12 @@
+{
+  "sentinelName": "Build Sentinel",
+  "version": "2.0",
+  "executionTime": "24.78s",
+  "status": "FAIL",
+  "confidence": "99%",
+  "evidence": {
+    "findingsCount": 2,
+    "screenshots": [],
+    "diagnosticsReport": "/app/sentinels/build-sentinel/diagnostics.json"
+  }
+}
