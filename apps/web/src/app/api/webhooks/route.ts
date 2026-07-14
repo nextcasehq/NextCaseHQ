@@ -36,13 +36,14 @@ export async function POST(request: Request) {
 
     const scrubbedPayload = JSON.parse(scrubPII(JSON.stringify(result.data.payload)));
 
-    console.log(`[WEBHOOK] ${result.data.event_type} received. Payload scrubbed.`);
+    console.log(`[WEBHOOK] ${result.data.event_type} received. Payload scrubbed:`, JSON.stringify(scrubbedPayload));
 
     const duration = performance.now() - start;
     return NextResponse.json({
       status: 'ACCEPTED',
       event: result.data.event_type,
-      latency: `${duration.toFixed(2)}ms`
+      latency: `${duration.toFixed(2)}ms`,
+      processed_payload: scrubbedPayload
     }, { status: 202 });
 
   } catch (error) {

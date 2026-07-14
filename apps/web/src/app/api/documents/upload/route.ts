@@ -64,8 +64,23 @@ export async function POST(request: Request) {
     if (duration > 50) console.warn(`[PERFORMANCE] Intake API took ${duration.toFixed(2)}ms`);
 
     // NCHQ Module 19: India PII Scrubbing (Sprint C3)
-    // For document uploads, we would scrub the metadata or the OCR stream.
-    // Simulating metadata scrubbing if it were part of the payload.
+    const scrubPII = (str: string) => str
+      .replace(/[A-Z]{5}[0-9]{4}[A-Z]{1}/g, '[REDACTED_INDIA_PII]')
+      .replace(/[2-9]{1}[0-9]{3}\s[0-9]{4}\s[0-9]{4}/g, '[REDACTED_INDIA_PII]');
+
+    // We scrub the file name or document metadata from incoming headers if present
+    const rawFileName = headerList.get('x-file-name') || '';
+    const rawMetadata = headerList.get('x-document-metadata') || '';
+
+    const scrubbedFileName = rawFileName ? scrubPII(rawFileName) : '';
+    const scrubbedMetadata = rawMetadata ? scrubPII(rawMetadata) : '';
+
+    if (rawFileName || rawMetadata) {
+      console.log('[INGEST] Metadata PII Scrubbed:', {
+        fileName: scrubbedFileName,
+        metadata: scrubbedMetadata
+      });
+    }
 
     // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
     const validatedTenantId = headerResult.data['x-nextcase-tenant-id'] || headerResult.data['x-tenant-id'];
@@ -82,7 +97,11 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: 'ACCEPTED',
       id: crypto.randomUUID(),
-      bytes_received: totalBytesReceived
+      bytes_received: totalBytesReceived,
+      scrubbed_metadata: {
+        file_name: scrubbedFileName,
+        metadata: scrubbedMetadata
+      }
     }, { status: 202 });
 
   } catch (error) {

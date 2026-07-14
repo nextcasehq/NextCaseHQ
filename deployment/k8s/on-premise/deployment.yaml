@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcase-web
+  namespace: nextcase-prod
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: web
+        image: nextcasehq/web:latest
+        env:
+        - name: NEXTCASE_CURRENT_TENANT_ID
+          valueFrom:
+            header: x-nextcase-tenant-id # Managed by Edge Gateway
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: production-context-vars
+data:
+  POSTGRES_RLS_VARIABLE: "nextcase.current_tenant_id"
