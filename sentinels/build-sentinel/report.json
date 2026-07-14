@@ -1,7 +1,7 @@
 {
   "sentinelName": "Build Sentinel",
   "version": "2.0",
-  "executionTime": "8.24s",
+  "executionTime": "25.01s",
   "status": "PASS",
   "confidence": "99%",
   "evidence": {

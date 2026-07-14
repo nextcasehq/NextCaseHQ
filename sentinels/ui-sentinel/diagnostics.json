@@ -6,5 +6,13 @@
     "impact": "Violates approved NextCaseHQ UI Constitution brand guidelines and degrades visual consistency.",
     "recommendedFix": "Audit files for raw hex values and map them to Warm Ivory (#FDFBF7), Obsidian Charcoal (#111111), or approved Indigo variables.",
     "confidenceLevel": "90%"
+  },
+  {
+    "id": "CONSOLE_ERRORS_DETECTED",
+    "name": "Console Errors Recorded",
+    "rootCause": "JavaScript execution warnings, failed asset loading, or React hydration mismatch logs.",
+    "impact": "Violates the 0-console-error experience budget standard, indicating suboptimal client rendering.",
+    "recommendedFix": "Examine the recorded console messages in playwright_result.json and fix the client component bindings.",
+    "confidenceLevel": "90%"
   }
 ]

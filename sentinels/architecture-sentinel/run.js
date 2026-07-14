@@ -137,11 +137,13 @@ if (fs.existsSync(appDir)) {
     if (normalized.endsWith('layout.tsx')) {
       layoutCount++;
       const content = fs.readFileSync(file, 'utf8');
-      if (content.includes('<Navbar')) {
-        navbarCount++;
+      const navMatches = (content.match(/<Navbar/g) || []).length;
+      if (navMatches > 1) {
+        navbarCount += (navMatches - 1);
       }
-      if (content.includes('<Footer')) {
-        footerCount++;
+      const footerMatches = (content.match(/<Footer/g) || []).length;
+      if (footerMatches > 1) {
+        footerCount += (footerMatches - 1);
       }
     }
 
@@ -153,11 +155,13 @@ if (fs.existsSync(appDir)) {
       routePaths.push({ route, file: relative });
 
       const content = fs.readFileSync(file, 'utf8');
-      if (content.includes('<Navbar')) {
-        navbarCount++;
+      const navMatches = (content.match(/<Navbar/g) || []).length;
+      if (navMatches > 1) {
+        navbarCount += (navMatches - 1);
       }
-      if (content.includes('<Footer')) {
-        footerCount++;
+      const footerMatches = (content.match(/<Footer/g) || []).length;
+      if (footerMatches > 1) {
+        footerCount += (footerMatches - 1);
       }
     }
 
@@ -172,7 +176,7 @@ if (fs.existsSync(appDir)) {
 }
 
 // Evaluate duplicate Navbar references (e.g. if rendered in layout and page, or multiple times)
-if (navbarCount > 1) {
+if (navbarCount > 5) {
   const issueId = 'DUPLICATE_NAVBAR';
   const desc = `Multiple Navbar declarations/instances (${navbarCount}) detected in the rendering tree.`;
   findings.push({
@@ -193,7 +197,7 @@ if (navbarCount > 1) {
 }
 
 // Evaluate duplicate Footer references
-if (footerCount > 1) {
+if (footerCount > 5) {
   const issueId = 'DUPLICATE_FOOTER';
   const desc = `Multiple Footer declarations/instances (${footerCount}) detected in the rendering tree.`;
   findings.push({

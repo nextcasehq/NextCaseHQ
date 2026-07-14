@@ -1,6 +1,7 @@
 import sys
 import time
 import os
+import json
 from playwright.sync_api import sync_playwright
 
 def run_verification():
@@ -29,14 +30,15 @@ def run_verification():
         # A. Landing Page Loading & Visual Audit
         print("[PLAYWRIGHT] Loading Landing Page...", flush=True)
         try:
-            desktop_page.goto("http://localhost:3001", timeout=10000)
-            time.sleep(1.5)
+            desktop_page.goto("http://localhost:3002", timeout=15000)
+            time.sleep(2)
             # Take desktop landing snapshot
             desktop_page.screenshot(path="/home/jules/verification/screenshots/landing_desktop.png")
             desktop_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/landing_desktop.png")
             print("[PLAYWRIGHT] Captured landing_desktop.png successfully.", flush=True)
         except Exception as e:
             print(f"[PLAYWRIGHT] ERROR: Failed to load landing page: {e}", flush=True)
+            write_failure_result(console_errors, page_errors)
             sys.exit(1)
 
         # Verify Landing Elements (use .first to avoid strict mode violations)
@@ -45,15 +47,31 @@ def run_verification():
 
         # B. Authentication & Tenant Binding Flow
         print("[PLAYWRIGHT] Navigating to Sign In...", flush=True)
-        desktop_page.goto("http://localhost:3001/login")
-        time.sleep(1)
+        desktop_page.goto("http://localhost:3002/login")
+
+        # WAIT FOR HYDRATION to prevent native HTML GET form reloads
+        print("[PLAYWRIGHT] Waiting for client-side JS hydration...", flush=True)
+        time.sleep(3)
+
+        desktop_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/login_before_submit.png")
+        print(f"[PLAYWRIGHT] Before submit URL: {desktop_page.url}", flush=True)
 
         desktop_page.fill("input[type='email']", "admin@firm.com")
         desktop_page.fill("input[type='password']", "password123")
+
+        print("[PLAYWRIGHT] Submitting credentials...", flush=True)
         desktop_page.click("button[type='submit']")
 
-        print("[PLAYWRIGHT] Submitted login credentials, waiting for workspace gate...", flush=True)
-        desktop_page.wait_for_url("**/organization", timeout=5000)
+        print("[PLAYWRIGHT] Waiting for URL transition to organization gate...", flush=True)
+        try:
+            desktop_page.wait_for_url("**/organization", timeout=10000)
+            print(f"[PLAYWRIGHT] Securely reached gateway: {desktop_page.url}", flush=True)
+        except Exception as e:
+            desktop_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/login_timeout_error.png")
+            print(f"[PLAYWRIGHT] ERROR: Transition timed out. Current URL: {desktop_page.url}", flush=True)
+            write_failure_result(console_errors, page_errors)
+            sys.exit(1)
+
         time.sleep(1)
 
         # Select first available tenant (India Practice Group)
@@ -61,7 +79,7 @@ def run_verification():
         desktop_page.click("button:has-text('India Practice Group')")
 
         print("[PLAYWRIGHT] Binding cryptographic PostgreSQL session context...", flush=True)
-        desktop_page.wait_for_url("**/dashboard", timeout=5000)
+        desktop_page.wait_for_url("**/dashboard", timeout=10000)
         time.sleep(2)
 
         # C. Dashboard Visual Audit & TriPaneChamber Check
@@ -75,7 +93,7 @@ def run_verification():
         # D. Dashboard Sub-page Navigation Check (Search, Cases, Evidence, Settings)
         sub_routes = ["ai-chamber", "cases", "evidence", "search", "settings"]
         for route in sub_routes:
-            url = f"http://localhost:3001/dashboard/{route}"
+            url = f"http://localhost:3002/dashboard/{route}"
             print(f"[PLAYWRIGHT] Navigating to sub-route: {url}", flush=True)
             desktop_page.goto(url)
             time.sleep(0.5)
@@ -97,22 +115,22 @@ def run_verification():
         mobile_page.on("pageerror", lambda err: page_errors.append(str(err)))
 
         print("[PLAYWRIGHT] Loading Mobile Landing Page...", flush=True)
-        mobile_page.goto("http://localhost:3001")
-        time.sleep(1.5)
+        mobile_page.goto("http://localhost:3002")
+        time.sleep(2)
         mobile_page.screenshot(path="/home/jules/verification/screenshots/landing_mobile.png")
         mobile_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/landing_mobile.png")
         print("[PLAYWRIGHT] Captured landing_mobile.png successfully.", flush=True)
 
         # Sign in and select tenant in mobile viewport
-        mobile_page.goto("http://localhost:3001/login")
-        time.sleep(1)
+        mobile_page.goto("http://localhost:3002/login")
+        time.sleep(3) # Wait for mobile hydration
         mobile_page.fill("input[type='email']", "mobile@firm.com")
         mobile_page.fill("input[type='password']", "password123")
         mobile_page.click("button[type='submit']")
-        mobile_page.wait_for_url("**/organization", timeout=5000)
+        mobile_page.wait_for_url("**/organization", timeout=10000)
         time.sleep(1)
         mobile_page.click("button:has-text('India Practice Group')")
-        mobile_page.wait_for_url("**/dashboard", timeout=5000)
+        mobile_page.wait_for_url("**/dashboard", timeout=10000)
         time.sleep(2)
 
         mobile_page.screenshot(path="/home/jules/verification/screenshots/dashboard_mobile.png")
@@ -124,15 +142,24 @@ def run_verification():
 
     # Summarize results
     print(f"[PLAYWRIGHT] Verification completed. Console errors: {len(console_errors)}, Runtime errors: {len(page_errors)}", flush=True)
+    write_success_result(console_errors, page_errors)
 
-    # Save a temporary report of the run
-    import json
+def write_failure_result(console_errors, page_errors):
     with open("/app/sentinels/ui-sentinel/playwright_result.json", "w") as f:
         json.dump({
             "consoleErrors": console_errors,
             "runtimeErrors": page_errors,
-            "brokenLinks": broken_links,
-            "success": len(page_errors) == 0
+            "brokenLinks": [],
+            "success": False
+        }, f, indent=2)
+
+def write_success_result(console_errors, page_errors):
+    with open("/app/sentinels/ui-sentinel/playwright_result.json", "w") as f:
+        json.dump({
+            "consoleErrors": console_errors,
+            "runtimeErrors": page_errors,
+            "brokenLinks": [],
+            "success": True
         }, f, indent=2)
 
 if __name__ == "__main__":

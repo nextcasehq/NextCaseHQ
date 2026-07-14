@@ -90,15 +90,15 @@ if (uiScan.threePanelChecked && !uiScan.threePanelFound) {
 // 2. Experience Sentinel - Playwright Browser Verification
 logger.info('Initializing Experience Sentinel (Automated Browser verification)...');
 
-// Find and kill any process on port 3001
-logger.info('Killing any existing processes on port 3001...');
+// Find and kill any process on port 3002
+logger.info('Killing any existing processes on port 3002...');
 try {
-  execSync('kill $(lsof -t -i :3001 -sTCP:LISTEN) 2>/dev/null || true');
+  execSync('kill $(lsof -t -i :3002 -sTCP:LISTEN) 2>/dev/null || true');
 } catch (e) {}
 
 // Spawn Next.js production server in background
-logger.info('Spawning Next.js server on port 3001 in background...');
-const serverProcess = spawn('pnpm', ['--filter', 'web', 'exec', 'next', 'start', '-p', '3001'], {
+logger.info('Spawning Next.js server on port 3002 in background...');
+const serverProcess = spawn('pnpm', ['--filter', 'web', 'exec', 'next', 'start', '-p', '3002'], {
   detached: true,
   stdio: 'ignore'
 });
@@ -107,7 +107,7 @@ serverProcess.unref();
 // Helper to check if server is active
 function waitForServer(url, retries, delay, callback) {
   if (retries === 0) {
-    callback(new Error('Next.js server failed to launch on port 3001 within budget.'));
+    callback(new Error('Next.js server failed to launch on port 3002 within budget.'));
     return;
   }
 
@@ -121,15 +121,15 @@ function waitForServer(url, retries, delay, callback) {
   });
 }
 
-// Wait for port 3001 to become active
-waitForServer('http://localhost:3001', 30, 500, (err) => {
+// Wait for port 3002 to become active
+waitForServer('http://localhost:3002', 30, 500, (err) => {
   if (err) {
     logger.error('Failed to start Next.js background server:', err);
     cleanupAndFinish();
     return;
   }
 
-  logger.info('Next.js background server is healthy on port 3001.');
+  logger.info('Next.js background server is healthy on port 3002.');
 
   // Execute Playwright E2E Experience python script
   logger.info('Running Playwright Python automation suite...');
@@ -208,12 +208,12 @@ waitForServer('http://localhost:3001', 30, 500, (err) => {
 });
 
 function cleanupAndFinish() {
-  logger.info('Cleaning up Next.js server on port 3001...');
+  logger.info('Cleaning up Next.js server on port 3002...');
   try {
     if (serverProcess) {
       serverProcess.kill('SIGTERM');
     }
-    execSync('kill $(lsof -t -i :3001 -sTCP:LISTEN) 2>/dev/null || true');
+    execSync('kill $(lsof -t -i :3002 -sTCP:LISTEN) 2>/dev/null || true');
   } catch (e) {}
 
   // Calculate execution time and status

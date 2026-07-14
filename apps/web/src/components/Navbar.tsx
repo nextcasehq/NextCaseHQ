@@ -8,11 +8,11 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
+    { label: 'Matters', path: '/matters' },
+    { label: 'Cases', path: '/cases' },
     { label: 'Features', path: '/features' },
     { label: 'Solutions', path: '/solutions' },
-    { label: 'Pricing', path: '/pricing' },
-    { label: 'About', path: '/about' },
-    { label: 'Contact', path: '/contact' }
+    { label: 'Pricing', path: '/pricing' }
   ];
 
   return (
@@ -38,15 +38,18 @@ export default function Navbar() {
       
       {/* Navigation Links - Desktop */}
       <nav className="hidden md:flex items-center gap-8">
-        {menuItems.map((item) => (
-          <Link 
-            key={item.path} 
-            href={`${baseUrl}/login`}
-            className="text-sm font-medium text-neutral-500 hover:text-[#111111] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded px-2 py-1"
-          >
-            {item.label}
-          </Link>
-        ))}
+        {menuItems.map((item) => {
+          const isAppPath = item.path === '/matters' || item.path === '/cases';
+          return (
+            <Link
+              key={item.path}
+              href={isAppPath ? `${baseUrl}${item.path}` : `${baseUrl}/login`}
+              className="text-sm font-medium text-neutral-500 hover:text-[#111111] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded px-2 py-1"
+            >
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* CTA Section */}
@@ -79,16 +82,19 @@ export default function Navbar() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="absolute top-16 left-0 w-full bg-white border-b border-neutral-100 flex flex-col p-6 gap-4 shadow-lg md:hidden animate-fade-in">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              href={`${baseUrl}/login`}
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-base font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {menuItems.map((item) => {
+            const isAppPath = item.path === '/matters' || item.path === '/cases';
+            return (
+              <Link
+                key={item.path}
+                href={isAppPath ? `${baseUrl}${item.path}` : `${baseUrl}/login`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-base font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+              >
+                {item.label}
+              </Link>
+            );
+          })}
           <div className="h-px bg-neutral-100 my-2"></div>
           <Link
             href={`${baseUrl}/dashboard`}
