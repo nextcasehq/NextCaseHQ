@@ -10,6 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
 
   const sidebarItems = [
     { label: 'AI Chamber', href: '/dashboard/ai-chamber', icon: '⚡' },
@@ -21,8 +22,14 @@ export default function DashboardLayout({
     { label: 'System Settings', href: '/dashboard/settings', icon: '⚙️' },
   ];
 
+  const notifications = [
+    { id: 1, text: "Hearing Reminder: State of Maharashtra v. Sharma set for tomorrow at 10:00 AM.", time: "5m ago", type: "HEARING" },
+    { id: 2, text: "Statute Alert: Toll period calculation updated under NIA Section 138.", time: "1h ago", type: "STATUTE" },
+    { id: 3, text: "Ingestion Event: Encrypted exhibit EX-2026-001 successfully registered.", time: "2h ago", type: "INGEST" }
+  ];
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans selection:bg-indigo-600 selection:text-white relative">
       {/* High-density Left Sidebar */}
       <aside className="w-64 border-r border-neutral-100 bg-white flex flex-col z-20 flex-none h-full">
         {/* Sidebar Header */}
@@ -83,7 +90,17 @@ export default function DashboardLayout({
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
+            {/* Interactive Notification Bell */}
+            <button
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className="relative p-1.5 text-neutral-400 hover:text-neutral-800 transition-colors cursor-pointer bg-transparent border-none outline-none"
+              aria-label="View notifications"
+            >
+              <span className="text-lg">🔔</span>
+              <span className="absolute top-0 right-0 w-2 h-2 bg-indigo-600 rounded-full"></span>
+            </button>
+
             <button
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -102,8 +119,39 @@ export default function DashboardLayout({
         </header>
 
         {/* Dynamic Route Content */}
-        <main className="flex-1 overflow-auto bg-white h-[calc(100vh-64px)] w-full">
+        <main className="flex-1 overflow-auto bg-white h-[calc(100vh-64px)] w-full relative">
           {children}
+
+          {/* Sliding Notifications Drawer */}
+          {isNotificationsOpen && (
+            <div className="absolute top-0 right-0 h-full w-80 bg-white border-l border-neutral-100 shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
+              <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                <h3 className="text-xs font-black uppercase tracking-widest text-neutral-800">Timeline & Notifications</h3>
+                <button
+                  onClick={() => setIsNotificationsOpen(false)}
+                  className="text-xs font-bold text-neutral-400 hover:text-neutral-800 cursor-pointer bg-transparent border-none outline-none"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {notifications.map((notif) => (
+                  <div key={notif.id} className="p-4 bg-white border border-neutral-100 rounded-xl hover:border-indigo-100 transition-all shadow-xs">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[9px] font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                        {notif.type}
+                      </span>
+                      <span className="text-[9px] font-mono text-neutral-400">{notif.time}</span>
+                    </div>
+                    <p className="text-xs text-neutral-700 leading-relaxed font-sans">{notif.text}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-neutral-100 bg-neutral-50/30 text-center">
+                <p className="text-[10px] text-neutral-400 font-mono">NEXTCASE SECURITY TIMELINE</p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
