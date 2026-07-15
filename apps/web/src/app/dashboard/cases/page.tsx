@@ -18,6 +18,13 @@ export default function CasesPage() {
   ]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleCaseClick = (c: CaseItem) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('NEXTCASE_CURRENT_CASE_CONTEXT', JSON.stringify(c));
+      window.location.href = '/dashboard';
+    }
+  };
   const [newTitle, setNewTitle] = useState('');
   const [newCourt, setNewCourt] = useState('');
   const [newJurisdiction, setNewJurisdiction] = useState<'IN' | 'US' | 'UK'>('IN');
@@ -68,9 +75,10 @@ export default function CasesPage() {
       {/* Case List Grid */}
       <div className="space-y-4">
         {cases.map((c) => (
-          <div
+          <button
             key={c.id}
-            className="p-6 border border-[#111111]/10 rounded bg-white flex justify-between items-center hover:border-[#111111] transition-all group"
+            onClick={() => handleCaseClick(c)}
+            className="w-full text-left p-6 border border-[#111111]/10 rounded bg-white flex justify-between items-center hover:border-[#111111] hover:shadow-sm transition-all group cursor-pointer block"
           >
             <div>
               <span className="text-[10px] font-mono border border-[#111111]/10 bg-[#111111]/5 text-[#111111]/70 px-2 py-0.5 rounded uppercase tracking-wider mr-2">
@@ -86,7 +94,7 @@ export default function CasesPage() {
             <span className="px-3 py-1.5 border border-[#111111]/10 rounded text-[10px] font-mono uppercase tracking-wider bg-[#111111]/5">
               {c.status}
             </span>
-          </div>
+          </button>
         ))}
       </div>
 

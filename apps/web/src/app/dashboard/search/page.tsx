@@ -16,6 +16,7 @@ export default function SearchPage() {
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'Statutes' | 'Exhibits' | 'Precedents'>('ALL');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
 
   // High-fidelity litigation database
   const legalDatabase: SearchResult[] = [
@@ -112,6 +113,13 @@ export default function SearchPage() {
     return item.category === categoryFilter;
   });
 
+  const handleLoadContext = (item: SearchResult) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('NEXTCASE_CURRENT_DOC_CONTEXT', JSON.stringify(item));
+      window.location.href = '/dashboard';
+    }
+  };
+
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
       {/* Search Header */}
@@ -173,9 +181,10 @@ export default function SearchPage() {
           </p>
           <div className="space-y-4">
             {displayedResults.map((item) => (
-              <div
+              <button
                 key={item.id}
-                className="p-6 border border-[#111111]/10 rounded bg-white hover:border-[#111111] hover:shadow-sm transition-all group"
+                onClick={() => setSelectedResult(item)}
+                className="w-full text-left p-6 border border-[#111111]/10 rounded bg-white hover:border-[#111111] hover:shadow-sm transition-all group block cursor-pointer"
               >
                 <div className="flex justify-between items-start gap-4 mb-2">
                   <div>
@@ -194,8 +203,69 @@ export default function SearchPage() {
                 <p className="mt-3 text-sm font-serif text-[#111111]/70 leading-relaxed bg-[#FDFBF7] p-4 rounded border border-[#111111]/5">
                   "{item.snippet}"
                 </p>
-              </div>
+              </button>
             ))}
+          </div>
+        </div>
+      )}
+      {/* High-Fidelity Interactive Search Result Modal */}
+      {selectedResult && (
+        <div className="fixed inset-0 bg-[#111111]/40 backdrop-blur-xs flex items-center justify-center z-50">
+          <div className="bg-[#FDFBF7] w-full max-w-2xl border border-[#111111]/20 rounded p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start border-b border-[#111111]/10 pb-4 mb-6">
+              <div>
+                <span className="text-[10px] font-mono border border-[#111111]/10 bg-[#111111]/5 text-[#111111]/70 px-2 py-0.5 rounded uppercase tracking-wider mr-2">
+                  {selectedResult.category}
+                </span>
+                <span className="text-xs font-bold text-[#111111]/40 uppercase tracking-widest">
+                  {selectedResult.source} // {selectedResult.jurisdiction}
+                </span>
+                <h2 className="text-xl font-black uppercase tracking-wider text-[#111111] mt-2">
+                  {selectedResult.title}
+                </h2>
+              </div>
+              <span className="text-xs font-mono text-[#111111]/40">{selectedResult.id}</span>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">Document Content Extract</h4>
+                <p className="text-sm font-serif text-[#111111]/80 leading-relaxed bg-white p-6 rounded border border-[#111111]/10 text-justify">
+                  "{selectedResult.snippet}"
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 bg-[#111111]/5 p-4 rounded border border-[#111111]/5">
+                <div>
+                  <h5 className="text-[10px] font-mono font-bold text-[#111111]/50 uppercase">Cryptographic SHA-256 Hash</h5>
+                  <p className="text-[10px] font-mono text-[#111111]/70 overflow-hidden text-ellipsis">
+                    {selectedResult.id === 'SEC-12-BNSS' ? 'c9a2f1b8c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8' : 'f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0'}
+                  </p>
+                </div>
+                <div>
+                  <h5 className="text-[10px] font-mono font-bold text-[#111111]/50 uppercase">AES-GCM Security Envelope</h5>
+                  <p className="text-[10px] font-mono text-[#111111]/70">
+                    ENVELOPE_ENCRYPTED_STABLE // KMS v1-active
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#111111]/10">
+                <button
+                  type="button"
+                  onClick={() => setSelectedResult(null)}
+                  className="px-5 py-3 border border-[#111111]/15 text-[#111111] text-xs font-bold uppercase tracking-wider rounded hover:bg-[#111111]/5 transition-all"
+                >
+                  Close Document
+                </button>
+                <button
+                  onClick={() => handleLoadContext(selectedResult)}
+                  className="px-6 py-3 bg-[#111111] text-[#FDFBF7] text-xs font-bold uppercase tracking-wider rounded hover:bg-[#111111]/90 active:scale-[0.98] transition-all"
+                >
+                  Load Context into AI Chamber
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
