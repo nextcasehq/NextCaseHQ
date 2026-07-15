@@ -8,9 +8,14 @@ const { runCommand, scanFiles } = require('../shared/utils');
 const { Logger } = require('../shared/logger');
 const { createReportTemplate, saveSentinelReports } = require('../shared/reporter');
 const { scanForConflicts } = require('../shared/scanner');
+const { SentinelLifecycle } = require('../shared/lifecycle');
 
 const logger = new Logger('Architecture Sentinel');
 const startTime = Date.now();
+
+// 1. Idle -> Running
+const lifecycle = new SentinelLifecycle('Architecture Sentinel');
+lifecycle.start();
 
 logger.info('Starting Architecture & Merge Governance audit...');
 
@@ -20,7 +25,10 @@ report.confidence = '98%';
 const findings = [];
 const diagnostics = [];
 
-// 1. Merge Governance
+// 2. Validation
+lifecycle.validation();
+
+// 2.1 Merge Governance
 logger.info('Auditing merge status and branch health...');
 const activeBranch = runCommand('git rev-parse --abbrev-ref HEAD') || 'unknown-branch';
 const isClean = !runCommand('git status --porcelain');
@@ -115,7 +123,7 @@ if (isDivergent) {
   });
 }
 
-// 2. Architecture Governance
+// 2.2 Architecture Governance
 logger.info('Analyzing Next.js rendering tree structure...');
 const appDir = path.join(rootDir, 'apps/web/src/app');
 
@@ -262,15 +270,25 @@ routePaths.forEach(item => {
   }
 });
 
-// Calculate final status and confidence
+// 3. Evidence Collection
+lifecycle.evidenceCollection();
+
+// 4. Report Generation
+lifecycle.reportGeneration();
 const executionTimeMs = Date.now() - startTime;
 report.executionTime = `${(executionTimeMs / 1000).toFixed(2)}s`;
 report.status = (findings.length > 0) ? 'FAIL' : 'PASS';
 report.findings = findings;
 report.diagnostics = diagnostics;
 
-// Save reports to architecture-sentinel folder
-saveSentinelReports(__dirname, report);
+// 5. Report Publication
+lifecycle.reportPublication(report);
+
+// 6. Archive Runtime Evidence
+lifecycle.archiveEvidence();
+
+// 7. Reset Sentinel State
+lifecycle.resetState();
 
 logger.info(`Completed. Status: ${report.status}. Issues detected: ${findings.length}`);
 if (findings.length > 0) {
