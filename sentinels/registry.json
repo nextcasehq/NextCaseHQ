@@ -1,0 +1,92 @@
+{
+  "rules": [
+    {
+      "id": "ARCH-001",
+      "name": "Multi-Tenant Isolation Guard",
+      "description": "Verify PostgreSQL Row Level Security (RLS) active session tenant ID context setting prior to DB interaction.",
+      "sentinel": "Architecture Sentinel",
+      "status": "Active",
+      "severity": "P0"
+    },
+    {
+      "id": "ARCH-002",
+      "name": "India PII Scrubbing Compliance",
+      "description": "Ensure telemetry, logging, and response payloads execute scrubPII regex pattern filters on Aadhaar and PAN numbers.",
+      "sentinel": "Architecture Sentinel",
+      "status": "Active",
+      "severity": "P1"
+    },
+    {
+      "id": "ARCH-003",
+      "name": "Regional Polymorphism Integrity",
+      "description": "Ensure country packs and court procedural state-machines utilize polymorphic expansion contracts instead of hardcoded region values.",
+      "sentinel": "Architecture Sentinel",
+      "status": "Active",
+      "severity": "P2"
+    },
+    {
+      "id": "BUILD-001",
+      "name": "TSConfig Schema Alignment",
+      "description": "Ensure workspace subpackages extend base monorepo compiler options configuration.",
+      "sentinel": "Build Sentinel",
+      "status": "Active",
+      "severity": "P1"
+    },
+    {
+      "id": "BUILD-002",
+      "name": "Package Boundary Segregation",
+      "description": "Strictly prohibit relative directory traversal imports across sibling packages.",
+      "sentinel": "Build Sentinel",
+      "status": "Active",
+      "severity": "P0"
+    },
+    {
+      "id": "BUILD-003",
+      "name": "Dependency Resolution Integrity",
+      "description": "Validate absolute path mappings (@/) and local relative module locations against physical filesystem paths.",
+      "sentinel": "Build Sentinel",
+      "status": "Active",
+      "severity": "P0"
+    },
+    {
+      "id": "UI-001",
+      "name": "Homepage Shell Hierarchy",
+      "description": "Verify homepage contains essential visual anchors: branding header/Navbar, Footer section, and sign-in CTA components.",
+      "sentinel": "UI Sentinel",
+      "status": "Active",
+      "severity": "P0"
+    },
+    {
+      "id": "UI-002",
+      "name": "Sidebar Navigation Integrity",
+      "description": "Ensure active sidebar directories contain 0 dead links or placeholders (# or javascript:void(0)).",
+      "sentinel": "UI Sentinel",
+      "status": "Active",
+      "severity": "P0"
+    },
+    {
+      "id": "UI-003",
+      "name": "Responsive Space and Whitespace consistency",
+      "description": "Check layout hierarchies for vertical spacing anomalies, duplicate container renders, and broken responsive grids across mobile, tablet, and desktop views.",
+      "sentinel": "UI Sentinel",
+      "status": "Active",
+      "severity": "P1"
+    },
+    {
+      "id": "COMP-001",
+      "name": "TypeScript Severe Typings Integrity",
+      "description": "Detect TS2307, TS2322, TS2554, TS2741 severe compile issues or import errors.",
+      "sentinel": "Compiler Diagnostics Sentinel",
+      "status": "Active",
+      "severity": "P0"
+    },
+    {
+      "id": "COMP-002",
+      "name": "IDE Problems Watch and Warnings",
+      "description": "Verify zero active VS Code red underlines or ESLint compilation errors.",
+      "sentinel": "Compiler Diagnostics Sentinel",
+      "status": "Active",
+      "severity": "P1"
+    }
+  ]
+}
