@@ -1,10 +1,1 @@
-[
-  {
-    "id": "COLOR_TOKEN_DRIFT",
-    "name": "Color Token Deviation",
-    "rootCause": "Hardcoded off-spec hexadecimal color values in style classes instead of tailwind variables.",
-    "impact": "Violates approved NextCaseHQ UI Constitution brand guidelines and degrades visual consistency.",
-    "recommendedFix": "Audit files for raw hex values and map them to Warm Ivory (#FDFBF7), Obsidian Charcoal (#111111), or approved Indigo variables.",
-    "confidenceLevel": "90%"
-  }
-]
+[]
