@@ -5,7 +5,7 @@ import path from 'path';
 /**
  * NCHQ Admin Operations API
  * Dynamically resolves the most recent immutable run folder under reports/runs/<run-id>/
- * and parses actual verification outputs, completely avoiding mutable "latest" dependencies.
+ * using high-performance filename sorting (avoiding expensive synchronous disk stat calls).
  */
 export async function GET() {
   const start = performance.now();
@@ -18,28 +18,20 @@ export async function GET() {
     if (fs.existsSync(runsParentDir)) {
       const runs = fs.readdirSync(runsParentDir);
 
-      // Sort run folders by birthtime / mtime or directory name timestamp to find the newest run
-      const runStats = runs
-        .map(name => {
-          const fullPath = path.join(runsParentDir, name);
-          try {
-            const stat = fs.statSync(fullPath);
-            return { name, mtime: stat.mtimeMs, isDirectory: stat.isDirectory() };
-          } catch (e) {
-            return { name, mtime: 0, isDirectory: false };
-          }
-        })
-        .filter(item => item.isDirectory);
-
-      if (runStats.length > 0) {
-        // Sort descending by mtime to get the absolute newest directory
-        runStats.sort((a, b) => b.mtime - a.mtime);
-        selectedRunId = runStats[0].name;
+      // Filter folders starting with "run_" and sort descending by their embedded millisecond timestamp
+      const runFolders = runs.filter(name => name.startsWith('run_'));
+      if (runFolders.length > 0) {
+        runFolders.sort((a, b) => {
+          const tA = parseInt(a.split('_')[1], 10) || 0;
+          const tB = parseInt(b.split('_')[1], 10) || 0;
+          return tB - tA; // descending order
+        });
+        selectedRunId = runFolders[0];
         runDir = path.join(runsParentDir, selectedRunId);
       }
     }
   } catch (err) {
-    // Gracefully handle FS errors
+    // Graceful fallback on standard fs error
   }
 
   const getSentinelReport = (nameKey: string) => {
