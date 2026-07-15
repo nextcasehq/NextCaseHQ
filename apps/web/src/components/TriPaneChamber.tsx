@@ -154,30 +154,6 @@ export const TriPaneChamber = () => {
             </button>
           </div>
         </div>
-
-        {/* Chat Input Bar */}
-        <form onSubmit={handleSendMessage} className="p-4 md:p-6 border-t border-neutral-100 bg-neutral-50/30">
-          <div className="relative flex items-center max-w-prose mx-auto bg-white border border-neutral-200/80 rounded-xl shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-600/10 transition-all">
-            <input
-              type="text"
-              placeholder="Ask AI Chamber to 'draft notice' or 'analyze contradicts'..."
-              className="w-full bg-transparent pl-4 pr-12 py-3 text-sm text-neutral-800 placeholder-neutral-400 outline-none font-medium"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="absolute right-2 p-1.5 rounded-lg text-neutral-400 hover:text-indigo-600 hover:bg-neutral-50 transition-all"
-              aria-label="Send message"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-          </div>
-        </form>
       </main>
 
       {/* Right Panel (30%): Drafting Workspace */}
