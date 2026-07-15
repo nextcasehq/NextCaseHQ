@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
 
 /**
  * NextCaseHQ: Premium Approved Landing Page v1.0
@@ -18,16 +17,14 @@ import Navbar from "@/components/Navbar";
 export default function Page() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
-      {/* Navbar rendered directly at the top of the Landing Page */}
-      <Navbar />
 
       {/* Central Search Hero Section */}
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
+      <main className="flex-1 flex flex-col justify-center items-center px-6 py-24 max-w-4xl mx-auto w-full text-center">
 
-        {/* Law-inspired "N" logo container */}
-        <div className="mb-8 p-4 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center">
+        {/* Law-inspired "N" logo container with micro-interactions */}
+        <div className="mb-10 p-5 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center hover:scale-[1.03] hover:border-indigo-100 hover:shadow-md transition-all duration-300 ease-out cursor-pointer group">
           <svg
-            className="w-14 h-14 text-[#111111]"
+            className="w-14 h-14 text-[#111111] group-hover:text-indigo-600 transition-colors duration-300"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -39,39 +36,39 @@ export default function Page() {
         </div>
 
         {/* Minimalist Heading */}
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] mb-4">
+        <h1 className="text-4xl md:text-6xl font-black tracking-tight text-[#111111] mb-6">
           NextCase<span className="text-indigo-600">HQ</span>
         </h1>
 
-        <p className="text-sm md:text-base text-neutral-500 max-w-md mx-auto mb-10 font-medium">
+        <p className="text-sm md:text-lg text-neutral-500 max-w-xl mx-auto mb-12 font-medium font-serif italic leading-relaxed">
           Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings in unified context.
         </p>
 
-        {/* Central Intelligent Search Bar */}
-        <div className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl p-2 shadow-lg shadow-neutral-100/50 flex items-center gap-2 mb-12 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-600/10 transition-all">
-          <span className="pl-3 text-neutral-400 text-lg">🔍</span>
+        {/* Central Intelligent Search Bar with Premium Shadows */}
+        <div className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl p-2.5 shadow-xl shadow-neutral-200/40 flex items-center gap-3 mb-14 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-600/5 transition-all duration-300">
+          <span className="pl-4 text-neutral-400 text-xl select-none">🔍</span>
           <input
             type="text"
             placeholder="Search active cases, statutes, NI Act precedents..."
-            className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-neutral-400 py-2.5"
+            className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-semibold placeholder-neutral-400 py-3"
             disabled
           />
           <Link
             href="/login"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-xl transition-all"
+            className="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/15 text-white font-bold text-xs md:text-sm px-8 py-3 rounded-xl transition-all duration-200 active:scale-[0.98]"
           >
             Search
           </Link>
         </div>
 
-        {/* Quick links to login */}
+        {/* Quick links to login with subtle underlines */}
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs md:text-sm font-semibold text-neutral-400">
-          <span className="text-neutral-500 font-bold uppercase tracking-wider">Quick Actions:</span>
-          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Access Active Chamber</Link>
-          <span className="text-neutral-200">•</span>
-          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Ingest New File</Link>
-          <span className="text-neutral-200">•</span>
-          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 transition-colors">Audit Immutable Ledger</Link>
+          <span className="text-neutral-500 font-extrabold uppercase tracking-widest text-[10px]">Quick Actions:</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Access Active Chamber</Link>
+          <span className="text-neutral-200 select-none">•</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Ingest New File</Link>
+          <span className="text-neutral-200 select-none">•</span>
+          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
         </div>
 
       </main>
