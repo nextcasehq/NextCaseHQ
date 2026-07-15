@@ -41,7 +41,7 @@ export default function Navbar() {
         {menuItems.map((item) => (
           <Link 
             key={item.path} 
-            href={`${baseUrl}/login`}
+            href={`${baseUrl}${item.path}`}
             className="text-sm font-medium text-neutral-500 hover:text-[#111111] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded px-2 py-1"
           >
             {item.label}
@@ -82,7 +82,7 @@ export default function Navbar() {
           {menuItems.map((item) => (
             <Link
               key={item.path}
-              href={`${baseUrl}/login`}
+              href={`${baseUrl}${item.path}`}
               onClick={() => setMobileMenuOpen(false)}
               className="text-base font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
             >

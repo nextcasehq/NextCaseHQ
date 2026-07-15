@@ -84,12 +84,20 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-800 transition-colors"
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.clear();
+                  localStorage.clear();
+                  document.cookie = "NEXTCASE_CURRENT_TENANT_ID_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  document.cookie = "NEXTCASE_CURRENT_CASE_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  window.location.href = '/';
+                }
+              }}
+              className="text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-800 transition-colors cursor-pointer bg-transparent border-none outline-none"
             >
               Log Out
-            </Link>
+            </button>
           </div>
         </header>
 
