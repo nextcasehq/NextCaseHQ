@@ -20,13 +20,21 @@ function createReportTemplate(sentinelName, version = '2.0') {
 }
 
 function saveSentinelReports(dir, report) {
+  const category = path.basename(dir);
+  const rootDir = path.join(__dirname, '../../');
+  const targetDir = path.join(rootDir, 'reports', category);
+
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
   // Save findings.json
   const findings = report.findings || [];
-  writeJson(path.join(dir, 'findings.json'), findings);
+  writeJson(path.join(targetDir, 'findings.json'), findings);
 
   // Save diagnostics.json
   const diagnostics = report.diagnostics || [];
-  writeJson(path.join(dir, 'diagnostics.json'), diagnostics);
+  writeJson(path.join(targetDir, 'diagnostics.json'), diagnostics);
 
   // Save report.json
   const mainReport = {
@@ -38,10 +46,10 @@ function saveSentinelReports(dir, report) {
     evidence: {
       findingsCount: findings.length,
       screenshots: report.evidence?.screenshots || [],
-      diagnosticsReport: path.join(dir, 'diagnostics.json')
+      diagnosticsReport: path.join(targetDir, 'diagnostics.json')
     }
   };
-  writeJson(path.join(dir, 'report.json'), mainReport);
+  writeJson(path.join(targetDir, 'report.json'), mainReport);
 }
 
 module.exports = {

@@ -106,3 +106,15 @@ vite.config.ts.timestamp-*
 
 # Turborepo
 .turbo/
+
+# NextCaseHQ Sentinel Ephemeral Reports & Artifacts
+reports/
+sentinels/**/report.json
+sentinels/**/findings.json
+sentinels/**/diagnostics.json
+sentinels/**/evidence/
+sentinels/**/playwright_result.json
+sentinels/sentinel-status.json
+sentinels/release-sentinel/*.json
+sentinels/bevs-sentinel/*.json
+sentinels/shared/history.json

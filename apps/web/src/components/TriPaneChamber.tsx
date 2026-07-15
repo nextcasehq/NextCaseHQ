@@ -162,7 +162,14 @@ export const TriPaneChamber = () => {
         </div>
 
         {/* Chat Input Bar */}
-        <div className="p-4 md:p-6 border-t border-neutral-100 bg-neutral-50/30">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!inputText.trim()) return;
+            setInputText('');
+          }}
+          className="p-4 md:p-6 border-t border-neutral-100 bg-neutral-50/30"
+        >
           <div className="relative flex items-center max-w-prose mx-auto bg-white border border-neutral-200/80 rounded-xl shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-600/10 transition-all">
             <input
               type="text"
@@ -172,6 +179,7 @@ export const TriPaneChamber = () => {
               onChange={(e) => setInputText(e.target.value)}
             />
             <button
+              type="submit"
               className="absolute right-2 p-1.5 rounded-lg text-neutral-400 hover:text-indigo-600 hover:bg-neutral-50 transition-all"
               aria-label="Send message"
             >
@@ -180,7 +188,7 @@ export const TriPaneChamber = () => {
               </svg>
             </button>
           </div>
-        </div>
+        </form>
       </main>
 
       {/* Right Panel (30%): Drafting Workspace */}

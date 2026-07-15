@@ -81,7 +81,6 @@ export default function Page() {
               type="text"
               placeholder="Search a matter, precedent, or statute..."
               className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm font-semibold placeholder-neutral-400 py-2"
-              disabled
             />
             <button
               type="submit"

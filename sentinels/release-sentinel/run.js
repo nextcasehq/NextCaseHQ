@@ -18,9 +18,9 @@ const sentinelsDir = path.join(__dirname, '../');
 
 // Define child runners
 const runners = [
-  { name: 'Architecture Sentinel', path: path.join(sentinelsDir, 'architecture-sentinel/run.js'), reportPath: path.join(sentinelsDir, 'architecture-sentinel') },
-  { name: 'Build Sentinel', path: path.join(sentinelsDir, 'build-sentinel/run.js'), reportPath: path.join(sentinelsDir, 'build-sentinel') },
-  { name: 'UI Sentinel', path: path.join(sentinelsDir, 'ui-sentinel/run.js'), reportPath: path.join(sentinelsDir, 'ui-sentinel') }
+  { name: 'Architecture Sentinel', path: path.join(sentinelsDir, 'architecture-sentinel/run.js'), reportPath: path.join(rootDir, 'reports/architecture-sentinel') },
+  { name: 'Build Sentinel', path: path.join(sentinelsDir, 'build-sentinel/run.js'), reportPath: path.join(rootDir, 'reports/build-sentinel') },
+  { name: 'UI Sentinel', path: path.join(sentinelsDir, 'ui-sentinel/run.js'), reportPath: path.join(rootDir, 'reports/ui-sentinel') }
 ];
 
 const runnerHealth = {};
@@ -96,8 +96,13 @@ const productionCommit = gitHeadCommit; // Matches repo state in sandbox
 const deploymentSynced = (gitHeadCommit === vercelPreviewCommit && gitHeadCommit === productionCommit);
 
 // 4. Update History and Status Files
-const historyPath = path.join(sentinelsDir, 'shared/history.json');
-const statusPath = path.join(sentinelsDir, 'sentinel-status.json');
+const historyPath = path.join(rootDir, 'reports/release-sentinel/history.json');
+const statusPath = path.join(rootDir, 'reports/sentinel-status.json');
+
+const releaseSentinelReportDir = path.dirname(historyPath);
+if (!fs.existsSync(releaseSentinelReportDir)) {
+  fs.mkdirSync(releaseSentinelReportDir, { recursive: true });
+}
 
 const history = readJson(historyPath, []);
 const runRecord = {
@@ -126,7 +131,7 @@ const currentStatus = {
 writeJson(statusPath, currentStatus);
 
 // 5. Generate release-report.json
-const releaseReportPath = path.join(__dirname, 'release-report.json');
+const releaseReportPath = path.join(rootDir, 'reports/release-sentinel/release-report.json');
 const releaseReport = {
   timestamp: runRecord.timestamp,
   git: { branch: gitBranch, commit: gitHeadCommit },
@@ -155,7 +160,7 @@ const releaseReport = {
 writeJson(releaseReportPath, releaseReport);
 
 // Write framework-health.json to record try-catch status
-const frameworkHealthPath = path.join(__dirname, 'framework-health.json');
+const frameworkHealthPath = path.join(rootDir, 'reports/release-sentinel/framework-health.json');
 writeJson(frameworkHealthPath, {
   timestamp: runRecord.timestamp,
   frameworkHealth: currentStatus.frameworkHealth,

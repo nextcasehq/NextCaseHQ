@@ -11,8 +11,13 @@ const { execSync } = require('child_process');
 class BusinessExecutionSentinel {
   constructor() {
     this.name = "Business Execution & Verification Sentinel (BEVS)";
-    this.defectRegisterPath = path.join(__dirname, 'defect-register.json');
-    this.reportPath = path.join(__dirname, 'report.json');
+    const rootDir = path.join(__dirname, '../../');
+    const targetDir = path.join(rootDir, 'reports/bevs-sentinel');
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    this.defectRegisterPath = path.join(targetDir, 'defect-register.json');
+    this.reportPath = path.join(targetDir, 'report.json');
     this.timestamp = new Date().toISOString();
     this.verdict = "BUSINESS EXECUTION REJECTED / DEFINITION OF DONE NOT SATISFIED";
     this.failures = [];

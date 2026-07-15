@@ -157,7 +157,7 @@ waitForServer('http://localhost:3001', 30, 500, (err) => {
   }
 
   // Parse Playwright outcome results if file was generated
-  const resultsPath = path.join(__dirname, 'playwright_result.json');
+  const resultsPath = path.join(rootDir, 'reports/ui-sentinel/playwright_result.json');
   if (fs.existsSync(resultsPath)) {
     try {
       const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
@@ -225,7 +225,7 @@ function cleanupAndFinish() {
 
   // Add captured screenshots to evidence if they exist
   const screenshots = [];
-  const screenDir = path.join(__dirname, 'evidence');
+  const screenDir = path.join(rootDir, 'reports/ui-sentinel/evidence');
   if (fs.existsSync(screenDir)) {
     const files = fs.readdirSync(screenDir);
     files.forEach(f => {
