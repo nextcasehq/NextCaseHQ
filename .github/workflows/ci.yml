@@ -23,11 +23,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2. Setup Node.js
-      - name: 2. Setup Node.js
+      # 2. Setup Node.js (v22 to resolve Node 20 deprecation warnings)
+      - name: 2. Setup Node.js (v22)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       # 3. Cache Dependencies
       - name: 3. Cache PNPM Dependencies
@@ -44,11 +44,18 @@ jobs:
           npm install -g pnpm@10.30.3
           pnpm install --frozen-lockfile
 
+      # Create reports directory explicitly to ensure log redirections succeed
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
       # 5. TypeScript Validation
       - name: 5. TypeScript Validation
         run: |
-          echo "Executing TypeScript type checks across all packages..."
-          pnpm exec tsc --noEmit
+          echo "Executing TypeScript validations using correct tsconfig profiles..."
+          npx tsc -p apps/web/tsconfig.json --noEmit
+          npx tsc -p apps/workers/tsconfig.json --noEmit
+          npx tsc -p packages/crypto/tsconfig.json --noEmit
+          npx tsc -p packages/country-packs/tsconfig.json --noEmit
 
       # 6. ESLint Validation
       - name: 6. ESLint Validation
