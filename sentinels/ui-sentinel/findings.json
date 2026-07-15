@@ -1,8 +1,0 @@
-[
-  {
-    "id": "COLOR_TOKEN_DRIFT",
-    "type": "UI_CONSTITUTION",
-    "message": "Color token drift: Off-spec hex color references found in 1 style classes.",
-    "recommendation": "Replace raw hex colors with design token variables from design-system-ndl."
-  }
-]
