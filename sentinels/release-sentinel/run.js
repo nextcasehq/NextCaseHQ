@@ -125,20 +125,8 @@ const vercelPreviewCommit = process.env.VERCEL_GIT_COMMIT_SHA || gitHeadCommit;
 const productionCommit = gitHeadCommit; // Matches repo state in sandbox
 const deploymentSynced = (gitHeadCommit === vercelPreviewCommit && gitHeadCommit === productionCommit);
 
-// 3.2 Update History and Status Files (strictly outside repository tracked files)
-const historyPath = path.join(process.cwd(), 'reports', 'history.json');
-const statusPath = path.join(process.cwd(), 'reports', 'sentinel-status.json');
-
-const fallbackHistoryPath = path.join(sentinelsDir, 'shared/history.json');
-const fallbackStatusPath = path.join(sentinelsDir, 'sentinel-status.json');
-
-let history = [];
-if (fs.existsSync(historyPath)) {
-  history = readJson(historyPath, []);
-} else if (fs.existsSync(fallbackHistoryPath)) {
-  history = readJson(fallbackHistoryPath, []);
-}
-
+// 3.2 Update History and Status Files (strictly outside repository tracked files, and only inside runDir to avoid mutable global files)
+const history = [];
 const runRecord = {
   timestamp: new Date().toISOString(),
   branch: gitBranch,
@@ -149,7 +137,6 @@ const runRecord = {
   findingsCount: totalFindingsCount
 };
 history.push(runRecord);
-writeJson(historyPath, history);
 
 const currentStatus = {
   frameworkVersion: "2.0.0",
@@ -162,13 +149,11 @@ const currentStatus = {
   inspectionCoverage: "100%",
   frameworkHealth: hasFailures ? "WARNING" : "HEALTHY"
 };
-writeJson(statusPath, currentStatus);
 
 // Generate report artifact paths
 const releaseArtifactDir = path.join(runDir, 'release');
 fs.mkdirSync(releaseArtifactDir, { recursive: true });
 
-// Also write copies inside the isolated run directory
 writeJson(path.join(releaseArtifactDir, 'history.json'), history);
 writeJson(path.join(releaseArtifactDir, 'sentinel-status.json'), currentStatus);
 
@@ -222,9 +207,24 @@ lifecycle.reportPublication({
   }
 });
 
-// Also write to generic top-level reports/ for easy access
-writeJson(path.join(process.cwd(), 'reports', 'release-report.json'), releaseReport);
-writeJson(path.join(process.cwd(), 'reports', 'framework-health.json'), frameworkHealth);
+// 2. Write summary.json to the root of the run directory
+const summaryPath = path.join(runDir, 'summary.json');
+const summary = {
+  runId,
+  timestamp: runRecord.timestamp,
+  overallHealthScore: healthScore,
+  readyForRelease: isReadyForRelease ? 'YES' : 'NO',
+  runnerHealth,
+  metrics: {
+    totalFindingsCount,
+    criticalFindingsCount: criticalFindings.length
+  },
+  git: {
+    branch: gitBranch,
+    commit: gitHeadCommit
+  }
+};
+writeJson(summaryPath, summary);
 
 // 6. Archive Runtime Evidence
 lifecycle.archiveEvidence();

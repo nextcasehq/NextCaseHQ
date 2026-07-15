@@ -11,12 +11,14 @@ class SentinelLifecycle {
     // Multi-thread isolated execution run context
     this.runId = process.env.SENTINEL_RUN_ID || `run_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     this.runDir = process.env.SENTINEL_RUN_DIR || path.join(process.cwd(), 'reports', 'runs', this.runId);
+
     this.sentinelRunDir = path.join(this.runDir, this.nameKey);
-    this.latestDir = path.join(process.cwd(), 'reports', 'latest', this.nameKey);
 
     // Export variables so spawned child processes (like python scripts) can inherit
     process.env.SENTINEL_RUN_ID = this.runId;
     process.env.SENTINEL_RUN_DIR = this.runDir;
+
+    this.initDirectories();
   }
 
   resolveNameKey(name) {
@@ -29,16 +31,44 @@ class SentinelLifecycle {
     return 'unknown';
   }
 
+  initDirectories() {
+    // 2. Store every validation run in an immutable directory structure:
+    const subdirs = [
+      'architecture',
+      'build',
+      'ui',
+      'release',
+      'bevs',
+      'playwright',
+      'screenshots',
+      'logs',
+      'coverage'
+    ];
+
+    subdirs.forEach(dir => {
+      fs.mkdirSync(path.join(this.runDir, dir), { recursive: true });
+    });
+  }
+
+  logToFile(level, msg) {
+    try {
+      const logLine = `[${new Date().toISOString()}] [${this.sentinelName}] [${level}]: ${msg}\n`;
+      const logFile = path.join(this.runDir, 'logs', `${this.nameKey}.log`);
+      fs.appendFileSync(logFile, logLine, 'utf8');
+    } catch (e) {
+      // Ignore log write failure
+    }
+  }
+
   transitionTo(newState) {
-    console.log(`[SENTINEL_LIFECYCLE] [${this.sentinelName}] State: ${this.state} ➔ ${newState}`);
+    const msg = `State: ${this.state} ➔ ${newState}`;
+    console.log(`[SENTINEL_LIFECYCLE] [${this.sentinelName}] ${msg}`);
+    this.logToFile('LIFECYCLE', msg);
     this.state = newState;
   }
 
   start() {
     this.transitionTo('Running');
-    // Ensure the isolated run subdirectory exists
-    fs.mkdirSync(this.sentinelRunDir, { recursive: true });
-    fs.mkdirSync(this.latestDir, { recursive: true });
   }
 
   validation() {
@@ -56,7 +86,7 @@ class SentinelLifecycle {
   reportPublication(reportData) {
     this.transitionTo('Report Publication');
 
-    // Store outside repository source (strictly under RUN_DIR and latest)
+    // Store outside repository source (strictly under RUN_DIR)
     const reportFilePath = path.join(this.sentinelRunDir, 'report.json');
     const findingsFilePath = path.join(this.sentinelRunDir, 'findings.json');
     const diagnosticsFilePath = path.join(this.sentinelRunDir, 'diagnostics.json');
@@ -64,12 +94,10 @@ class SentinelLifecycle {
     // Save findings
     const findings = reportData.findings || [];
     writeJson(findingsFilePath, findings);
-    writeJson(path.join(this.latestDir, 'findings.json'), findings);
 
     // Save diagnostics
     const diagnostics = reportData.diagnostics || [];
     writeJson(diagnosticsFilePath, diagnostics);
-    writeJson(path.join(this.latestDir, 'diagnostics.json'), diagnostics);
 
     // Save report
     const mainReport = {
@@ -85,21 +113,17 @@ class SentinelLifecycle {
       }
     };
     writeJson(reportFilePath, mainReport);
-    writeJson(path.join(this.latestDir, 'report.json'), mainReport);
 
     // Additional reports if they exist
     if (reportData.additionalReports) {
       Object.entries(reportData.additionalReports).forEach(([filename, content]) => {
         writeJson(path.join(this.sentinelRunDir, filename), content);
-        writeJson(path.join(this.latestDir, filename), content);
       });
     }
   }
 
   archiveEvidence() {
     this.transitionTo('Archive Runtime Evidence');
-    // Copy any temporary/local evidence folder content to the run folder if necessary
-    // Note: We design our runners to write directly to runDir, but this step confirms and moves leftovers
   }
 
   resetState() {
@@ -117,12 +141,6 @@ class SentinelLifecycle {
     legacyPaths.forEach(p => {
       try {
         if (fs.existsSync(p)) {
-          // If the file is git-tracked, do NOT modify it or if it is dirty, we delete/restore it.
-          // Since we want the repo to remain perfectly in its original tracked state, we can restore it using git checkout or just delete any untracked leftover.
-          // Wait, actually, let's restore tracked files via git checkout if they differ, or delete untracked temporary files.
-          // Let's check if they are tracked by git. If we did not write to them, we are fine!
-          // But if they were somehow modified, we can run 'git checkout' on them.
-          // Let's do a safe restore:
           const relative = path.relative(process.cwd(), p);
           try {
             require('child_process').execSync(`git checkout HEAD -- "${relative}" 2>/dev/null || rm -f "${p}"`);
@@ -143,11 +161,9 @@ class SentinelLifecycle {
           const files = fs.readdirSync(evidenceDir);
           files.forEach(f => {
             const full = path.join(evidenceDir, f);
-            // If not tracked by git, remove it
             try {
-              const isTracked = require('child_process').execSync(`git ls-files --error-unmatch "${full}"`, { stdio: 'pipe' });
+              require('child_process').execSync(`git ls-files --error-unmatch "${full}"`, { stdio: 'pipe' });
             } catch (err) {
-              // Not tracked, delete it!
               fs.unlinkSync(full);
             }
           });

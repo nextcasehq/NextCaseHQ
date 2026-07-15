@@ -110,7 +110,7 @@ waitForServer('http://localhost:3001', 30, 500, (err) => {
   }
 
   // Parse outcomes from dynamic run directory
-  const resultsPath = path.join(lifecycle.sentinelRunDir, 'playwright_result.json');
+  const resultsPath = path.join(lifecycle.runDir, 'playwright', 'playwright_result.json');
   if (fs.existsSync(resultsPath)) {
     try {
       const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
@@ -256,12 +256,9 @@ function finalizeAuditAndSave() {
     releaseRecommendation
   };
 
-  // Write ui_ux_audit_report.json entirely under outside folders
+  // Write ui_ux_audit_report.json strictly inside dynamic run folder
   const auditReportPath = path.join(lifecycle.sentinelRunDir, 'ui_ux_audit_report.json');
   fs.writeFileSync(auditReportPath, JSON.stringify(enterpriseReport, null, 2));
-
-  const latestAuditReportPath = path.join(lifecycle.latestDir, 'ui_ux_audit_report.json');
-  fs.writeFileSync(latestAuditReportPath, JSON.stringify(enterpriseReport, null, 2));
 
   // Backward compatibility with sentinel reporter schema
   report.executionTime = `${((Date.now() - startTime) / 1000).toFixed(2)}s`;

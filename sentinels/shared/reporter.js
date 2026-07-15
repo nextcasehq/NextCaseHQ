@@ -66,19 +66,6 @@ function saveSentinelReports(dir, report) {
     }
   };
   writeJson(path.join(targetDir, 'report.json'), mainReport);
-
-  // Also save to reports/latest/
-  const latestDir = path.join(process.cwd(), 'reports', 'latest', nameKey);
-  fs.mkdirSync(latestDir, { recursive: true });
-  writeJson(path.join(latestDir, 'findings.json'), findings);
-  writeJson(path.join(latestDir, 'diagnostics.json'), diagnostics);
-  writeJson(path.join(latestDir, 'report.json'), {
-    ...mainReport,
-    evidence: {
-      ...mainReport.evidence,
-      diagnosticsReport: path.join(latestDir, 'diagnostics.json')
-    }
-  });
 }
 
 module.exports = {
