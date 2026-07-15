@@ -49,19 +49,13 @@ jobs:
         run: mkdir -p reports
 
       # 5. TypeScript Validation
-      # =========================================================================
-      # TYPESCRIPT VALIDATION STRATEGY:
-      # 1. Standardizes stage 5 verification using explicit, deterministic tsconfig targets
-      #    by calling the repository's canonical validation tool 'pnpm typecheck'.
-      # 2. Validates every application, package, and workspace exactly once.
-      # 3. Minimizes checking overhead by explicitly excluding non-production folders
-      #    (spec, test, __tests__, fixtures, mocks, storybook, generated artifacts)
-      #    inside the package-specific tsconfig.json configurations.
-      # =========================================================================
       - name: 5. TypeScript Validation
         run: |
-          echo "Executing canonical TypeScript project graph validations..."
-          pnpm typecheck
+          echo "Executing TypeScript validations using correct tsconfig profiles..."
+          npx tsc -p apps/web/tsconfig.json --noEmit
+          npx tsc -p apps/workers/tsconfig.json --noEmit
+          npx tsc -p packages/crypto/tsconfig.json --noEmit
+          npx tsc -p packages/country-packs/tsconfig.json --noEmit
 
       # 6. ESLint Validation
       - name: 6. ESLint Validation
