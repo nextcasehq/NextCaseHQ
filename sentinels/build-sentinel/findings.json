@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "BUILD_COMPILATION_FAILURE",
+    "type": "BUILD_FAILURE",
+    "message": "Monorepo build contains syntax, type, or compiler errors.",
+    "recommendation": "Inspect Next.js or Turborepo build logs, fix underlying syntax/import issues."
+  },
+  {
+    "id": "TEST_SUITE_FAILURE",
+    "type": "TEST_FAILURE",
+    "message": "One or more test suites failed: web, @nextcase/crypto",
+    "recommendation": "Run tests locally and address assertion failures or import/environment issues."
+  }
+]

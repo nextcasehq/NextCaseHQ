@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-07-15T03:03:12.863Z",
-  "frameworkHealth": "HEALTHY",
+  "timestamp": "2026-07-14T15:44:27.927Z",
+  "frameworkHealth": "WARNING",
   "runnerHealth": {
     "Architecture Sentinel": "ACTIVE",
     "Build Sentinel": "ACTIVE",

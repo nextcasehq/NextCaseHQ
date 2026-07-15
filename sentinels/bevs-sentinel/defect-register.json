@@ -1,9 +1,9 @@
 [
   {
     "id": "DEF-001",
-    "scenario": "Multi-tenant PostgreSQL schema storage persistence",
+    "scenario": "Multi-tenant persistent PostgreSQL storage",
     "severity": "CRITICAL",
-    "rootCause": "ORM DB bindings are local memory configurations",
+    "rootCause": "ORM DB bindings are bypassed in memory for localized state",
     "responsibleFiles": [
       "apps/web/src/app/api/documents/upload/route.ts"
     ],
@@ -11,9 +11,9 @@
   },
   {
     "id": "DEF-002",
-    "scenario": "Streaming AI Dialogue models",
+    "scenario": "Streaming AI Model Dialog responses",
     "severity": "HIGH",
-    "rootCause": "Inference pipelines return mocked response models",
+    "rootCause": "Inference pipelines return mocked text outputs",
     "responsibleFiles": [
       "packages/ai-registry/src/index.ts"
     ],
@@ -21,7 +21,7 @@
   },
   {
     "id": "DEF-003",
-    "scenario": "Semantic vector search queries",
+    "scenario": "Universal query matching",
     "severity": "HIGH",
     "rootCause": "searchRelevantChunks returns empty array stub",
     "responsibleFiles": [
