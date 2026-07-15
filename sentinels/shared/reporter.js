@@ -20,13 +20,37 @@ function createReportTemplate(sentinelName, version = '2.0') {
 }
 
 function saveSentinelReports(dir, report) {
+  // Determine if we should save to an isolated run directory
+  const runId = process.env.SENTINEL_RUN_ID;
+  const runDir = process.env.SENTINEL_RUN_DIR;
+
+  let nameKey = 'unknown';
+  const sentinelName = report.sentinelName || '';
+  if (sentinelName.includes('Architecture')) nameKey = 'architecture';
+  else if (sentinelName.includes('Build')) nameKey = 'build';
+  else if (sentinelName.includes('UI')) nameKey = 'ui';
+  else if (sentinelName.includes('Business') || sentinelName.includes('BEVS')) nameKey = 'bevs';
+  else if (sentinelName.includes('Release')) nameKey = 'release';
+
+  let targetDir = dir;
+  if (runDir) {
+    targetDir = path.join(runDir, nameKey);
+  } else {
+    // If running in isolation and no env is set, use a default git-ignored reports path
+    const fallbackRunId = `run_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    targetDir = path.join(process.cwd(), 'reports', 'runs', fallbackRunId, nameKey);
+  }
+
+  // Ensure directories exist
+  fs.mkdirSync(targetDir, { recursive: true });
+
   // Save findings.json
   const findings = report.findings || [];
-  writeJson(path.join(dir, 'findings.json'), findings);
+  writeJson(path.join(targetDir, 'findings.json'), findings);
 
   // Save diagnostics.json
   const diagnostics = report.diagnostics || [];
-  writeJson(path.join(dir, 'diagnostics.json'), diagnostics);
+  writeJson(path.join(targetDir, 'diagnostics.json'), diagnostics);
 
   // Save report.json
   const mainReport = {
@@ -38,10 +62,10 @@ function saveSentinelReports(dir, report) {
     evidence: {
       findingsCount: findings.length,
       screenshots: report.evidence?.screenshots || [],
-      diagnosticsReport: path.join(dir, 'diagnostics.json')
+      diagnosticsReport: path.join(targetDir, 'diagnostics.json')
     }
   };
-  writeJson(path.join(dir, 'report.json'), mainReport);
+  writeJson(path.join(targetDir, 'report.json'), mainReport);
 }
 
 module.exports = {

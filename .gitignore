@@ -106,3 +106,7 @@ vite.config.ts.timestamp-*
 
 # Turborepo
 .turbo/
+
+# Sentinel Framework execution artifacts
+/reports/
+/artifacts/

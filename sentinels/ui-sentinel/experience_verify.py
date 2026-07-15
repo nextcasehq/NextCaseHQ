@@ -5,8 +5,20 @@ from playwright.sync_api import sync_playwright
 
 def run_verification():
     print("[PLAYWRIGHT] Initializing browser automation...", flush=True)
+
+    # Resolve target directories strictly under the run-id context
+    run_dir = os.environ.get("SENTINEL_RUN_DIR")
+    if run_dir:
+        screenshots_dir = os.path.join(run_dir, "screenshots")
+        playwright_result_path = os.path.join(run_dir, "playwright", "playwright_result.json")
+    else:
+        # Fallback to default ignored folder
+        screenshots_dir = os.path.join("/app", "reports", "runs", "default", "screenshots")
+        playwright_result_path = os.path.join("/app", "reports", "runs", "default", "playwright", "playwright_result.json")
+
     os.makedirs("/home/jules/verification/screenshots", exist_ok=True)
-    os.makedirs("/app/sentinels/ui-sentinel/evidence", exist_ok=True)
+    os.makedirs(screenshots_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(playwright_result_path), exist_ok=True)
 
     console_errors = []
     page_errors = []
@@ -31,9 +43,9 @@ def run_verification():
         try:
             desktop_page.goto("http://localhost:3001", timeout=10000)
             time.sleep(1.5)
-            # Take desktop landing snapshot
+            # Take desktop landing snapshots
             desktop_page.screenshot(path="/home/jules/verification/screenshots/landing_desktop.png")
-            desktop_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/landing_desktop.png")
+            desktop_page.screenshot(path=os.path.join(screenshots_dir, "landing_desktop.png"))
             print("[PLAYWRIGHT] Captured landing_desktop.png successfully.", flush=True)
         except Exception as e:
             print(f"[PLAYWRIGHT] ERROR: Failed to load landing page: {e}", flush=True)
@@ -65,9 +77,9 @@ def run_verification():
         time.sleep(2)
 
         # C. Dashboard Visual Audit & TriPaneChamber Check
-        # Take desktop dashboard snapshot
+        # Take desktop dashboard snapshots
         desktop_page.screenshot(path="/home/jules/verification/screenshots/dashboard_desktop.png")
-        desktop_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/dashboard_desktop.png")
+        desktop_page.screenshot(path=os.path.join(screenshots_dir, "dashboard_desktop.png"))
         print("[PLAYWRIGHT] Captured dashboard_desktop.png successfully.", flush=True)
 
         assert desktop_page.locator("text=Evidence & Citations").first.is_visible() or desktop_page.locator("text=AI Dialogue Stream").first.is_visible(), "TriPaneChamber dashboard panels should render"
@@ -100,7 +112,7 @@ def run_verification():
         mobile_page.goto("http://localhost:3001")
         time.sleep(1.5)
         mobile_page.screenshot(path="/home/jules/verification/screenshots/landing_mobile.png")
-        mobile_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/landing_mobile.png")
+        mobile_page.screenshot(path=os.path.join(screenshots_dir, "landing_mobile.png"))
         print("[PLAYWRIGHT] Captured landing_mobile.png successfully.", flush=True)
 
         # Sign in and select tenant in mobile viewport
@@ -116,7 +128,7 @@ def run_verification():
         time.sleep(2)
 
         mobile_page.screenshot(path="/home/jules/verification/screenshots/dashboard_mobile.png")
-        mobile_page.screenshot(path="/app/sentinels/ui-sentinel/evidence/dashboard_mobile.png")
+        mobile_page.screenshot(path=os.path.join(screenshots_dir, "dashboard_mobile.png"))
         print("[PLAYWRIGHT] Captured dashboard_mobile.png successfully.", flush=True)
 
         mobile_ctx.close()
@@ -127,7 +139,7 @@ def run_verification():
 
     # Save a temporary report of the run
     import json
-    with open("/app/sentinels/ui-sentinel/playwright_result.json", "w") as f:
+    with open(playwright_result_path, "w") as f:
         json.dump({
             "consoleErrors": console_errors,
             "runtimeErrors": page_errors,
