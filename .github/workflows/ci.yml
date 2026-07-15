@@ -52,20 +52,16 @@ jobs:
       # =========================================================================
       # TYPESCRIPT VALIDATION STRATEGY:
       # 1. Standardizes stage 5 verification using explicit, deterministic tsconfig targets
-      #    to prevent implicit/accidental help screen displays at the root folder level.
-      # 2. Iterates over all projects with configured TypeScript profiles, invoking
-      #    project-specific `tsc -p <path> --noEmit` checks.
+      #    by calling the repository's canonical validation tool 'pnpm typecheck'.
+      # 2. Validates every application, package, and workspace exactly once.
       # 3. Minimizes checking overhead by explicitly excluding non-production folders
-      #    (such as test files and spec directories like country-packs/src/**/__tests__)
-      #    inside the project-specific tsconfigs.
+      #    (spec, test, __tests__, fixtures, mocks, storybook, generated artifacts)
+      #    inside the package-specific tsconfig.json configurations.
       # =========================================================================
       - name: 5. TypeScript Validation
         run: |
-          echo "Executing target-specific TypeScript compilation checks..."
-          npx tsc -p apps/web/tsconfig.json --noEmit
-          npx tsc -p apps/workers/tsconfig.json --noEmit
-          npx tsc -p packages/crypto/tsconfig.json --noEmit
-          npx tsc -p packages/country-packs/tsconfig.json --noEmit
+          echo "Executing canonical TypeScript project graph validations..."
+          pnpm typecheck
 
       # 6. ESLint Validation
       - name: 6. ESLint Validation
