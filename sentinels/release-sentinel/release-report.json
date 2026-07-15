@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-14T18:50:12.368Z",
+  "timestamp": "2026-07-15T03:03:12.863Z",
   "git": {
     "branch": "jules-6342272504500680798-bd2d35b0",
     "commit": "bef8c750d495b0a3519693b18359276cf12da4d2"
@@ -31,18 +31,9 @@
     {
       "id": "COLOR_TOKEN_DRIFT",
       "type": "UI_CONSTITUTION",
-      "message": "Color token drift detected. Off-spec hex color references found in: apps/web/src/app/manifest.ts",
+      "message": "Color token drift: Off-spec hex color references found in 1 style classes.",
       "recommendation": "Replace raw hex colors with design token variables from design-system-ndl."
     }
   ],
-  "diagnostics": [
-    {
-      "id": "COLOR_TOKEN_DRIFT",
-      "name": "Color Token Deviation",
-      "rootCause": "Hardcoded off-spec hexadecimal color values in style classes instead of tailwind variables.",
-      "impact": "Violates approved NextCaseHQ UI Constitution brand guidelines and degrades visual consistency.",
-      "recommendedFix": "Audit files for raw hex values and map them to Warm Ivory (#FDFBF7), Obsidian Charcoal (#111111), or approved Indigo variables.",
-      "confidenceLevel": "90%"
-    }
-  ]
+  "diagnostics": []
 }

@@ -1,17 +1,12 @@
 {
   "sentinelName": "UI Sentinel",
   "version": "2.0",
-  "executionTime": "24.28s",
+  "executionTime": "21.13s",
   "status": "PASS",
-  "confidence": "97%",
+  "confidence": "99%",
   "evidence": {
     "findingsCount": 1,
-    "screenshots": [
-      "/app/sentinels/ui-sentinel/evidence/dashboard_desktop.png",
-      "/app/sentinels/ui-sentinel/evidence/dashboard_mobile.png",
-      "/app/sentinels/ui-sentinel/evidence/landing_desktop.png",
-      "/app/sentinels/ui-sentinel/evidence/landing_mobile.png"
-    ],
+    "screenshots": [],
     "diagnosticsReport": "/app/sentinels/ui-sentinel/diagnostics.json"
   }
 }
