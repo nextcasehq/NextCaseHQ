@@ -7,9 +7,13 @@ import Navbar from '@/components/Navbar';
 export default function NavbarWrapper() {
   const pathname = usePathname();
 
-  // Conditionally hide Navbar on dashboard, login, and organization routes
+  // Conditionally hide Navbar on dashboard, login, organization, admin, and system routes
   const hideNavbarRoutes = ['/login', '/organization'];
-  const shouldHide = hideNavbarRoutes.includes(pathname) || pathname.startsWith('/dashboard');
+  const shouldHide =
+    hideNavbarRoutes.includes(pathname) ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/system');
 
   if (shouldHide) {
     return null;
