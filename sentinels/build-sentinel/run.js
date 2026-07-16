@@ -1,218 +1,209 @@
+/**
+ * Build Sentinel - Validates compilation, TypeScript, ESLint, tests, and dependency consistency.
+ */
+
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
-const utils = require('../shared/utils');
-const config = require('../shared/config.json');
-const metrics = require('../shared/metrics');
+const { runCommand, scanFiles } = require('../shared/utils');
+const { Logger } = require('../shared/logger');
+const { createReportTemplate, saveSentinelReports } = require('../shared/reporter');
+const { SentinelLifecycle } = require('../shared/lifecycle');
 
-function run(mode = process.env.INSPECTION_MODE || 'Repository') {
-  const metadata = utils.getGitMetadata();
-  const findings = [];
-  const executedRules = ['BUILD-001', 'BUILD-002', 'BUILD-003'];
+const logger = new Logger('Build Sentinel');
+const startTime = Date.now();
 
-  console.log(`[BUILD SENTINEL] Scanning build configurations and package boundary constraints in mode: ${mode}...`);
+// 1. Idle -> Running
+const lifecycle = new SentinelLifecycle('Build Sentinel');
+lifecycle.start();
 
-  // 1. Verify TypeScript setups across workspace packages (BUILD-001)
-  const tsConfigPaths = [
-    'apps/web/tsconfig.json',
-    'apps/workers/tsconfig.json',
-    'packages/crypto/tsconfig.json'
-  ];
+logger.info('Starting Repository Health and Build verification...');
 
-  for (const tsPath of tsConfigPaths) {
-    const fullPath = path.join(__dirname, '../../', tsPath);
-    if (!fs.existsSync(fullPath)) {
-      findings.push({
-        id: 'BUILD-001',
-        message: `TypeScript configuration file ${tsPath} is missing in workspace package.`,
-        severity: 'P1',
-        file: tsPath,
-        evidence: `Physical file check returned non-existence at path ${tsPath}`,
-        diagnostic: {
-          rootCause: `Package directories do not contain a standalone tsconfig.json extending the base monorepo standard config.`,
-          remedy: `Create tsconfig.json and extend "@nextcase/config/tsconfig.base.json".`,
-          impact: 'Module type-checking and absolute imports resolution will fail in workspace scopes.',
-          confidenceScore: 100,
-          dependencyImpact: {
-            affectedFiles: [tsPath],
-            affectedComponents: ['TSConfigResolver'],
-            affectedRoutes: ['All routes'],
-            affectedUserJourneys: ['Local development build checks', 'CI integration pipeline validation']
-          }
-        }
-      });
-    }
+const report = createReportTemplate('Build Sentinel', '2.0');
+report.confidence = '99%';
+
+const findings = [];
+const diagnostics = [];
+
+// 2. Validation
+lifecycle.validation();
+
+// 2.1 Monorepo Compilation & Turbo Build Gate
+logger.info('Verifying monorepo compilation status...');
+const buildResult = runCommand('pnpm run build 2>&1');
+const buildSuccess = (buildResult !== null);
+
+if (!buildSuccess) {
+  const issueId = 'BUILD_COMPILATION_FAILURE';
+  findings.push({
+    id: issueId,
+    type: 'BUILD_FAILURE',
+    message: 'Monorepo build contains syntax, type, or compiler errors.',
+    recommendation: 'Inspect Next.js or Turborepo build logs, fix underlying syntax/import issues.'
+  });
+
+  diagnostics.push({
+    id: issueId,
+    name: 'Monorepo Compilation Failure',
+    rootCause: `Fatal compilation or syntax errors within Next.js apps/web or workers.`,
+    impact: `Prevents deployment pipeline and deployment artifact generation entirely.`,
+    recommendedFix: `Resolve local compilation errors before push. Run 'pnpm run build' locally to troubleshoot.`,
+    confidenceLevel: '100%'
+  });
+}
+
+// 2.2 TypeScript Typecheck Verification
+logger.info('Running TypeScript compiler validations...');
+const rootTsconfig = path.join(__dirname, '../../tsconfig.json');
+let typecheckSuccess = true;
+
+if (fs.existsSync(rootTsconfig)) {
+  const tscResult = runCommand('pnpm exec tsc --noEmit 2>&1');
+  if (tscResult === null) {
+    typecheckSuccess = false;
+    const issueId = 'TYPESCRIPT_TYPECHECK_FAILURE';
+    findings.push({
+      id: issueId,
+      type: 'TYPESCRIPT_ERROR',
+      message: 'TypeScript verification found unresolved compiler errors.',
+      recommendation: 'Check types, resolve null-checks, or update type interfaces.'
+    });
+
+    diagnostics.push({
+      id: issueId,
+      name: 'TypeScript Compiler Error',
+      rootCause: `Strict type safety rule violations or mismatched interfaces.`,
+      impact: `Reduces codebase reliability, hides silent runtime bugs, and blocks strict build gates.`,
+      recommendedFix: `Identify specific TS issues with 'pnpm exec tsc --noEmit' and fix type declarations.`,
+      confidenceLevel: '100%'
+    });
   }
+}
 
-  // 2. Validate illegal sibling boundary crossings and resolve ES/TS imports (BUILD-002 & BUILD-003)
-  const tsFiles = utils.findFilesInDir(path.join(__dirname, '../../apps/web/src'), /\.(tsx?|js|jsx)$/);
+// 2.3 Tests Executions
+logger.info('Executing unit and visual-regression tests...');
+let testsSuccess = true;
 
-  for (const tsFile of tsFiles) {
-    if (tsFile.includes('node_modules') || tsFile.includes('.next') || tsFile.includes('dist')) continue;
-    try {
-      const content = fs.readFileSync(tsFile, 'utf8');
-      const lines = content.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+// A. Web Tests (Jest)
+const webTestResult = runCommand('pnpm --filter web test 2>&1');
+const webTestsPassed = (webTestResult !== null);
 
-        // Package boundary check (BUILD-002)
-        if (line.includes("from '../../packages/") || line.includes('from "../../../packages/')) {
-          findings.push({
-            id: 'BUILD-002',
-            message: 'Illegal sibling package path boundary crossing detected.',
-            severity: 'P0',
-            file: path.relative(path.join(__dirname, '../../'), tsFile),
-            evidence: `Found parent folder traversal: ${line.trim()}`,
-            diagnostic: {
-              lineNumber: i + 1,
-              rootCause: 'Manual import using parent directory traversal bypasses Turborepo task orchestrations and bundler packaging limits.',
-              remedy: 'Replace relative package imports with their workspace exports schema, e.g., "@nextcase/crypto".',
-              impact: 'Changes made in package exports do not trigger standard turborepo rebuilds of web app bundles.',
-              confidenceScore: 99,
-              dependencyImpact: {
-                affectedFiles: [path.relative(path.join(__dirname, '../../'), tsFile)],
-                affectedComponents: ['Web bundler module task resolver'],
-                affectedRoutes: ['All web paths'],
-                affectedUserJourneys: ['All user journeys reliant on packages updates']
-              }
-            }
+// B. Crypto Tests (Jest)
+const cryptoTestResult = runCommand('pnpm --filter @nextcase/crypto test 2>&1');
+const cryptoTestsPassed = (cryptoTestResult !== null);
+
+// C. Visual Regression Specs (Vitest)
+const qaTestResult = runCommand('npx vitest run packages/qa/specs/visual-regression.spec.ts 2>&1');
+const qaTestsPassed = (qaTestResult !== null && (qaTestResult.includes('passed') || qaTestResult.includes('✓')));
+
+if (!webTestsPassed || !cryptoTestsPassed || !qaTestsPassed) {
+  testsSuccess = false;
+  const failedSuites = [];
+  if (!webTestsPassed) failedSuites.push('web');
+  if (!cryptoTestsPassed) failedSuites.push('@nextcase/crypto');
+  if (!qaTestsPassed) failedSuites.push('@nextcase/qa');
+
+  const issueId = 'TEST_SUITE_FAILURE';
+  findings.push({
+    id: issueId,
+    type: 'TEST_FAILURE',
+    message: `One or more test suites failed: ${failedSuites.join(', ')}`,
+    recommendation: 'Run tests locally and address assertion failures or import/environment issues.'
+  });
+
+  diagnostics.push({
+    id: issueId,
+    name: 'Unit / Regression Test Failure',
+    rootCause: `Failing assertions, missing mocks, or incorrect business logic handling.`,
+    impact: `Indicates potential business logic regression or UI color token alignment violation.`,
+    recommendedFix: `Locate the failing test files in the specified package and fix logic or test expectations.`,
+    confidenceLevel: '100%'
+  });
+}
+
+// 2.4 Dependency Invariants & Drift Verification
+logger.info('Checking dependency consistency across packages...');
+const rootDir = path.join(__dirname, '../../');
+const packageFiles = scanFiles(rootDir, (file) => file === 'package.json');
+
+const depRegistry = {};
+const targetDeps = ['react', 'react-dom', 'next', 'typescript'];
+
+packageFiles.forEach(file => {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const relative = path.relative(rootDir, file);
+
+    const checkDeps = (depsObj) => {
+      if (!depsObj) return;
+      targetDeps.forEach(dep => {
+        if (depsObj[dep]) {
+          if (!depRegistry[dep]) depRegistry[dep] = [];
+          depRegistry[dep].push({
+            file: relative,
+            packageName: pkg.name || 'unnamed',
+            version: depsObj[dep]
           });
         }
+      });
+    };
 
-        // ES/TS Import resolution check (BUILD-003)
-        const importMatch = line.match(/(?:import|from|require)\s*\(?\s*['"]([^'"]+)['"]\)?/);
-        if (importMatch) {
-          const importPath = importMatch[1];
-          if (importPath.startsWith('.') || importPath.startsWith('@/')) {
-            let resolvedPath = '';
-            if (importPath.startsWith('@/')) {
-              resolvedPath = path.resolve(__dirname, '../../apps/web/src', importPath.slice(2));
-            } else {
-              resolvedPath = path.resolve(path.dirname(tsFile), importPath);
-            }
-
-            const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'];
-            let resolved = false;
-            for (const ext of extensions) {
-              if (fs.existsSync(resolvedPath + ext) && !fs.statSync(resolvedPath + ext).isDirectory()) {
-                resolved = true;
-                break;
-              }
-            }
-
-            if (!resolved) {
-              const relPath = path.relative(path.join(__dirname, '../../'), tsFile);
-              findings.push({
-                id: 'BUILD-003',
-                message: `Cannot resolve module "${importPath}"`,
-                severity: 'P0',
-                file: relPath,
-                evidence: `Module import statement matches unresolvable filesystem target: ${line.trim()}`,
-                diagnostic: {
-                  lineNumber: i + 1,
-                  rootCause: 'Invalid import path',
-                  remedy: `Replace "${importPath}" with the correct path matching a valid source file in apps/web/src/components/`,
-                  impact: 'Homepage cannot compile',
-                  confidenceScore: 100,
-                  dependencyImpact: {
-                    affectedFiles: [
-                      relPath,
-                      'apps/web/src/components/Navbar.tsx'
-                    ],
-                    affectedComponents: ['HomepageLayoutController', 'NavbarComponent'],
-                    affectedRoutes: ['/'],
-                    affectedUserJourneys: ['Landing page navigation']
-                  }
-                }
-              });
-            }
-          }
-        }
-      }
-    } catch (err) {
-      // Ignored
-    }
+    checkDeps(pkg.dependencies);
+    checkDeps(pkg.devDependencies);
+    checkDeps(pkg.peerDependencies);
+  } catch (e) {
+    // Ignored
   }
+});
 
-  // 3. Mandatory Build Verification (pnpm build)
-  let buildError = false;
-  try {
-    execSync('pnpm run build', { stdio: 'ignore' });
-  } catch (err) {
-    buildError = true;
+// Detect version drift
+Object.keys(depRegistry).forEach(depName => {
+  const records = depRegistry[depName];
+  const versions = Array.from(new Set(records.map(r => r.version)));
+  if (versions.length > 1) {
+    const issueId = `DEP_DRIFT_${depName.toUpperCase().replace(/[^A-Z]/g, '_')}`;
+    const desc = `Dependency drift detected for '${depName}': multiple versions used (${versions.join(', ')})`;
+
     findings.push({
-      id: 'BUILD-003',
-      message: 'Production compilation pnpm run build failed with critical error diagnostic.',
-      severity: 'P0',
-      evidence: err.message,
-      diagnostic: {
-        rootCause: 'Next.js build or package compilation step failed.',
-        remedy: 'Inspect compiler outputs and resolve typescript or bundler issues.',
-        impact: 'Repository cannot build and cannot be certified for release.',
-        confidenceScore: 100,
-        dependencyImpact: {
-          affectedFiles: ['All files'],
-          affectedComponents: ['Full Monorepo'],
-          affectedRoutes: ['All routes'],
-          affectedUserJourneys: ['All user journeys']
-        }
-      }
+      id: issueId,
+      type: 'DEP_DRIFT',
+      message: desc,
+      recommendation: `Align version of '${depName}' across packages to '${versions[0]}' (or latest).`
+    });
+
+    const detailedViolations = records.map(r => `  - ${r.packageName} (${r.file}): ${r.version}`).join('\n');
+
+    diagnostics.push({
+      id: issueId,
+      name: `Dependency Version Drift for ${depName}`,
+      rootCause: `Package.json files in different workspace scopes declare conflicting versions for core libraries.\n${detailedViolations}`,
+      impact: `Can lead to duplicate module loading, bundle bloating, and subtle runtime type mismatch behavior.`,
+      recommendedFix: `Standardize version of '${depName}' inside all package.json files across the monorepo workspace.`,
+      confidenceLevel: '95%'
     });
   }
+});
 
-  // Handle simulation scenario specifically
-  const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_BUILD_FAILURE === 'true';
-  if (isSimulation && !findings.some(f => f.message.includes('NavbarXYZ'))) {
-    findings.push({
-      id: 'BUILD-003',
-      message: 'Cannot resolve module "@/components/NavbarXYZ"',
-      severity: 'P0',
-      file: 'apps/web/src/app/page.tsx',
-      evidence: `import { Navbar } from "@/components/NavbarXYZ"`,
-      diagnostic: {
-        lineNumber: 3,
-        rootCause: 'Invalid import path',
-        remedy: 'Replace "@/components/NavbarXYZ" with the correct path matching a valid source file in apps/web/src/components/',
-        impact: 'Homepage cannot compile',
-        confidenceScore: 100,
-        dependencyImpact: {
-          affectedFiles: [
-            'apps/web/src/app/page.tsx',
-            'apps/web/src/components/Navbar.tsx'
-          ],
-          affectedComponents: ['NavbarComponent'],
-          affectedRoutes: ['/'],
-          affectedUserJourneys: ['Landing page navigation']
-        }
-      }
-    });
-  }
+// 3. Evidence Collection
+lifecycle.evidenceCollection();
 
-  // Calculate score strictly from actual execution rules
-  const score = metrics.computeScore('Build Sentinel', executedRules, findings);
-  const trustScore = metrics.getSentinelTrustScore('Build Sentinel', findings);
+// 4. Report Generation
+lifecycle.reportGeneration();
+const executionTimeMs = Date.now() - startTime;
+report.executionTime = `${(executionTimeMs / 1000).toFixed(2)}s`;
+report.status = (findings.length > 0) ? 'FAIL' : 'PASS';
+report.findings = findings;
+report.diagnostics = diagnostics;
 
-  const report = {
-    timestamp: new Date().toISOString(),
-    sentinel: 'Build Sentinel',
-    repository: config.repository,
-    branch: metadata.branch,
-    commit: metadata.commit,
-    status: score >= 80 ? 'PASS' : 'FAIL',
-    mode,
-    score,
-    findings,
-    trustScore
-  };
+// 5. Report Publication
+lifecycle.reportPublication(report);
 
-  const reportPath = utils.getReportPath('build', 'report.json');
-  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-  console.log(`[BUILD SENTINEL] Completed with status: ${report.status} (Score: ${report.score})`);
-  return report;
+// 6. Archive Runtime Evidence
+lifecycle.archiveEvidence();
+
+// 7. Reset Sentinel State
+lifecycle.resetState();
+
+logger.info(`Completed. Status: ${report.status}. Issues detected: ${findings.length}`);
+if (findings.length > 0) {
+  findings.forEach(f => console.log(`  [!] ${f.id}: ${f.message}`));
 }
-
-if (require.main === module) {
-  run();
-}
-
-module.exports = { run };

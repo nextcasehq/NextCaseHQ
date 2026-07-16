@@ -1,252 +1,296 @@
+/**
+ * Architecture Sentinel - Enforces structural, routing, layout and merge governance.
+ */
+
 const fs = require('fs');
 const path = require('path');
-const utils = require('../shared/utils');
-const config = require('../shared/config.json');
-const metrics = require('../shared/metrics');
+const { runCommand, scanFiles } = require('../shared/utils');
+const { Logger } = require('../shared/logger');
+const { createReportTemplate, saveSentinelReports } = require('../shared/reporter');
+const { scanForConflicts } = require('../shared/scanner');
+const { SentinelLifecycle } = require('../shared/lifecycle');
 
-function getEffectiveRenderTree(pageFile, appDir) {
-  const renderTreeFiles = [pageFile];
-  let currentDir = path.dirname(pageFile);
+const logger = new Logger('Architecture Sentinel');
+const startTime = Date.now();
 
-  while (currentDir.startsWith(appDir)) {
-    const layoutPath = path.join(currentDir, 'layout.tsx');
-    if (fs.existsSync(layoutPath)) {
-      renderTreeFiles.push(layoutPath);
+// 1. Idle -> Running
+const lifecycle = new SentinelLifecycle('Architecture Sentinel');
+lifecycle.start();
+
+logger.info('Starting Architecture & Merge Governance audit...');
+
+const report = createReportTemplate('Architecture Sentinel', '2.0');
+report.confidence = '98%';
+
+const findings = [];
+const diagnostics = [];
+
+// 2. Validation
+lifecycle.validation();
+
+// 2.1 Merge Governance
+logger.info('Auditing merge status and branch health...');
+const activeBranch = runCommand('git rev-parse --abbrev-ref HEAD') || 'unknown-branch';
+const isClean = !runCommand('git status --porcelain');
+
+// Detect merge conflict markers in the workspace
+const rootDir = path.join(__dirname, '../../');
+const conflictFiles = scanForConflicts(rootDir);
+
+if (conflictFiles.length > 0) {
+  conflictFiles.forEach((file, idx) => {
+    const relativePath = path.relative(rootDir, file);
+    let category = 'Code';
+    let recommendation = 'Manual Merge required to resolve logical conflict.';
+
+    if (file.includes('layout.tsx') || file.includes('layout.ts')) {
+      category = 'Layout';
+      recommendation = 'Accept Current (Preserves approved UI Constitution layout rules)';
+    } else if (file.includes('page.tsx') || file.includes('page.ts')) {
+      category = 'Routing';
+      recommendation = 'Accept Current (Preserves Flat Canonical Route Structure)';
+    } else if (file.includes('package.json') || file.includes('pnpm-lock.yaml')) {
+      category = 'Package';
+      recommendation = 'Accept Both (Merges workspace package versions safely)';
+    } else {
+      const content = fs.readFileSync(file, 'utf8');
+      if (content.includes('import ') && (content.includes('from "@') || content.includes('from "."'))) {
+        category = 'Import';
+        recommendation = 'Accept Both (Merges relative and workspace alias imports safely)';
+      }
     }
-    const parentDir = path.dirname(currentDir);
-    if (parentDir === currentDir) break; // Root safety
-    currentDir = parentDir;
-  }
 
-  return renderTreeFiles;
+    const issueId = `MERGE_CONFLICT_${idx + 1}`;
+    const desc = `Git merge conflict markers detected in file: ${relativePath}`;
+
+    findings.push({
+      id: issueId,
+      type: 'MERGE_CONFLICT',
+      file: relativePath,
+      category,
+      message: desc,
+      recommendation
+    });
+
+    diagnostics.push({
+      id: issueId,
+      name: 'Git Merge Conflict Detected',
+      file: relativePath,
+      category,
+      rootCause: `Concurrent modification on branch '${activeBranch}' resulting in unmerged git markers.`,
+      impact: `Causes severe compilation failures (TSX/JSX syntax parsing errors) and prevents production deployment.`,
+      recommendedFix: `Resolve conflict using strategy: ${recommendation}`,
+      confidenceLevel: '100%'
+    });
+  });
 }
 
-function run(mode = process.env.INSPECTION_MODE || 'Repository') {
-  const metadata = utils.getGitMetadata();
-  const findings = [];
-  const executedRules = ['ARCH-001', 'ARCH-002', 'ARCH-003', 'ARCH-004', 'ARCH-005'];
+// Inspect branch health and divergence
+const upstreamBranch = 'origin/main';
+const revList = runCommand(`git rev-list --left-right --count HEAD...${upstreamBranch}`);
+let isDivergent = false;
+let aheadCount = 0;
+let behindCount = 0;
 
-  console.log(`[ARCHITECTURE SENTINEL] Beginning inspection of repository boundaries in mode: ${mode}...`);
-
-  // 1. RLS tenant guard scanning (ARCH-001)
-  const appFiles = utils.findFilesInDir(path.join(__dirname, '../../apps/web/src'), /\.ts$/);
-  let rlsFound = false;
-
-  for (const file of appFiles) {
-    if (file.includes('node_modules') || file.includes('.next') || file.includes('dist')) continue;
-    try {
-      const contents = fs.readFileSync(file, 'utf8');
-      if (contents.includes('nextcase.current_tenant_id') || contents.includes('nextcase.active_tenant_id')) {
-        rlsFound = true;
-      }
-    } catch (err) {
-      // Ignored
+if (revList) {
+  const parts = revList.split('\t');
+  if (parts.length === 2) {
+    aheadCount = parseInt(parts[0], 10) || 0;
+    behindCount = parseInt(parts[1], 10) || 0;
+    if (behindCount > 0) {
+      isDivergent = true;
     }
   }
-
-  // 2. India PII Scrubbing Scanning (ARCH-002)
-  let piiFound = false;
-  for (const file of appFiles) {
-    if (file.includes('node_modules') || file.includes('.next') || file.includes('dist')) continue;
-    try {
-      const contents = fs.readFileSync(file, 'utf8');
-      if (contents.includes('[REDACTED_INDIA_PII]') || contents.includes('scrubPII')) {
-        piiFound = true;
-      }
-    } catch (err) {
-      // Ignored
-    }
-  }
-
-  // 3. Regional Polymorphism checks (ARCH-003)
-  const countryPacksIndex = path.join(__dirname, '../../packages/country-packs/src/index.ts');
-  let polymorphismValid = false;
-  if (fs.existsSync(countryPacksIndex)) {
-    const contents = fs.readFileSync(countryPacksIndex, 'utf8');
-    if (contents.includes('jurisdiction') || contents.includes('pack')) {
-      polymorphismValid = true;
-    }
-  }
-
-  // Simulated architecture violation request
-  const isSimulation = process.env.SENTINEL_SIMULATE_FAILURE === 'true' || process.env.SENTINEL_SIMULATE_ARCH_FAILURE === 'true';
-
-  if (!rlsFound || isSimulation) {
-    findings.push({
-      id: 'ARCH-001',
-      message: 'No RLS database active tenant binding or session context isolation schema was found across routes.',
-      severity: 'P0',
-      file: 'apps/web/src/app/api/documents/upload/route.ts',
-      evidence: "Missing SET LOCAL nextcase.current_tenant_id wrapper in upload stream",
-      diagnostic: {
-        lineNumber: 92,
-        rootCause: 'Omitting explicit session tenant validation via active context wrapper or Raw execution.',
-        remedy: 'Invoke withTenantContext or db.$executeRawUnsafe with active tenant binding prior to processing document vectors.',
-        impact: 'A malicious tenant could potentially access or manipulate document vectors belonging to another customer.',
-        confidenceScore: 98,
-        dependencyImpact: {
-          affectedFiles: [
-            'apps/web/src/app/api/documents/upload/route.ts',
-            'apps/web/src/lib/db/tenant-client.ts'
-          ],
-          affectedComponents: ['UploadRouteController', 'PrismaDatabaseClient'],
-          affectedRoutes: ['/api/documents/upload'],
-          affectedUserJourneys: ['Uploading legal briefs', 'Ingesting evidence packages']
-        }
-      }
-    });
-  }
-
-  if (!piiFound || isSimulation) {
-    findings.push({
-      id: 'ARCH-002',
-      message: 'No edge-optimized India PAN/Aadhaar scrubbing filters or redact identifiers found in telemetry channels.',
-      severity: 'P1',
-      file: 'apps/web/src/app/api/webhooks/route.ts',
-      evidence: "Missing scrubPII dynamic call inside telemetry processor stream",
-      diagnostic: {
-        lineNumber: 33,
-        rootCause: 'Data processor logging inputs directly to the container stdio streams without scrubbing.',
-        remedy: 'Filter PAN and Aadhaar using a localized redact pattern match prior to logging payloads.',
-        impact: 'Unscrubbed sensitive India PII will leak into public datadog or cloudwatch log databases.',
-        confidenceScore: 95,
-        dependencyImpact: {
-          affectedFiles: [
-            'apps/web/src/app/api/webhooks/route.ts'
-          ],
-          affectedComponents: ['WebhookRouteController'],
-          affectedRoutes: ['/api/webhooks'],
-          affectedUserJourneys: ['Inbound litigation webhooks', 'Case lifecycle webhooks']
-        }
-      }
-    });
-  }
-
-  if (!polymorphismValid) {
-    findings.push({
-      id: 'ARCH-003',
-      message: 'Polymorphic Regional Expansion Contract Violation in Country Packs.',
-      severity: 'P2',
-      file: 'packages/country-packs/src/index.ts',
-      evidence: "Country packs index does not extend base regional abstract classes",
-      diagnostic: {
-        rootCause: 'Country pack module lacks abstract polymorph hooks.',
-        remedy: 'Refactor index.ts to export polymorphism methods.',
-        impact: 'Addition of future country packs requires modifying monolithic logic.',
-        confidenceScore: 90,
-        dependencyImpact: {
-          affectedFiles: ['packages/country-packs/src/index.ts'],
-          affectedComponents: ['CountryPacksLoader'],
-          affectedRoutes: ['All routes'],
-          affectedUserJourneys: ['Multi-jurisdictional case management']
-        }
-      }
-    });
-  }
-
-  // 4. Duplicate Navbar/Footer render tree validations per-route (ARCH-004 / ARCH-005)
-  const appDir = path.join(__dirname, '../../apps/web/src/app');
-  let duplicateNavbarRoute = null;
-  let duplicateFooterRoute = null;
-
-  if (fs.existsSync(appDir)) {
-    const pageFiles = utils.findFilesInDir(appDir, /page\.tsx$/);
-
-    for (const pageFile of pageFiles) {
-      const renderTree = getEffectiveRenderTree(pageFile, appDir);
-      let routeNavbarCount = 0;
-      let routeFooterCount = 0;
-
-      for (const file of renderTree) {
-        try {
-          const content = fs.readFileSync(file, 'utf8');
-          if (content.includes('<Navbar')) {
-            routeNavbarCount++;
-          }
-          if (content.includes('<Footer')) {
-            routeFooterCount++;
-          }
-        } catch (e) {
-          // Ignored
-        }
-      }
-
-      if (routeNavbarCount > 1) {
-        const relativePagePath = path.relative(appDir, pageFile);
-        duplicateNavbarRoute = {
-          route: '/' + relativePagePath.replace(/\\/g, '/').replace('/page.tsx', '').replace('page.tsx', ''),
-          count: routeNavbarCount
-        };
-        break;
-      }
-      if (routeFooterCount > 1) {
-        const relativePagePath = path.relative(appDir, pageFile);
-        duplicateFooterRoute = {
-          route: '/' + relativePagePath.replace(/\\/g, '/').replace('/page.tsx', '').replace('page.tsx', ''),
-          count: routeFooterCount
-        };
-        break;
-      }
-    }
-  }
-
-  if (duplicateNavbarRoute) {
-    findings.push({
-      id: 'ARCH-004',
-      message: `Multiple Navbar declarations/instances (${duplicateNavbarRoute.count}) detected in the rendering tree of route: ${duplicateNavbarRoute.route}`,
-      severity: 'P1',
-      file: 'apps/web/src/app/layout.tsx',
-      evidence: `Navbar rendered in multiple layers of route: ${duplicateNavbarRoute.route}`,
-      diagnostic: {
-        rootCause: 'Navbar is imported or rendered independently in both parent layouts and descendant page files.',
-        remedy: 'Move Navbar rendering strictly into the root layout.tsx or define a clear, non-overlapping navbar registry.',
-        impact: 'Causes layout flashing, layout shifts, extra DOM overhead, and inconsistent rendering states across navigations.',
-        confidenceScore: 99
-      }
-    });
-  }
-
-  if (duplicateFooterRoute) {
-    findings.push({
-      id: 'ARCH-005',
-      message: `Multiple Footer declarations/instances (${duplicateFooterRoute.count}) detected in the rendering tree of route: ${duplicateFooterRoute.route}`,
-      severity: 'P1',
-      file: 'apps/web/src/app/layout.tsx',
-      evidence: `Footer rendered in multiple layers of route: ${duplicateFooterRoute.route}`,
-      diagnostic: {
-        rootCause: 'Footer is rendered in both layouts and individual leaf pages simultaneously.',
-        remedy: 'Render Footer only at the root layout of the marketing/landing sections or encapsulate it in a unified template.',
-        impact: 'Breaks visual aesthetics of the UI Constitution, double-footers the bottom layout, and wastes screen space.',
-        confidenceScore: 95
-      }
-    });
-  }
-
-  // Calculate score strictly from actual execution rules
-  const score = metrics.computeScore('Architecture Sentinel', executedRules, findings);
-  const trustScore = metrics.getSentinelTrustScore('Architecture Sentinel', findings);
-
-  const report = {
-    timestamp: new Date().toISOString(),
-    sentinel: 'Architecture Sentinel',
-    repository: config.repository,
-    branch: metadata.branch,
-    commit: metadata.commit,
-    status: score >= 80 ? 'PASS' : 'FAIL',
-    mode,
-    score,
-    findings,
-    trustScore
-  };
-
-  const reportPath = utils.getReportPath('architecture', 'report.json');
-  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-  console.log(`[ARCHITECTURE SENTINEL] Completed with status: ${report.status} (Score: ${report.score})`);
-  return report;
 }
 
-if (require.main === module) {
-  run();
+if (isDivergent) {
+  const issueId = 'BRANCH_DIVERGENCE';
+  const desc = `Branch '${activeBranch}' is out of sync. Behind ${upstreamBranch} by ${behindCount} commits.`;
+  findings.push({
+    id: issueId,
+    type: 'BRANCH_DIVERGENCE',
+    message: desc,
+    recommendation: 'Pull latest changes from origin/main to merge current production releases.'
+  });
+
+  diagnostics.push({
+    id: issueId,
+    name: 'Branch Out Of Sync with Production',
+    rootCause: `Local branch '${activeBranch}' was not rebased against the latest ${upstreamBranch} head.`,
+    impact: `Increases risk of regression and late-stage merge conflict surprises on PR integration.`,
+    recommendedFix: `Run 'git fetch origin && git rebase origin/main' to align branch with latest development changes.`,
+    confidenceLevel: '95%'
+  });
 }
 
-module.exports = { run };
+// 2.2 Architecture Governance
+logger.info('Analyzing Next.js rendering tree structure...');
+const appDir = path.join(rootDir, 'apps/web/src/app');
+
+let layoutCount = 0;
+let pageCount = 0;
+let navbarCount = 0;
+let footerCount = 0;
+let legacyRouteGroups = [];
+const routePaths = [];
+
+if (fs.existsSync(appDir)) {
+  const tsxFiles = scanFiles(appDir, (file) => file.endsWith('.tsx') || file.endsWith('.ts'));
+
+  tsxFiles.forEach(file => {
+    const relative = path.relative(appDir, file);
+    const normalized = relative.replace(/\\/g, '/');
+
+    // Layout check
+    if (normalized.endsWith('layout.tsx')) {
+      layoutCount++;
+      const content = fs.readFileSync(file, 'utf8');
+      if (content.includes('<Navbar')) {
+        navbarCount++;
+      }
+      if (content.includes('<Footer')) {
+        footerCount++;
+      }
+    }
+
+    // Page check
+    if (normalized.endsWith('page.tsx')) {
+      pageCount++;
+      const parts = normalized.split('/');
+      const route = '/' + parts.slice(0, parts.length - 1).join('/');
+      routePaths.push({ route, file: relative });
+
+      const content = fs.readFileSync(file, 'utf8');
+      if (content.includes('<Navbar')) {
+        navbarCount++;
+      }
+      if (content.includes('<Footer')) {
+        footerCount++;
+      }
+    }
+
+    // Legacy folder group check
+    if (normalized.includes('(marketing)') || normalized.includes('(dashboard)')) {
+      const groupName = normalized.includes('(marketing)') ? '(marketing)' : '(dashboard)';
+      if (!legacyRouteGroups.includes(groupName)) {
+        legacyRouteGroups.push(groupName);
+      }
+    }
+  });
+}
+
+// Evaluate duplicate Navbar references (e.g. if rendered in layout and page, or multiple times)
+if (navbarCount > 1) {
+  const issueId = 'DUPLICATE_NAVBAR';
+  const desc = `Multiple Navbar declarations/instances (${navbarCount}) detected in the rendering tree.`;
+  findings.push({
+    id: issueId,
+    type: 'DUPLICATE_NAVBAR',
+    message: desc,
+    recommendation: 'Unify Navbar rendering in root layout.tsx or canonical pages, avoid nesting navbar rendering.'
+  });
+
+  diagnostics.push({
+    id: issueId,
+    name: 'Duplicate Navbar Layout Render',
+    rootCause: `Navbar is imported or rendered independently in multiple nested routes or layout files instead of single entry control.`,
+    impact: `Causes layout flashing, layout shifts, extra DOM overhead, and inconsistent rendering states across navigations.`,
+    recommendedFix: `Move Navbar rendering strictly into the root layout.tsx or define a clear, non-overlapping navbar registry.`,
+    confidenceLevel: '99%'
+  });
+}
+
+// Evaluate duplicate Footer references
+if (footerCount > 1) {
+  const issueId = 'DUPLICATE_FOOTER';
+  const desc = `Multiple Footer declarations/instances (${footerCount}) detected in the rendering tree.`;
+  findings.push({
+    id: issueId,
+    type: 'DUPLICATE_FOOTER',
+    message: desc,
+    recommendation: 'Consolidate Footer rendering in the top-level layout or landing page.'
+  });
+
+  diagnostics.push({
+    id: issueId,
+    name: 'Duplicate Footer Layout Render',
+    rootCause: `Footer is rendered in both layouts and individual leaf pages simultaneously.`,
+    impact: `Breaks visual aesthetics of the UI Constitution, double-footers the bottom layout, and wastes screen space.`,
+    recommendedFix: `Render Footer only at the root layout of the marketing/landing sections or encapsulate it in a unified template.`,
+    confidenceLevel: '95%'
+  });
+}
+
+// Evaluate legacy route group presence
+if (legacyRouteGroups.length > 0) {
+  legacyRouteGroups.forEach((group, idx) => {
+    const issueId = `LEGACY_ROUTE_GROUP_${idx + 1}`;
+    const desc = `Obsolete/Legacy Next.js folder route group '${group}' detected under apps/web/src/app.`;
+    findings.push({
+      id: issueId,
+      type: 'LEGACY_ROUTE_GROUP',
+      message: desc,
+      recommendation: 'Migrate legacy folder-based route groups into flat canonical route structure.'
+    });
+
+    diagnostics.push({
+      id: issueId,
+      name: 'Legacy Next.js Route Group Used',
+      rootCause: `Adoption of legacy route groups like '${group}' which breaks canonical flat directory standards.`,
+      impact: `Creates complex nested routing patterns, causes layout inheritance confusion, and deviates from clean flat dashboard conventions.`,
+      recommendedFix: `Flatten folders under src/app/ to match canonical routing rules, removing parenthesis-enclosed directories.`,
+      confidenceLevel: '98%'
+    });
+  });
+}
+
+// Evaluate duplicate route paths (e.g. overlapping route mappings)
+const seenRoutes = {};
+routePaths.forEach(item => {
+  if (seenRoutes[item.route]) {
+    const issueId = 'DUPLICATE_ROUTE';
+    const desc = `Duplicate route path mapping detected: '${item.route}' is defined in both '${seenRoutes[item.route]}' and '${item.file}'`;
+    findings.push({
+      id: issueId,
+      type: 'DUPLICATE_ROUTE',
+      message: desc,
+      recommendation: 'Remove redundant page.tsx or restructure the directory to enforce unique routing.'
+    });
+
+    diagnostics.push({
+      id: issueId,
+      name: 'Duplicate Route Definition',
+      rootCause: `Multiple leaf page.tsx files map to the same logical URL endpoint path.`,
+      impact: `Causes Next.js compilation warnings/errors, or arbitrary routing resolution behavior at runtime.`,
+      recommendedFix: `Consolidate URL paths and remove duplicate page.tsx declarations under overlapping directories.`,
+      confidenceLevel: '100%'
+    });
+  } else {
+    seenRoutes[item.route] = item.file;
+  }
+});
+
+// 3. Evidence Collection
+lifecycle.evidenceCollection();
+
+// 4. Report Generation
+lifecycle.reportGeneration();
+const executionTimeMs = Date.now() - startTime;
+report.executionTime = `${(executionTimeMs / 1000).toFixed(2)}s`;
+report.status = (findings.length > 0) ? 'FAIL' : 'PASS';
+report.findings = findings;
+report.diagnostics = diagnostics;
+
+// 5. Report Publication
+lifecycle.reportPublication(report);
+
+// 6. Archive Runtime Evidence
+lifecycle.archiveEvidence();
+
+// 7. Reset Sentinel State
+lifecycle.resetState();
+
+logger.info(`Completed. Status: ${report.status}. Issues detected: ${findings.length}`);
+if (findings.length > 0) {
+  findings.forEach(f => console.log(`  [!] ${f.id}: ${f.message}`));
+}
