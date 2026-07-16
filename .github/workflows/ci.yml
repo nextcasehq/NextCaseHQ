@@ -1,0 +1,248 @@
+name: NextCaseHQ — Enterprise CI/CD & Governance Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-and-test:
+    name: "Verification & Release Gates"
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      # 1. Checkout Repository
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Setup Node.js (v22 to resolve Node 20 deprecation warnings)
+      - name: 2. Setup Node.js (v22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 3. Cache Dependencies
+      - name: 3. Cache PNPM Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      # 4. Install Dependencies
+      - name: 4. Install Dependencies
+        run: |
+          npm install -g pnpm@10.30.3
+          pnpm install --frozen-lockfile
+
+      # Create reports directory explicitly to ensure log redirections succeed
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
+      # 5. TypeScript Validation
+      # =========================================================================
+      # TYPESCRIPT VALIDATION STRATEGY:
+      # 1. Standardizes stage 5 verification using explicit, deterministic tsconfig targets
+      #    by calling the repository's canonical validation tool 'pnpm typecheck'.
+      # 2. Validates every application, package, and workspace exactly once.
+      # 3. Minimizes checking overhead by explicitly excluding non-production folders
+      #    (spec, test, __tests__, fixtures, mocks, storybook, generated artifacts)
+      #    inside the package-specific tsconfig.json configurations.
+      # =========================================================================
+      - name: 5. TypeScript Validation
+        run: |
+          echo "Executing canonical TypeScript project graph validations..."
+          pnpm typecheck
+
+      # 6. ESLint Validation
+      - name: 6. ESLint Validation
+        run: |
+          echo "Executing ESLint validation rules..."
+          pnpm lint
+
+      # 7. Next.js Production Build
+      - name: 7. Next.js Production Build
+        run: |
+          echo "Compiling and building NextCaseHQ application artifacts..."
+          pnpm run build
+
+      # 8. Unit Tests (with coverage generation)
+      - name: 8. Run Unit Tests & Specs
+        run: |
+          echo "Executing web unit tests..."
+          pnpm --filter web test --coverage
+
+          echo "Executing @nextcase/crypto unit tests..."
+          pnpm --filter @nextcase/crypto test --coverage
+
+          echo "Executing visual-regression spec checks..."
+          npx vitest run packages/qa/specs/visual-regression.spec.ts
+
+      # Setup Python for Playwright (E2E simulation engine)
+      - name: Setup Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Playwright Library and System Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          playwright install chromium --with-deps
+
+      # 9 & 10. Execute Existing Validation Framework
+      # Runs Architecture Sentinel, Build Sentinel, UI Sentinel (and Playwright E2E internally), and Release Sentinel
+      - name: 9 & 10. Execute Core Sentinels (Release Certification Suite)
+        run: |
+          echo "Starting Release Sentinel and underlying Architecture, Build, and UI gates..."
+          node sentinels/sentinel-cli.js release 2>&1 | tee reports/release-sentinel.log
+
+          echo "Ensuring all core Sentinels passed successfully..."
+          node -e "
+            const arch = require('./reports/latest/architecture/report.json');
+            const build = require('./reports/latest/build/report.json');
+            const ui = require('./reports/latest/ui/report.json');
+            const release = require('./reports/latest/release/report.json');
+
+            console.log('Architecture Status:', arch.status);
+            console.log('Build Status:', build.status);
+            console.log('UI Status:', ui.status);
+            console.log('Release Certification Status:', release.status);
+
+            if (arch.status === 'FAIL') { console.error('FAIL: Architecture Sentinel failed validation.'); process.exit(1); }
+            if (build.status === 'FAIL') { console.error('FAIL: Build Sentinel failed validation.'); process.exit(1); }
+            if (ui.status === 'FAIL') { console.error('FAIL: UI Sentinel failed validation.'); process.exit(1); }
+            if (release.status === 'FAIL') { console.error('FAIL: Release Certification Sentinel failed validation.'); process.exit(1); }
+          "
+
+      - name: Execute Business Execution & Verification Sentinel (BEVS)
+        run: |
+          echo "Starting Business Execution and Verification Sentinel..."
+          node sentinels/sentinel-cli.js bevs 2>&1 | tee reports/bevs-sentinel.log
+
+          echo "Ensuring BEVS passed successfully..."
+          node -e "
+            const bevs = require('./reports/latest/bevs/report.json');
+            console.log('BEVS Status:', bevs.status);
+            if (bevs.status === 'FAIL') { console.error('FAIL: BEVS failed validation.'); process.exit(1); }
+          "
+
+      - name: Generate Custom Playwright HTML Report
+        if: always()
+        run: |
+          node scripts/generate_playwright_html_report.js
+
+      # 11. Upload Artifacts (Conditional on always() to preserve diagnostics on failure)
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-html-report
+          path: reports/latest/ui/playwright-report/
+
+      - name: Upload Playwright Screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-screenshots
+          path: |
+            reports/runs/*/ui/evidence/*.png
+            reports/latest/ui/evidence/*.png
+
+      - name: Upload Playwright Videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-videos
+          path: |
+            reports/runs/*/ui/evidence/videos/*.webm
+            reports/latest/ui/evidence/videos/*.webm
+
+      - name: Upload Browser Console Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-console-logs
+          path: |
+            reports/runs/*/ui/playwright_result.json
+            reports/latest/ui/playwright_result.json
+
+      - name: Upload Architecture Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: architecture-sentinel-report
+          path: |
+            reports/runs/*/architecture/report.json
+            reports/runs/*/architecture/findings.json
+            reports/runs/*/architecture/diagnostics.json
+            reports/latest/architecture/
+
+      - name: Upload Build Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-sentinel-report
+          path: |
+            reports/runs/*/build/report.json
+            reports/runs/*/build/findings.json
+            reports/runs/*/build/diagnostics.json
+            reports/latest/build/
+
+      - name: Upload UI Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-sentinel-report
+          path: |
+            reports/runs/*/ui/report.json
+            reports/runs/*/ui/findings.json
+            reports/runs/*/ui/diagnostics.json
+            reports/runs/*/ui/ui_ux_audit_report.json
+            reports/latest/ui/
+
+      - name: Upload Release Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-sentinel-report
+          path: |
+            reports/runs/*/release/
+            reports/latest/release/
+            reports/release-report.json
+            reports/framework-health.json
+            reports/sentinel-status.json
+
+      - name: Upload BEVS Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bevs-report
+          path: |
+            reports/runs/*/bevs/
+            reports/latest/bevs/
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-coverage-reports
+          path: |
+            apps/web/coverage/
+            packages/crypto/coverage/
+
+      - name: Upload Validation Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-validation-logs
+          path: reports/*.log

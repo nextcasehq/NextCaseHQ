@@ -10,9 +10,22 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secr
 
 export async function middleware(request: NextRequest) {
   const start = performance.now();
+  const pathname = request.nextUrl.pathname;
 
-  // 1. Only intercept /api/* routes (excluding auth)
-  if (!request.nextUrl.pathname.startsWith('/api/all') && (!request.nextUrl.pathname.startsWith('/api/') || request.nextUrl.pathname.startsWith('/api/auth'))) {
+  // 1. Protect /admin routes using NEXTCASE_ADMIN_TOKEN
+  if (pathname.startsWith('/admin')) {
+    const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value || request.headers.get('x-nextcase-admin-token');
+    const expectedToken = process.env.NEXTCASE_ADMIN_TOKEN || 'nchq-admin-super-token-placeholder';
+
+    // If an expected token is configured and the user's token does not match, redirect or block access
+    if (adminToken !== expectedToken && process.env.NODE_ENV === 'production') {
+      return NextResponse.redirect(new URL('/login?error=ADMIN_ACCESS_DENIED', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 2. Only intercept /api/* routes (excluding auth)
+  if (!pathname.startsWith('/api/all') && (!pathname.startsWith('/api/') || pathname.startsWith('/api/auth'))) {
     return NextResponse.next();
   }
 
@@ -27,18 +40,18 @@ export async function middleware(request: NextRequest) {
   try {
     const token = authHeader.split(' ')[1];
 
-    // 2. Verify JWT at the Edge
+    // Verify JWT at the Edge
     const { payload } = await jwtVerify(token, JWT_SECRET);
 
     const tenantId = payload.tenantId as string;
 
-    // 3. Strict UUID format validation
+    // Strict UUID format validation
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!tenantId || !uuidRegex.test(tenantId)) {
       throw new Error('INVALID_TENANT_ID');
     }
 
-    // 4. Inject verified tenant ID into a secure custom header
+    // Inject verified tenant ID into a secure custom header
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nextcase-tenant-id', tenantId);
 
@@ -67,7 +80,7 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-// Ensure middleware only runs for relevant routes
+// Match api routes, dashboard routes, and admin console routes
 export const config = {
-  matcher: ['/api/:path*', '/dashboard/:path*'],
+  matcher: ['/api/:path*', '/dashboard/:path*', '/admin/:path*'],
 };

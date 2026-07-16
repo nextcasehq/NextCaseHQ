@@ -35,7 +35,10 @@ def run_verification():
         # 1. DESKTOP VIEWPORT TEST
         # ----------------------------------------------------
         print("[PLAYWRIGHT] Launching Desktop Viewport (1280x800)...", flush=True)
-        desktop_ctx = browser.new_context(viewport={"width": 1280, "height": 800})
+        desktop_ctx = browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            record_video_dir=os.path.join(evidence_dir, "videos")
+        )
         desktop_page = desktop_ctx.new_page()
 
         # Wire up console and exception listeners
@@ -107,7 +110,8 @@ def run_verification():
         mobile_ctx = browser.new_context(
             viewport={"width": 375, "height": 667},
             is_mobile=True,
-            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
+            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
+            record_video_dir=os.path.join(evidence_dir, "videos")
         )
         mobile_page = mobile_ctx.new_page()
 
