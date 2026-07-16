@@ -43,7 +43,6 @@ export default function Page() {
             </span>
           </div>
         </div>
-      </header>
 
         {/* Minimalist Heading */}
         <h1 className="text-4xl md:text-6xl font-black tracking-tight text-[#111111] mb-6">
@@ -70,7 +69,6 @@ export default function Page() {
             Sign In
           </Link>
         </div>
-      </header>
 
         {/* Quick links to login with subtle underlines */}
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs md:text-sm font-semibold text-neutral-400">
@@ -81,10 +79,9 @@ export default function Page() {
           <span className="text-neutral-200 select-none">•</span>
           <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
         </div>
-      </section>
 
         {/* Human-First Memorandum Headline */}
-        <div className="space-y-4 mb-10">
+        <div className="space-y-4 mb-10 mt-16">
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] leading-tight">
             Every case begins with a question.
           </h1>
