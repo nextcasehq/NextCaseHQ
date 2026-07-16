@@ -30,10 +30,19 @@ jobs:
           node-version: 22
           cache: "pnpm"
 
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
+    - name: Enable Corepack
+  run: corepack enable
+
+- name: Setup PNPM
+  uses: pnpm/action-setup@v4
+  with:
+    version: 10.30.3
+
+- name: Verify Toolchain
+  run: |
+    node -v
+    corepack --version
+    pnpm -v
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
