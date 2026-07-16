@@ -17,18 +17,21 @@ export default function LandingPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
       {/* Structural JSON-LD schemas for Search Crawlers */}
       <JsonLd type="WebSite" />
       <JsonLd type="SoftwareApplication" />
 
-      {/* Central Search Hero Section */}
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-24 max-w-4xl mx-auto w-full text-center">
+      {/* Spacer to push content down slightly */}
+      <div className="flex-none h-8 md:h-16" />
 
-        {/* Law-inspired "N" logo container with micro-interactions */}
-        <div className="mb-10 p-5 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center hover:scale-[1.03] hover:border-indigo-100 hover:shadow-md transition-all duration-300 ease-out cursor-pointer group">
+      {/* Main Centerpiece Executive Hero Section */}
+      <main className="flex-1 flex flex-col justify-center items-center px-6 max-w-4xl mx-auto w-full text-center py-4">
+
+        {/* Law-inspired "N" logo container with premium micro-interactions */}
+        <div className="mb-8 p-4 bg-white border border-neutral-100 rounded-2xl shadow-md inline-flex items-center justify-center hover:scale-[1.03] hover:border-indigo-100 hover:shadow-lg transition-all duration-300 ease-out cursor-pointer group">
           <svg
-            className="w-14 h-14 text-[#111111] group-hover:text-indigo-600 transition-colors duration-300"
+            className="w-12 h-12 text-[#111111] group-hover:text-indigo-600 transition-colors duration-300"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -37,102 +40,67 @@ export default function LandingPageContent() {
             {/* Courthouse-inspired vertical pillars forming the letter N */}
             <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <div className="flex flex-col">
-            <span className="font-extrabold text-base tracking-tight text-[#111111]">
+          <div className="flex flex-col ml-3 text-left">
+            <span className="font-black text-sm tracking-tight text-[#111111]">
               NextCase<span className="text-indigo-600">HQ</span>
             </span>
-            <span className="text-[10px] font-mono tracking-widest uppercase text-neutral-400 font-semibold leading-none mt-0.5">
+            <span className="text-[9px] font-mono tracking-widest uppercase text-neutral-500 font-bold leading-none mt-0.5">
               Litigation Operating System
             </span>
           </div>
         </div>
 
-        {/* Minimalist Heading */}
+        {/* Minimalist Heading with bold brand colors */}
         <h1 className="text-4xl md:text-6xl font-black tracking-tight text-[#111111] mb-6">
           NextCase<span className="text-indigo-600">HQ</span>
         </h1>
 
-        <p className="text-sm md:text-lg text-neutral-500 max-w-xl mx-auto mb-12 font-medium font-serif italic leading-relaxed">
+        {/* High-Contrast Accessible Description */}
+        <p className="text-sm md:text-lg text-neutral-700 max-w-xl mx-auto mb-10 font-medium font-serif italic leading-relaxed">
           Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings in unified context.
         </p>
 
-        {/* Central Intelligent Search Bar with Premium Shadows */}
+        {/* Central Intelligent Search Bar with Premium Shadows (WCAG Compliant / Highly Interactive) */}
         <form
           onSubmit={handleSearchSubmit}
-          className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl p-2.5 shadow-xl shadow-neutral-200/40 flex items-center gap-3 mb-14 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-600/5 transition-all duration-300"
+          className="w-full max-w-2xl bg-white border border-neutral-200/90 rounded-full p-2.5 shadow-2xl shadow-neutral-200/50 flex items-center gap-3 mb-10 focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-600/10 transition-all duration-300"
         >
-          <span className="pl-4 text-neutral-400 text-xl select-none">🔍</span>
+          <span className="pl-4 text-indigo-600 text-xl select-none" aria-hidden="true">🔍</span>
           <input
             type="text"
             placeholder="Search active cases, statutes, NI Act precedents..."
             className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-semibold placeholder-neutral-400 py-3"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search cases, statutes, and precedents"
           />
           <button
             type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/15 text-white font-bold text-xs md:text-sm px-8 py-3 rounded-xl transition-all duration-200 active:scale-[0.98] outline-none"
+            className="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20 text-white font-bold text-xs md:text-sm px-8 py-3 rounded-full transition-all duration-200 active:scale-[0.98] outline-none cursor-pointer"
           >
             Search
           </button>
         </form>
 
-        {/* Quick links to login with subtle underlines */}
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs md:text-sm font-semibold text-neutral-400">
-          <span className="text-neutral-500 font-extrabold uppercase tracking-widest text-[10px]">Quick Actions:</span>
-          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Access Active Chamber</Link>
-          <span className="text-neutral-200 select-none">•</span>
-          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Ingest New File</Link>
-          <span className="text-neutral-200 select-none">•</span>
-          <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
-        </div>
-
-        {/* Human-First Memorandum Headline */}
-        <div className="space-y-4 mb-10 mt-16">
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] leading-tight">
-            Every case begins with a question.
-          </h2>
-          <p className="text-sm md:text-base text-neutral-500 max-w-lg mx-auto font-serif italic leading-relaxed">
-            A minimalist workspace built for the way advocates actually work. Gather evidence, query precedents, and assemble pleadings with complete, secure context.
-          </p>
-        </div>
-
-        {/* Centerpiece Intelligent Search Bar with Arrow CTA */}
-        <div className="w-full max-w-xl">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="w-full bg-white border border-neutral-200/80 rounded-full p-2.5 shadow-xl shadow-neutral-100/50 flex items-center gap-3 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-600/5 transition-all duration-300"
-          >
-            <span className="pl-4 text-neutral-400 text-lg select-none">🔍</span>
-            <input
-              type="text"
-              placeholder="Search a matter, precedent, or statute..."
-              className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm font-semibold placeholder-neutral-400 py-2"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="bg-[#111111] hover:bg-indigo-600 text-[#FDFBF7] p-2.5 rounded-full transition-all duration-300 flex items-center justify-center hover:shadow-lg hover:shadow-indigo-600/10 cursor-pointer active:scale-95 text-xs font-semibold"
-              aria-label="Submit search query"
-            >
-              <span className="sr-only">Search</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-          </form>
+        {/* Quick links to login with subtle underlines and high contrast */}
+        <div className="flex flex-wrap justify-center items-center gap-x-5 gap-y-2 text-xs md:text-sm font-semibold text-neutral-600 mb-8">
+          <span className="text-neutral-500 font-extrabold uppercase tracking-widest text-[9px]">Quick Actions:</span>
+          <Link href="/login" className="hover:text-indigo-600 hover:underline hover:scale-[1.01] transition-all duration-200">Access Active Chamber</Link>
+          <span className="text-neutral-300 select-none">•</span>
+          <Link href="/login" className="hover:text-indigo-600 hover:underline hover:scale-[1.01] transition-all duration-200">Ingest New File</Link>
+          <span className="text-neutral-300 select-none">•</span>
+          <Link href="/login" className="hover:text-indigo-600 hover:underline hover:scale-[1.01] transition-all duration-200">Audit Immutable Ledger</Link>
         </div>
 
         {/* Warm Colleague Welcome Note */}
-        <p className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-neutral-400 mt-8 select-none">
+        <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-neutral-500 select-none">
           SECURE CLIENT-SIDE PRE-ENCRYPTION // ZERO-KNOWLEDGE SHELL
         </p>
 
       </main>
 
-      {/* 3. Footer (Calm, Elegant, Spacious and Empty) */}
-      <footer className="w-full h-20 px-8 md:px-16 border-t border-neutral-100 bg-white/20 backdrop-blur-xs flex items-center justify-between z-10 flex-none text-[10px] font-mono text-neutral-400 font-semibold tracking-wider">
+      {/* Footer (Calm, Elegant, Spacious and Empty) */}
+      <footer className="w-full h-16 px-8 md:px-16 border-t border-neutral-100 bg-white/20 backdrop-blur-xs flex items-center justify-between z-10 flex-none text-[9px] font-mono text-neutral-500 font-semibold tracking-wider">
         <span>© {new Date().getFullYear()} NEXTCASEHQ TECHNOLOGIES INC.</span>
         <span>INFINITE CONTEXT. ZERO KNOWLEDGE.</span>
       </footer>
