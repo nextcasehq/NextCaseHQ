@@ -43,6 +43,7 @@ export default function Page() {
             </span>
           </div>
         </div>
+      </header>
 
         {/* Minimalist Heading */}
         <h1 className="text-4xl md:text-6xl font-black tracking-tight text-[#111111] mb-6">
@@ -80,6 +81,7 @@ export default function Page() {
           <span className="text-neutral-200 select-none">•</span>
           <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
         </div>
+      </section>
 
         {/* Human-First Memorandum Headline */}
         <div className="space-y-4 mb-10">
