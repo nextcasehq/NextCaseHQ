@@ -11,7 +11,7 @@ interface SearchResult {
   jurisdiction: string;
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'Statutes' | 'Exhibits' | 'Precedents'>('ALL');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -270,5 +270,19 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+import { Suspense } from 'react';
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex justify-center items-center py-20">
+        <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }

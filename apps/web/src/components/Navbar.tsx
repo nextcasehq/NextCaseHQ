@@ -8,11 +8,11 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
+    { label: 'Matters', path: '/matters' },
+    { label: 'Cases', path: '/cases' },
     { label: 'Features', path: '/features' },
     { label: 'Solutions', path: '/solutions' },
-    { label: 'Pricing', path: '/pricing' },
-    { label: 'About', path: '/about' },
-    { label: 'Contact', path: '/contact' }
+    { label: 'Pricing', path: '/pricing' }
   ];
 
   return (

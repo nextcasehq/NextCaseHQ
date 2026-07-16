@@ -6,21 +6,26 @@ from playwright.sync_api import sync_playwright
 def run_verification():
     print("[PLAYWRIGHT] Initializing browser automation...", flush=True)
 
+    # Resolve repository root path dynamically relative to this file
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
     # Resolve target directories
     run_dir = os.environ.get("SENTINEL_RUN_DIR")
     if run_dir:
         evidence_dir = os.path.join(run_dir, "ui", "evidence")
-        latest_evidence_dir = os.path.join("/app", "reports", "latest", "ui", "evidence")
+        latest_evidence_dir = os.path.join(repo_root, "reports", "latest", "ui", "evidence")
         playwright_result_path = os.path.join(run_dir, "ui", "playwright_result.json")
-        latest_playwright_result_path = os.path.join("/app", "reports", "latest", "ui", "playwright_result.json")
+        latest_playwright_result_path = os.path.join(repo_root, "reports", "latest", "ui", "playwright_result.json")
     else:
         # Fallback to default ignored folder
-        evidence_dir = os.path.join("/app", "reports", "runs", "default", "ui", "evidence")
-        latest_evidence_dir = os.path.join("/app", "reports", "latest", "ui", "evidence")
-        playwright_result_path = os.path.join("/app", "reports", "runs", "default", "ui", "playwright_result.json")
-        latest_playwright_result_path = os.path.join("/app", "reports", "latest", "ui", "playwright_result.json")
+        evidence_dir = os.path.join(repo_root, "reports", "runs", "default", "ui", "evidence")
+        latest_evidence_dir = os.path.join(repo_root, "reports", "latest", "ui", "evidence")
+        playwright_result_path = os.path.join(repo_root, "reports", "runs", "default", "ui", "playwright_result.json")
+        latest_playwright_result_path = os.path.join(repo_root, "reports", "latest", "ui", "playwright_result.json")
 
-    os.makedirs("/home/jules/verification/screenshots", exist_ok=True)
+    home_dir = os.path.expanduser("~")
+    verification_screenshots_dir = os.path.join(home_dir, "verification", "screenshots")
+    os.makedirs(verification_screenshots_dir, exist_ok=True)
     os.makedirs(evidence_dir, exist_ok=True)
     os.makedirs(latest_evidence_dir, exist_ok=True)
 
@@ -51,7 +56,7 @@ def run_verification():
             desktop_page.goto("http://localhost:3001", timeout=10000)
             time.sleep(1.5)
             # Take desktop landing snapshots
-            desktop_page.screenshot(path="/home/jules/verification/screenshots/landing_desktop.png")
+            desktop_page.screenshot(path=os.path.join(verification_screenshots_dir, "landing_desktop.png"))
             desktop_page.screenshot(path=os.path.join(evidence_dir, "landing_desktop.png"))
             desktop_page.screenshot(path=os.path.join(latest_evidence_dir, "landing_desktop.png"))
             print("[PLAYWRIGHT] Captured landing_desktop.png successfully.", flush=True)
@@ -86,7 +91,7 @@ def run_verification():
 
         # C. Dashboard Visual Audit & TriPaneChamber Check
         # Take desktop dashboard snapshots
-        desktop_page.screenshot(path="/home/jules/verification/screenshots/dashboard_desktop.png")
+        desktop_page.screenshot(path=os.path.join(verification_screenshots_dir, "dashboard_desktop.png"))
         desktop_page.screenshot(path=os.path.join(evidence_dir, "dashboard_desktop.png"))
         desktop_page.screenshot(path=os.path.join(latest_evidence_dir, "dashboard_desktop.png"))
         print("[PLAYWRIGHT] Captured dashboard_desktop.png successfully.", flush=True)
@@ -121,7 +126,7 @@ def run_verification():
         print("[PLAYWRIGHT] Loading Mobile Landing Page...", flush=True)
         mobile_page.goto("http://localhost:3001")
         time.sleep(1.5)
-        mobile_page.screenshot(path="/home/jules/verification/screenshots/landing_mobile.png")
+        mobile_page.screenshot(path=os.path.join(verification_screenshots_dir, "landing_mobile.png"))
         mobile_page.screenshot(path=os.path.join(evidence_dir, "landing_mobile.png"))
         mobile_page.screenshot(path=os.path.join(latest_evidence_dir, "landing_mobile.png"))
         print("[PLAYWRIGHT] Captured landing_mobile.png successfully.", flush=True)
@@ -138,7 +143,7 @@ def run_verification():
         mobile_page.wait_for_url("**/dashboard", timeout=5000)
         time.sleep(2)
 
-        mobile_page.screenshot(path="/home/jules/verification/screenshots/dashboard_mobile.png")
+        mobile_page.screenshot(path=os.path.join(verification_screenshots_dir, "dashboard_mobile.png"))
         mobile_page.screenshot(path=os.path.join(evidence_dir, "dashboard_mobile.png"))
         mobile_page.screenshot(path=os.path.join(latest_evidence_dir, "dashboard_mobile.png"))
         print("[PLAYWRIGHT] Captured dashboard_mobile.png successfully.", flush=True)

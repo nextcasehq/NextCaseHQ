@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface CaseItem {
   id: string;
@@ -11,6 +11,14 @@ interface CaseItem {
 }
 
 export default function CasesPage() {
+  const [tenantId, setTenantId] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('NEXTCASE_CURRENT_TENANT_ID_CONTEXT');
+      setTenantId(stored || 'tenant-default-01');
+    }
+  }, []);
   const [cases, setCases] = useState<CaseItem[]>([
     { id: 'LD-2026-0041', title: 'State of Maharashtra v. K. R. Sharma', status: 'HEARING_REMINDER', court: 'Delhi High Court', jurisdiction: 'IN' },
     { id: 'LD-2026-0182', title: 'Fraser Inc. v. Sterling Commerce', status: 'CRITICAL_LIMITATION_DEADLINE', court: 'S.D.N.Y. Federal Court', jurisdiction: 'US' },
@@ -61,8 +69,10 @@ export default function CasesPage() {
       {/* Page Header */}
       <div className="flex justify-between items-center border-b border-[#111111]/10 pb-4">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-widest text-[#111111]">Active Litigation Portfolios</h1>
-          <p className="text-sm font-serif italic text-[#111111]/60">Secure multi-tenant workspace isolation active.</p>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">Active Litigation Portfolios</h1>
+          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-1">
+            Active Tenant Context: <span className="font-mono text-indigo-600">{tenantId.slice(0, 8)}...</span>
+          </p>
         </div>
         <button
           onClick={handleOpenModal}

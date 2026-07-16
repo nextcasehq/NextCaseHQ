@@ -10,6 +10,19 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secr
 
 export async function middleware(request: NextRequest) {
   const start = performance.now();
+  const pathname = request.nextUrl.pathname;
+
+  // 0. Enforce zero-trust admin API gate
+  if (request.nextUrl.pathname.startsWith('/api/admin')) {
+    const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value;
+    if (adminToken !== 'nchq-admin-secret-key-2026') {
+      return new NextResponse(
+        JSON.stringify({ error: 'SECURE_ACCESS_DENIED', message: 'Unauthorized administrative session.' }),
+        { status: 401, headers: { 'content-type': 'application/json' } }
+      );
+    }
+    return NextResponse.next();
+  }
 
   // 0. Enforce zero-trust admin API gate
   if (request.nextUrl.pathname.startsWith('/api/admin')) {
@@ -39,18 +52,18 @@ export async function middleware(request: NextRequest) {
   try {
     const token = authHeader.split(' ')[1];
 
-    // 2. Verify JWT at the Edge
+    // Verify JWT at the Edge
     const { payload } = await jwtVerify(token, JWT_SECRET);
 
     const tenantId = payload.tenantId as string;
 
-    // 3. Strict UUID format validation
+    // Strict UUID format validation
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!tenantId || !uuidRegex.test(tenantId)) {
       throw new Error('INVALID_TENANT_ID');
     }
 
-    // 4. Inject verified tenant ID into a secure custom header
+    // Inject verified tenant ID into a secure custom header
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nextcase-tenant-id', tenantId);
 
@@ -79,7 +92,7 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-// Ensure middleware only runs for relevant routes
+// Match api routes, dashboard routes, and admin console routes
 export const config = {
-  matcher: ['/api/:path*', '/dashboard/:path*'],
+  matcher: ['/api/:path*', '/dashboard/:path*', '/admin/:path*'],
 };
