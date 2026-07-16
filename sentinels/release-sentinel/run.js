@@ -7,38 +7,65 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { Logger } = require('../shared/logger');
 const { readJson, writeJson } = require('../shared/utils');
+const { SentinelLifecycle } = require('../shared/lifecycle');
 
 const logger = new Logger('Release Sentinel');
 const startTime = Date.now();
+
+// 1. Idle -> Running
+const lifecycle = new SentinelLifecycle('Release Sentinel');
+lifecycle.start();
 
 logger.info('Initializing release certification pipeline...');
 
 const rootDir = path.join(__dirname, '../../');
 const sentinelsDir = path.join(__dirname, '../');
 
-// Define child runners
+const runId = lifecycle.runId;
+const runDir = lifecycle.runDir;
+
+// Define child runners with their respective directory paths
 const runners = [
-  { name: 'Architecture Sentinel', path: path.join(sentinelsDir, 'architecture-sentinel/run.js'), reportPath: path.join(rootDir, 'reports/architecture-sentinel') },
-  { name: 'Build Sentinel', path: path.join(sentinelsDir, 'build-sentinel/run.js'), reportPath: path.join(rootDir, 'reports/build-sentinel') },
-  { name: 'UI Sentinel', path: path.join(sentinelsDir, 'ui-sentinel/run.js'), reportPath: path.join(rootDir, 'reports/ui-sentinel') }
+  {
+    name: 'Architecture Sentinel',
+    path: path.join(sentinelsDir, 'architecture-sentinel/run.js'),
+    key: 'architecture'
+  },
+  {
+    name: 'Build Sentinel',
+    path: path.join(sentinelsDir, 'build-sentinel/run.js'),
+    key: 'build'
+  },
+  {
+    name: 'UI Sentinel',
+    path: path.join(sentinelsDir, 'ui-sentinel/run.js'),
+    key: 'ui'
+  }
 ];
 
 const runnerHealth = {};
 const reports = {};
 
-// 1. Run all sentinels with try-catch fault isolation
+// 2. Validation
+lifecycle.validation();
+
+// Run all sentinels with try-catch fault isolation
 runners.forEach(runner => {
   logger.info(`Spawning runner under strict fault isolation: ${runner.name}...`);
   try {
-    // Run child process synchronously
-    execSync(`node ${runner.path}`, { stdio: 'inherit' });
+    // Run child process synchronously, passing inherited environment variables
+    execSync(`node ${runner.path}`, {
+      env: process.env,
+      stdio: 'inherit'
+    });
     runnerHealth[runner.name] = 'ACTIVE';
 
-    // Read generated reports
+    // Read generated reports from isolated run directory
+    const runnerArtifactDir = path.join(runDir, runner.key);
     reports[runner.name] = {
-      report: readJson(path.join(runner.reportPath, 'report.json'), null),
-      findings: readJson(path.join(runner.reportPath, 'findings.json'), []),
-      diagnostics: readJson(path.join(runner.reportPath, 'diagnostics.json'), [])
+      report: readJson(path.join(runnerArtifactDir, 'report.json'), null),
+      findings: readJson(path.join(runnerArtifactDir, 'findings.json'), []),
+      diagnostics: readJson(path.join(runnerArtifactDir, 'diagnostics.json'), [])
     };
   } catch (err) {
     logger.error(`CRITICAL: Runner process ${runner.name} crashed or returned non-zero code. Fault isolation engaged.`, err);
@@ -51,7 +78,10 @@ runners.forEach(runner => {
   }
 });
 
-// 2. Aggregate Results & Compute Scores
+// 3. Evidence Collection & 4. Report Generation
+lifecycle.evidenceCollection();
+lifecycle.reportGeneration();
+
 logger.info('Aggregating report metrics across all execution gates...');
 
 let totalFindingsCount = 0;
@@ -88,23 +118,27 @@ healthScore = Math.max(0, Math.min(100, healthScore));
 
 const isReadyForRelease = (healthScore >= 90 && !hasFailures);
 
-// 3. Deployment Governance (Simulated SHA sync check)
+// 3.1 Deployment Governance (Simulated SHA sync check)
 const gitHeadCommit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim() || 'N/A';
 const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim() || 'N/A';
 const vercelPreviewCommit = process.env.VERCEL_GIT_COMMIT_SHA || gitHeadCommit;
 const productionCommit = gitHeadCommit; // Matches repo state in sandbox
 const deploymentSynced = (gitHeadCommit === vercelPreviewCommit && gitHeadCommit === productionCommit);
 
-// 4. Update History and Status Files
-const historyPath = path.join(rootDir, 'reports/release-sentinel/history.json');
-const statusPath = path.join(rootDir, 'reports/sentinel-status.json');
+// 3.2 Update History and Status Files (strictly outside repository tracked files)
+const historyPath = path.join(process.cwd(), 'reports', 'history.json');
+const statusPath = path.join(process.cwd(), 'reports', 'sentinel-status.json');
 
-const releaseSentinelReportDir = path.dirname(historyPath);
-if (!fs.existsSync(releaseSentinelReportDir)) {
-  fs.mkdirSync(releaseSentinelReportDir, { recursive: true });
+const fallbackHistoryPath = path.join(sentinelsDir, 'shared/history.json');
+const fallbackStatusPath = path.join(sentinelsDir, 'sentinel-status.json');
+
+let history = [];
+if (fs.existsSync(historyPath)) {
+  history = readJson(historyPath, []);
+} else if (fs.existsSync(fallbackHistoryPath)) {
+  history = readJson(fallbackHistoryPath, []);
 }
 
-const history = readJson(historyPath, []);
 const runRecord = {
   timestamp: new Date().toISOString(),
   branch: gitBranch,
@@ -115,7 +149,6 @@ const runRecord = {
   findingsCount: totalFindingsCount
 };
 history.push(runRecord);
-writeJson(historyPath, history);
 
 const currentStatus = {
   frameworkVersion: "2.0.0",
@@ -128,10 +161,16 @@ const currentStatus = {
   inspectionCoverage: "100%",
   frameworkHealth: hasFailures ? "WARNING" : "HEALTHY"
 };
-writeJson(statusPath, currentStatus);
 
-// 5. Generate release-report.json
-const releaseReportPath = path.join(rootDir, 'reports/release-sentinel/release-report.json');
+// Generate report artifact paths
+const releaseArtifactDir = path.join(runDir, 'release');
+fs.mkdirSync(releaseArtifactDir, { recursive: true });
+
+// Also write copies inside the isolated run directory
+writeJson(path.join(releaseArtifactDir, 'history.json'), history);
+writeJson(path.join(releaseArtifactDir, 'sentinel-status.json'), currentStatus);
+
+// 3.3 Generate release-report.json
 const releaseReport = {
   timestamp: runRecord.timestamp,
   git: { branch: gitBranch, commit: gitHeadCommit },
@@ -157,17 +196,41 @@ const releaseReport = {
   findings: allFindings,
   diagnostics: allDiagnostics
 };
-writeJson(releaseReportPath, releaseReport);
 
 // Write framework-health.json to record try-catch status
-const frameworkHealthPath = path.join(rootDir, 'reports/release-sentinel/framework-health.json');
-writeJson(frameworkHealthPath, {
+const frameworkHealth = {
   timestamp: runRecord.timestamp,
   frameworkHealth: currentStatus.frameworkHealth,
   runnerHealth
+};
+
+// 5. Report Publication
+lifecycle.reportPublication({
+  sentinelName: 'Release Sentinel',
+  version: '2.0',
+  status: hasFailures ? 'FAIL' : 'PASS',
+  confidence: '100%',
+  findings: allFindings,
+  diagnostics: allDiagnostics,
+  additionalReports: {
+    'release-report.json': releaseReport,
+    'framework-health.json': frameworkHealth,
+    'history.json': history,
+    'sentinel-status.json': currentStatus
+  }
 });
 
-// 6. Generate the Founder-Friendly Executive Health Report in stdout
+// Also write to generic top-level reports/ for easy access
+writeJson(path.join(process.cwd(), 'reports', 'release-report.json'), releaseReport);
+writeJson(path.join(process.cwd(), 'reports', 'framework-health.json'), frameworkHealth);
+
+// 6. Archive Runtime Evidence
+lifecycle.archiveEvidence();
+
+// 7. Reset Sentinel State
+lifecycle.resetState();
+
+// 8. Generate the Founder-Friendly Executive Health Report in stdout
 const buildStatusSymbol = (runnerHealth['Build Sentinel'] === 'ACTIVE' && reports['Build Sentinel'].report.status === 'PASS') ? '🟢 PASS' : '🔴 FAIL';
 const mergeStatusSymbol = (allFindings.some(f => f.type === 'MERGE_CONFLICT') ? '🔴 Conflict' : '🟢 Clean');
 const deploymentSymbol = (deploymentSynced ? '🟢 Synced' : '🟡 Drift');

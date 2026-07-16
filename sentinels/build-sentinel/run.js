@@ -7,9 +7,14 @@ const path = require('path');
 const { runCommand, scanFiles } = require('../shared/utils');
 const { Logger } = require('../shared/logger');
 const { createReportTemplate, saveSentinelReports } = require('../shared/reporter');
+const { SentinelLifecycle } = require('../shared/lifecycle');
 
 const logger = new Logger('Build Sentinel');
 const startTime = Date.now();
+
+// 1. Idle -> Running
+const lifecycle = new SentinelLifecycle('Build Sentinel');
+lifecycle.start();
 
 logger.info('Starting Repository Health and Build verification...');
 
@@ -19,7 +24,10 @@ report.confidence = '99%';
 const findings = [];
 const diagnostics = [];
 
-// 1. Monorepo Compilation & Turbo Build Gate
+// 2. Validation
+lifecycle.validation();
+
+// 2.1 Monorepo Compilation & Turbo Build Gate
 logger.info('Verifying monorepo compilation status...');
 const buildResult = runCommand('pnpm run build 2>&1');
 const buildSuccess = (buildResult !== null);
@@ -43,7 +51,7 @@ if (!buildSuccess) {
   });
 }
 
-// 2. TypeScript Typecheck Verification
+// 2.2 TypeScript Typecheck Verification
 logger.info('Running TypeScript compiler validations...');
 const rootTsconfig = path.join(__dirname, '../../tsconfig.json');
 let typecheckSuccess = true;
@@ -71,7 +79,7 @@ if (fs.existsSync(rootTsconfig)) {
   }
 }
 
-// 3. Tests Executions
+// 2.3 Tests Executions
 logger.info('Executing unit and visual-regression tests...');
 let testsSuccess = true;
 
@@ -112,7 +120,7 @@ if (!webTestsPassed || !cryptoTestsPassed || !qaTestsPassed) {
   });
 }
 
-// 4. Dependency Invariants & Drift Verification
+// 2.4 Dependency Invariants & Drift Verification
 logger.info('Checking dependency consistency across packages...');
 const rootDir = path.join(__dirname, '../../');
 const packageFiles = scanFiles(rootDir, (file) => file === 'package.json');
@@ -175,15 +183,25 @@ Object.keys(depRegistry).forEach(depName => {
   }
 });
 
-// Calculate final status and execution metadata
+// 3. Evidence Collection
+lifecycle.evidenceCollection();
+
+// 4. Report Generation
+lifecycle.reportGeneration();
 const executionTimeMs = Date.now() - startTime;
 report.executionTime = `${(executionTimeMs / 1000).toFixed(2)}s`;
 report.status = (findings.length > 0) ? 'FAIL' : 'PASS';
 report.findings = findings;
 report.diagnostics = diagnostics;
 
-// Save reports to build-sentinel folder
-saveSentinelReports(__dirname, report);
+// 5. Report Publication
+lifecycle.reportPublication(report);
+
+// 6. Archive Runtime Evidence
+lifecycle.archiveEvidence();
+
+// 7. Reset Sentinel State
+lifecycle.resetState();
 
 logger.info(`Completed. Status: ${report.status}. Issues detected: ${findings.length}`);
 if (findings.length > 0) {

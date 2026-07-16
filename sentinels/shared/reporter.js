@@ -20,13 +20,29 @@ function createReportTemplate(sentinelName, version = '2.0') {
 }
 
 function saveSentinelReports(dir, report) {
-  const category = path.basename(dir);
-  const rootDir = path.join(__dirname, '../../');
-  const targetDir = path.join(rootDir, 'reports', category);
+  // Determine if we should save to an isolated run directory
+  const runId = process.env.SENTINEL_RUN_ID;
+  const runDir = process.env.SENTINEL_RUN_DIR;
 
-  if (!fs.existsSync(targetDir)) {
-    fs.mkdirSync(targetDir, { recursive: true });
+  let nameKey = 'unknown';
+  const sentinelName = report.sentinelName || '';
+  if (sentinelName.includes('Architecture')) nameKey = 'architecture';
+  else if (sentinelName.includes('Build')) nameKey = 'build';
+  else if (sentinelName.includes('UI')) nameKey = 'ui';
+  else if (sentinelName.includes('Business') || sentinelName.includes('BEVS')) nameKey = 'bevs';
+  else if (sentinelName.includes('Release')) nameKey = 'release';
+
+  let targetDir = dir;
+  if (runDir) {
+    targetDir = path.join(runDir, nameKey);
+  } else {
+    // If running in isolation and no env is set, use a default git-ignored reports path
+    const fallbackRunId = `run_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    targetDir = path.join(process.cwd(), 'reports', 'runs', fallbackRunId, nameKey);
   }
+
+  // Ensure directories exist
+  fs.mkdirSync(targetDir, { recursive: true });
 
   // Save findings.json
   const findings = report.findings || [];
@@ -50,6 +66,19 @@ function saveSentinelReports(dir, report) {
     }
   };
   writeJson(path.join(targetDir, 'report.json'), mainReport);
+
+  // Also save to reports/latest/
+  const latestDir = path.join(process.cwd(), 'reports', 'latest', nameKey);
+  fs.mkdirSync(latestDir, { recursive: true });
+  writeJson(path.join(latestDir, 'findings.json'), findings);
+  writeJson(path.join(latestDir, 'diagnostics.json'), diagnostics);
+  writeJson(path.join(latestDir, 'report.json'), {
+    ...mainReport,
+    evidence: {
+      ...mainReport.evidence,
+      diagnosticsReport: path.join(latestDir, 'diagnostics.json')
+    }
+  });
 }
 
 module.exports = {

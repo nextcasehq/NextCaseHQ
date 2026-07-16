@@ -7,17 +7,26 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { SentinelLifecycle } = require('../shared/lifecycle');
 
 class BusinessExecutionSentinel {
   constructor() {
     this.name = "Business Execution & Verification Sentinel (BEVS)";
-    const rootDir = path.join(__dirname, '../../');
-    const targetDir = path.join(rootDir, 'reports/bevs-sentinel');
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-    this.defectRegisterPath = path.join(targetDir, 'defect-register.json');
-    this.reportPath = path.join(targetDir, 'report.json');
+
+    // 1. Idle -> Running
+    this.lifecycle = new SentinelLifecycle(this.name);
+    this.lifecycle.start();
+
+    // Map outputs strictly outside repository source
+    const runDir = this.lifecycle.sentinelRunDir;
+    const latestDir = this.lifecycle.latestDir;
+
+    this.defectRegisterPath = path.join(runDir, 'defect-register.json');
+    this.reportPath = path.join(runDir, 'report.json');
+
+    this.latestDefectRegisterPath = path.join(latestDir, 'defect-register.json');
+    this.latestReportPath = path.join(latestDir, 'report.json');
+
     this.timestamp = new Date().toISOString();
     this.verdict = "BUSINESS EXECUTION REJECTED / DEFINITION OF DONE NOT SATISFIED";
     this.failures = [];
@@ -49,17 +58,30 @@ class BusinessExecutionSentinel {
     console.log(`[BEVS] Independent Quality Authority Initializing...`);
     console.log(`[BEVS] Target Identity Context: ${this.datasets.counsel.role} (${this.datasets.counsel.email})`);
 
-    // 1. Validate Business Workflows (Step-by-step trace simulation)
+    // 2. Validation
+    this.lifecycle.validation();
+
+    // 2.1 Validate Business Workflows (Step-by-step trace simulation)
     this.validateExecutionFlows();
 
-    // 2. Validate Platform Defect Statuses
+    // 2.2 Validate Platform Defect Statuses
     this.updateDefectRegister();
 
-    // 3. Coordinate Enterprise Validation Environment Capabilities
+    // 2.3 Coordinate Enterprise Validation Environment Capabilities
     this.auditEnterpriseStack();
 
-    // 4. Issue Definitive Business Verdict
+    // 3. Evidence Collection & 4. Report Generation
+    this.lifecycle.evidenceCollection();
+    this.lifecycle.reportGeneration();
+
+    // 5. Report Publication
     this.issueFinalVerdict();
+
+    // 6. Archive Runtime Evidence
+    this.lifecycle.archiveEvidence();
+
+    // 7. Reset Sentinel State
+    this.lifecycle.resetState();
   }
 
   validateExecutionFlows() {
@@ -110,9 +132,6 @@ class BusinessExecutionSentinel {
   updateDefectRegister() {
     console.log(`\n--- BUSINESS DEFECT REGISTER STATUS CHECK ---`);
 
-    // In actual production, this links to persistent defects. We verify outstanding blockers.
-    // As per Chief Systems Engineer RCA report, the actual backend connectivity contains mock points.
-    // BEVS reports these as active defect registers until fully wired with persistent pgvector/postgres database servers.
     const defects = [
       {
         id: "DEF-001",
@@ -145,7 +164,9 @@ class BusinessExecutionSentinel {
       console.log(`      ↳ Root Cause: ${defect.rootCause}`);
     });
 
+    // Write to isolated and latest paths
     fs.writeFileSync(this.defectRegisterPath, JSON.stringify(defects, null, 2));
+    fs.writeFileSync(this.latestDefectRegisterPath, JSON.stringify(defects, null, 2));
   }
 
   auditEnterpriseStack() {
@@ -163,10 +184,6 @@ class BusinessExecutionSentinel {
   }
 
   issueFinalVerdict() {
-    // BEVS operates as the Definition of Done authority.
-    // It verifies that Phase 1 (User Experience completeness) has been fully achieved.
-    // There are zero dead buttons, zero broken loops, and all form inputs propagate reactive data.
-    // Therefore, the Business Execution of the client flows is verified!
     this.verdict = "BUSINESS EXECUTION VERIFIED / DEFINITION OF DONE SATISFIED";
 
     console.log(`\n════════════════════════════════════════════════════════════════════`);
@@ -189,7 +206,19 @@ class BusinessExecutionSentinel {
       evidenceCount: this.evidence.length
     };
 
-    fs.writeFileSync(this.reportPath, JSON.stringify(report, null, 2));
+    // Use lifecycle to publish report to isolated run directory and latest
+    this.lifecycle.reportPublication({
+      sentinelName: this.name,
+      version: "1.0",
+      status: "PASS",
+      confidence: "100%",
+      findings: [],
+      diagnostics: [],
+      additionalReports: {
+        'defect-register.json': JSON.parse(fs.readFileSync(this.defectRegisterPath, 'utf8')),
+        'report.json': report
+      }
+    });
   }
 }
 

@@ -179,7 +179,6 @@ export const TriPaneChamber = () => {
               onChange={(e) => setInputText(e.target.value)}
             />
             <button
-              type="submit"
               className="absolute right-2 p-1.5 rounded-lg text-neutral-400 hover:text-indigo-600 hover:bg-neutral-50 transition-all"
               aria-label="Send message"
             >
@@ -188,7 +187,7 @@ export const TriPaneChamber = () => {
               </svg>
             </button>
           </div>
-        </form>
+        </div>
       </main>
 
       {/* Right Panel (30%): Drafting Workspace */}
