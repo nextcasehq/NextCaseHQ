@@ -11,7 +11,7 @@ interface SearchResult {
   jurisdiction: string;
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'Statutes' | 'Exhibits' | 'Precedents'>('ALL');
   const [results, setResults] = useState<SearchResult[]>([]);

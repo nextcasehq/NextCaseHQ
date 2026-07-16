@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface CaseItem {
   id: string;
@@ -11,6 +11,14 @@ interface CaseItem {
 }
 
 export default function CasesPage() {
+  const [tenantId, setTenantId] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('NEXTCASE_CURRENT_TENANT_ID_CONTEXT');
+      setTenantId(stored || 'tenant-default-01');
+    }
+  }, []);
   const [cases, setCases] = useState<CaseItem[]>([
     { id: 'LD-2026-0041', title: 'State of Maharashtra v. K. R. Sharma', status: 'HEARING_REMINDER', court: 'Delhi High Court', jurisdiction: 'IN' },
     { id: 'LD-2026-0182', title: 'Fraser Inc. v. Sterling Commerce', status: 'CRITICAL_LIMITATION_DEADLINE', court: 'S.D.N.Y. Federal Court', jurisdiction: 'US' },

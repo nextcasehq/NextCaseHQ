@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
 import { LitigationDb, Matter, Case } from '@/lib/db/litigation-db';
 
 export default function MatterDetailsChamberPage() {
@@ -42,7 +41,6 @@ export default function MatterDetailsChamberPage() {
   if (!matter) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <Navbar />
         <main className="flex-1 flex flex-col justify-center items-center py-20">
           <span className="text-3xl">⚠️</span>
           <h2 className="text-lg font-bold mt-2">Matter Not Found</h2>
@@ -82,7 +80,6 @@ export default function MatterDetailsChamberPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
-      <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
         {/* Back Link */}

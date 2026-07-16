@@ -3,7 +3,6 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import Navbar from '@/components/Navbar';
 import { LitigationDb, Case, Matter } from '@/lib/db/litigation-db';
 
 function CasesChamberContent() {
@@ -345,7 +344,6 @@ function CasesChamberContent() {
 export default function CasesChamberPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
-      <Navbar />
       <Suspense fallback={
         <div className="flex-1 flex justify-center items-center">
           <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>

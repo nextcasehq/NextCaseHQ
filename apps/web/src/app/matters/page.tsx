@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import { LitigationDb, Matter } from '@/lib/db/litigation-db';
 
 export default function MattersChamberPage() {
@@ -75,7 +74,6 @@ export default function MattersChamberPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
-      <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
         {/* Header Section */}

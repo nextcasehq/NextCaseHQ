@@ -16,26 +16,17 @@ export const TriPaneChamber = () => {
   const [inputText, setInputText] = useState('');
   const [caseContext, setCaseContext] = useState<any>(null);
 
+  const [leftTab, setLeftTab] = useState<'evidence' | 'timeline' | 'graph'>('evidence');
+  const [centerTab, setCenterTab] = useState<'dialogue' | 'reasoning' | 'contradictions'>('dialogue');
+  const [rightTab, setRightTab] = useState<'draft' | 'hearing_prep' | 'readiness'>('draft');
+  const [timelineFilter, setTimelineFilter] = useState<string>('ALL');
+  const [selectedEntity, setSelectedEntity] = useState<any>(null);
+
   // Sample data conforming strictly to litigation context
-  const [evidenceList, setEvidenceList] = useState([
-    {
-      id: 'EX-A',
-      citation: 'WP 132/2026 - Page 14',
-      snippet: 'The petitioner maintains that the limitation period was tolled during the state of emergency...',
-      timestamp: '12-Jan-2026 10:30 UTC'
-    },
-    {
-      id: 'EX-B',
-      citation: 'NI Act Section 138 Notice',
-      snippet: 'Notice served via registered post on 12-Jan-2026. Return receipt signed on 15-Jan-2026.',
-      timestamp: '15-Jan-2026 14:15 UTC'
-    },
-    {
-      id: 'EX-C',
-      citation: 'High Court Precedent #234',
-      snippet: 'Supreme Court ruling on negotiable instruments tolling provisions under special conditions.',
-      timestamp: '18-Jan-2026 09:00 UTC'
-    }
+  const [evidenceList, setEvidenceList] = useState<any[]>([
+    { id: 'EX-A', citation: 'WP 132/2026 - Page 14', snippet: 'The petitioner maintains that the limitation period was tolled during the state of emergency...', date: '10-Jan-2026', type: 'Pleading' },
+    { id: 'EX-B', citation: 'NI Act Section 138 Notice', snippet: 'Notice served via registered post on 12-Jan-2026. Return receipt signed on 15-Jan-2026.', date: '12-Jan-2026', type: 'Notice' },
+    { id: 'EX-C', citation: 'Sharma Deposition Transcript', snippet: 'I was in London from Jan 10 through Jan 18. I did not receive any statutory demand notice in New Delhi.', date: '15-Jan-2026', type: 'Deposition' }
   ]);
 
   useEffect(() => {
@@ -55,7 +46,8 @@ export const TriPaneChamber = () => {
               id: doc.id.substring(0, 5).toUpperCase(),
               citation: doc.title,
               snippet: doc.snippet,
-              timestamp: 'Loaded from Search'
+              type: 'Search Result',
+              date: 'Recently Loaded'
             },
             ...prev
           ];
@@ -73,7 +65,6 @@ export const TriPaneChamber = () => {
     rlsBindingVerified: true
   });
 
-  const [inputText, setInputText] = useState('');
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'user',
@@ -104,12 +95,6 @@ export const TriPaneChamber = () => {
     setChatMessages(prev => [...prev, userMsg, { role: 'assistant', text: responseText }]);
     setInputText('');
   };
-
-  const evidenceList = [
-    { id: 'EX-A', citation: 'WP 132/2026 - Page 14', snippet: 'The petitioner maintains that the limitation period was tolled during the state of emergency...', date: '10-Jan-2026', type: 'Pleading' },
-    { id: 'EX-B', citation: 'NI Act Section 138 Notice', snippet: 'Notice served via registered post on 12-Jan-2026. Return receipt signed on 15-Jan-2026.', date: '12-Jan-2026', type: 'Notice' },
-    { id: 'EX-C', citation: 'Sharma Deposition Transcript', snippet: 'I was in London from Jan 10 through Jan 18. I did not receive any statutory demand notice in New Delhi.', date: '15-Jan-2026', type: 'Deposition' }
-  ];
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-white font-sans text-neutral-900">
@@ -398,7 +383,7 @@ export const TriPaneChamber = () => {
               </svg>
             </button>
           </div>
-        )}
+        </form>
       </main>
 
       {/* ──────────────────────────────────────────────────────────────────
@@ -437,14 +422,16 @@ export const TriPaneChamber = () => {
             </p>
           </div>
 
-          <div className="flex-1 font-serif text-sm text-neutral-700 space-y-4 leading-relaxed">
-            <p className="font-bold">IN THE MATTER OF:</p>
-            <div className="pl-4 flex justify-between">
-              <span>{caseContext ? caseContext.title : "NextCaseHQ Technologies Inc."}</span>
-              <span className="font-bold">...Petitioner / Plaintiff</span>
-            </div>
-            <div className="text-center py-2 font-bold uppercase tracking-wider text-xs text-neutral-400">
-              VERSUS
+          {rightTab === 'draft' && (
+            <div className="flex-1 font-serif text-sm text-neutral-700 space-y-4 leading-relaxed">
+              <p className="font-bold">IN THE MATTER OF:</p>
+              <div className="pl-4 flex justify-between">
+                <span>{caseContext ? caseContext.title : "NextCaseHQ Technologies Inc."}</span>
+                <span className="font-bold">...Petitioner / Plaintiff</span>
+              </div>
+              <div className="text-center py-2 font-bold uppercase tracking-wider text-xs text-neutral-400">
+                VERSUS
+              </div>
             </div>
           )}
 
