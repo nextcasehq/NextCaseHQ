@@ -78,7 +78,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="absolute top-16 left-0 w-full bg-white border-b border-neutral-100 flex flex-col p-6 gap-4 shadow-lg md:hidden animate-fade-in">
+        <nav aria-label="Mobile navigation" className="absolute top-16 left-0 w-full bg-white border-b border-neutral-100 flex flex-col p-6 gap-4 shadow-lg md:hidden animate-fade-in">
           {menuItems.map((item) => (
             <Link
               key={item.path}
@@ -104,7 +104,7 @@ export default function Navbar() {
           >
             Sign In
           </Link>
-        </div>
+        </nav>
       )}
     </header>
   );
