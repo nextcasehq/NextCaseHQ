@@ -24,6 +24,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 0. Enforce zero-trust admin API gate
+  if (request.nextUrl.pathname.startsWith('/api/admin')) {
+    const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value;
+    if (adminToken !== 'nchq-admin-secret-key-2026') {
+      return new NextResponse(
+        JSON.stringify({ error: 'SECURE_ACCESS_DENIED', message: 'Unauthorized administrative session.' }),
+        { status: 401, headers: { 'content-type': 'application/json' } }
+      );
+    }
+    return NextResponse.next();
+  }
+
   // 1. Only intercept /api/* routes (excluding auth)
   if (!request.nextUrl.pathname.startsWith('/api/all') && (!request.nextUrl.pathname.startsWith('/api/') || request.nextUrl.pathname.startsWith('/api/auth'))) {
     return NextResponse.next();
