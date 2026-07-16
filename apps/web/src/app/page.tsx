@@ -1,18 +1,28 @@
-'use client';
+import React from "react";
+import type { Metadata } from "next";
+import LandingPageContent from "@/components/landing/LandingPageContent";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+export const metadata: Metadata = {
+  title: "Secure, Zero-Knowledge Litigation Operating System | NextCaseHQ",
+  description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings with complete context.",
+  alternates: {
+    canonical: "https://nextcasehq.com",
+  },
+  openGraph: {
+    title: "Secure, Zero-Knowledge Litigation Operating System | NextCaseHQ",
+    description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings with complete context.",
+    url: "https://nextcasehq.com",
+    siteName: "NextCaseHQ",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Secure, Zero-Knowledge Litigation Operating System | NextCaseHQ",
+    description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings with complete context.",
+  },
+};
 
-/**
- * NextCaseHQ: Premium Reimagined Static Landing Experience
- * Redesigned in full accordance with Product Design Authority guidelines:
- * - Single-viewport design (no-scroll)
- * - Generous whitespace and a warm, calm professional background
- * - Minimalist Apple/Linear/Notion-grade aesthetic
- * - Centerpiece elegant search bar with interactive CTA arrow
- * - Human-first, calm, and confident microcopy
- */
 export default function Page() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
 
