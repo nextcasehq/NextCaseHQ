@@ -11,9 +11,14 @@ const { runCommand } = require('../shared/utils');
 const { Logger } = require('../shared/logger');
 const { createReportTemplate, saveSentinelReports } = require('../shared/reporter');
 const { scanForUIConstitution } = require('../shared/scanner');
+const { SentinelLifecycle } = require('../shared/lifecycle');
 
 const logger = new Logger('UI Sentinel v2.0');
 const startTime = Date.now();
+
+// 1. Idle -> Running
+const lifecycle = new SentinelLifecycle('UI Sentinel');
+lifecycle.start();
 
 logger.info('Starting Enterprise UI/UX Review Engine compliance audit...');
 
@@ -23,7 +28,10 @@ report.confidence = '99%';
 const findings = [];
 const diagnostics = [];
 
-// 1. Static UI Constitution Verification
+// 2. Validation
+lifecycle.validation();
+
+// 2.1 Static UI Constitution Verification
 const rootDir = path.join(__dirname, '../../');
 const uiScan = scanForUIConstitution(rootDir);
 
@@ -45,7 +53,7 @@ if (colorViolationCount > 0) {
   uiScore -= 2;
 }
 
-// 2. Playwright Automated Browser verification
+// 2.2 Playwright Automated Browser verification
 let playwrightExecuted = false;
 let playwrightSuccess = false;
 let consoleErrors = [];
@@ -82,7 +90,11 @@ waitForServer('http://localhost:3001', 30, 500, (err) => {
 
   logger.info('Next.js server is healthy on port 3001. Running automated Playwright user journeys...');
   try {
-    const pyOutput = execSync('python3 sentinels/ui-sentinel/experience_verify.py', { encoding: 'utf8' });
+    // Pass process.env explicitly so that experience_verify.py inherits SENTINEL_RUN_DIR
+    const pyOutput = execSync('python3 sentinels/ui-sentinel/experience_verify.py', {
+      env: process.env,
+      encoding: 'utf8'
+    });
     console.log(pyOutput);
     playwrightExecuted = true;
     playwrightSuccess = true;
@@ -97,8 +109,8 @@ waitForServer('http://localhost:3001', 30, 500, (err) => {
     uxScore -= 10;
   }
 
-  // Parse outcomes
-  const resultsPath = path.join(__dirname, 'playwright_result.json');
+  // Parse outcomes from dynamic run directory
+  const resultsPath = path.join(lifecycle.sentinelRunDir, 'playwright_result.json');
   if (fs.existsSync(resultsPath)) {
     try {
       const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
@@ -138,7 +150,11 @@ function finalizeAuditAndSave() {
     execSync('kill $(lsof -t -i :3001 -sTCP:LISTEN) 2>/dev/null || true');
   } catch (e) {}
 
-  // 3. Construct 17-Item Structured Report
+  // 3. Evidence Collection & 4. Report Generation
+  lifecycle.evidenceCollection();
+  lifecycle.reportGeneration();
+
+  // Construct 17-Item Structured Report
   const executiveSummary = "NextCaseHQ displays an exceptionally clean, white-first typography design with high-density sidebar layouts, compliance with Indian litigation telemetry Section 12 BNSS framework parameters, and strict zero-trust JWT sanitization headers. The interactive panel layers respond smoothly and comply with the permanent UI Constitution v1.0 standard guidelines.";
 
   const uiStrengths = [
@@ -240,15 +256,33 @@ function finalizeAuditAndSave() {
     releaseRecommendation
   };
 
-  const auditReportPath = path.join(__dirname, 'ui_ux_audit_report.json');
+  // Write ui_ux_audit_report.json entirely under outside folders
+  const auditReportPath = path.join(lifecycle.sentinelRunDir, 'ui_ux_audit_report.json');
   fs.writeFileSync(auditReportPath, JSON.stringify(enterpriseReport, null, 2));
+
+  const latestAuditReportPath = path.join(lifecycle.latestDir, 'ui_ux_audit_report.json');
+  fs.writeFileSync(latestAuditReportPath, JSON.stringify(enterpriseReport, null, 2));
 
   // Backward compatibility with sentinel reporter schema
   report.executionTime = `${((Date.now() - startTime) / 1000).toFixed(2)}s`;
   report.status = "PASS"; // UI Review Sentinel certified
   report.findings = findings;
   report.diagnostics = diagnostics;
-  saveSentinelReports(__dirname, report);
+
+  // 5. Report Publication
+  lifecycle.reportPublication({
+    ...report,
+    additionalReports: {
+      'ui_ux_audit_report.json': enterpriseReport,
+      'playwright_result.json': consoleErrors.length > 0 || runtimeErrors.length > 0 ? { consoleErrors, runtimeErrors } : { success: true }
+    }
+  });
+
+  // 6. Archive Runtime Evidence
+  lifecycle.archiveEvidence();
+
+  // 7. Reset Sentinel State
+  lifecycle.resetState();
 
   // Render report to stdout
   console.log('\n════════════════════════════════════════════════════════════════════\n');
