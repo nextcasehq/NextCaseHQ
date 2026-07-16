@@ -28,64 +28,62 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          
-              - name: Enable Corepack
-  run: corepack enable
 
-- name: Setup PNPM
-  uses: pnpm/action-setup@v4
-  with:
-    version: 10.30.3
+      - name: Enable Corepack
+        run: corepack enable
 
-- name: Verify Toolchain
-  run: |
-    node -v
-    corepack --version
-    pnpm -v
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - name: Verify Toolchain
+        run: |
+          echo "======================================"
+          echo "NEXTCASEHQ TOOLCHAIN"
+          echo "======================================"
+          node -v
+          corepack --version
+          pnpm -v
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify Node
-        run: |
-          echo "Node Version"
-          node -v
-          echo "PNPM Version"
-          pnpm -v
-
-      - name: Lint
+      - name: Run Lint
         run: pnpm lint
 
-      - name: TypeScript Compiler Validation
+      - name: Run TypeScript Compiler Validation
         run: pnpm typecheck
 
-      - name: Production Build
+      - name: Run Production Build
         run: pnpm build
 
       - name: Compiler Certification
         if: success()
         run: |
           echo ""
-          echo "==========================================="
+          echo "======================================"
           echo " NEXTCASEHQ COMPILER CERTIFICATION"
-          echo "==========================================="
-          echo "Node            : PASS"
-          echo "Dependencies    : PASS"
-          echo "Lint            : PASS"
-          echo "TypeScript      : PASS"
-          echo "Production Build: PASS"
+          echo "======================================"
+          echo "Node                : PASS"
+          echo "Dependencies        : PASS"
+          echo "Lint                : PASS"
+          echo "TypeScript          : PASS"
+          echo "Production Build    : PASS"
           echo ""
           echo "STATUS"
-          echo "CERTIFIED FOR MERGE"
-          echo "==========================================="
+          echo "🟢 CERTIFIED FOR MERGE"
+          echo "======================================"
 
       - name: Compiler Failure
         if: failure()
         run: |
           echo ""
-          echo "==========================================="
-          echo "NEXTCASEHQ COMPILER CERTIFICATION FAILED"
-          echo "==========================================="
-          echo "Review the FIRST compiler error above."
-          echo "Do not use ELIFECYCLE or exit code as the root cause."
-          echo "==========================================="
+          echo "======================================"
+          echo " NEXTCASEHQ COMPILER CERTIFICATION"
+          echo "======================================"
+          echo "❌ COMPILER VALIDATION FAILED"
+          echo ""
+          echo "Locate the FIRST compiler error."
+          echo "Ignore ELIFECYCLE and exit code messages."
+          echo "======================================"
