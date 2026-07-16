@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface SearchResult {
   id: string;
@@ -17,6 +18,14 @@ function SearchPageContent() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const searchParams = useSearchParams();
+  useEffect(() => {
+  const q = searchParams.get("q") || searchParams.get("query");
+
+  if (q && q.trim()) {
+    setQuery(q);
+  }
+}, [searchParams]);
 
   // High-fidelity litigation database
   const legalDatabase: SearchResult[] = [

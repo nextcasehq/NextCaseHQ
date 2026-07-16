@@ -1,5 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import LandingPageContent from "@/components/landing/LandingPageContent";
 
 export const metadata: Metadata = {
