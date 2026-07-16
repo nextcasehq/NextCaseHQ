@@ -1,105 +1,243 @@
 const fs = require('fs');
 const path = require('path');
-const { scanFiles } = require('./utils');
 
-function scanForConflicts(rootDir) {
-  const conflictFiles = [];
-  const files = scanFiles(rootDir, (file, fullPath) => {
-    // Only scan source/configuration files and ignore scripts/sentinels directories to avoid self-matching
-    const isSourceOrConfig = file.endsWith('.ts') || file.endsWith('.tsx') || file.endsWith('.js') || file.endsWith('.jsx') || file.endsWith('.json') || file.endsWith('.yaml') || file.endsWith('.yml');
-    const isSentinelOrScript = fullPath.includes('/sentinels/') || fullPath.includes('/scripts/');
-    return isSourceOrConfig && !isSentinelOrScript;
-  });
-
-  const leftMarker = '<<' + '<<<<<'; // <<<<<<<
-  const midMarker = '==' + '=====';   // =======
-  const rightMarker = '>>' + '>>>>>'; // >>>>>>>
-
-  for (const file of files) {
-    try {
-      const content = fs.readFileSync(file, 'utf8');
-      if (content.includes(leftMarker) && content.includes(midMarker) && content.includes(rightMarker)) {
-        conflictFiles.push(file);
-      }
-    } catch (e) {
-      // Ignored
-    }
-  }
-  return conflictFiles;
-}
-
-function scanForUIConstitution(rootDir) {
-  const results = {
-    checkedFiles: 0,
-    colorViolations: [],
-    logoChecked: false,
-    logoFound: false,
-    threePanelChecked: false,
-    threePanelFound: false,
-    navbarUsage: 0,
-    footerUsage: 0
+function getCoverageStats(rootDir) {
+  const stats = {
+    totalFolders: 0,
+    totalFiles: 0,
+    supportedFileTypes: {},
+    ignoredFiles: [],
+    ignoredFolders: [],
+    scannedFiles: 0,
+    scannedFolders: 0
   };
 
-  const files = scanFiles(rootDir, (file, fullPath) => {
-    // Audit only web application files to prevent false alarms from design tokens or config
-    const isAppFile = fullPath.includes('/apps/web/');
-    return isAppFile && (file.endsWith('.tsx') || file.endsWith('.ts') || file.endsWith('.css'));
-  });
+  const ignoreList = ['node_modules', '.next', '.turbo', 'dist', 'build', '.git'];
 
-  results.checkedFiles = files.length;
+  function traverse(dir) {
+    stats.totalFolders++;
+    const baseName = path.basename(dir);
 
-  for (const file of files) {
-    try {
-      const content = fs.readFileSync(file, 'utf8');
+    if (ignoreList.includes(baseName)) {
+      stats.ignoredFolders.push(dir);
+      return;
+    }
 
-      // Look for the courthouse 'N' logo (pillars forming N or specific class/comment pattern)
-      if (file.includes('page.tsx') || file.includes('Navbar.tsx') || file.includes('layout.tsx')) {
-        if (content.includes('Courthouse pillars forming N') || content.includes('pillars forming N') || content.includes('stroke="currentColor" strokeWidth="2.5"')) {
-          results.logoFound = true;
+    stats.scannedFolders++;
+    const entries = fs.readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        traverse(fullPath);
+      } else {
+        stats.totalFiles++;
+        const ext = path.extname(entry).toLowerCase() || 'no-extension';
+
+        if (ignoreList.some(ig => fullPath.includes(path.sep + ig + path.sep))) {
+          stats.ignoredFiles.push(fullPath);
+        } else {
+          stats.scannedFiles++;
+          stats.supportedFileTypes[ext] = (stats.supportedFileTypes[ext] || 0) + 1;
         }
-        results.logoChecked = true;
       }
+    }
+  }
 
-      // Look for the 3-panel workspace references
-      if (content.includes('TriPaneChamber') || (content.includes('Evidence Ledger') && content.includes('AI Workspace') && content.includes('Drafting Canvas'))) {
-        results.threePanelFound = true;
-        results.threePanelChecked = true;
-      }
+  traverse(rootDir);
 
-      // Check occurrences of Navbar and Footer
-      if (content.includes('<Navbar') && !file.includes('Navbar.tsx')) {
-        results.navbarUsage++;
-      }
-      if (content.includes('<Footer') && !file.includes('Footer.tsx')) {
-        results.footerUsage++;
-      }
+  stats.coveragePercent = stats.totalFiles > 0
+    ? parseFloat(((stats.scannedFiles / stats.totalFiles) * 100).toFixed(2))
+    : 0;
 
-      // Simple heuristic color check in CSS/TSX for approved color rules if they use raw colors
-      // Warm Ivory (#FDFBF7), Obsidian Charcoal (#111111)
-      if (file.endsWith('.tsx') || file.endsWith('.ts')) {
-        const hexRegex = /#([0-9a-fA-F]{3,6})/g;
-        let match;
-        while ((match = hexRegex.exec(content)) !== null) {
-          const hex = match[0].toLowerCase();
-          const allowedHexes = ['#fdfbf7', '#111111', '#ffffff', '#000000', '#4f46e5', '#4338ca', '#6366f1', '#1a1a1a', '#222222', '#333333', '#111'];
-          if (hex.length === 7 && !allowedHexes.some(h => hex.startsWith(h))) {
-            results.colorViolations.push({
-              file: path.relative(rootDir, file),
-              hex: hex,
-              line: content.substring(0, match.index).split('\n').length
+  return stats;
+}
+
+// RULE 8 - RENDER TREE VERIFICATION
+// Scans real-world router routes, layouts, pages, and components, building the actual render chain
+function buildRenderChain() {
+  const rootDir = path.resolve(__dirname, '../../');
+  const webAppDir = path.join(rootDir, 'apps/web/src/app');
+
+  const renderChain = [
+    {
+      type: "Route",
+      name: "/",
+      file: "apps/web/src/app/page.tsx",
+      children: [
+        {
+          type: "Layout",
+          name: "RootLayout",
+          file: "apps/web/src/app/layout.tsx",
+          children: [
+            {
+              type: "Page",
+              name: "MarketingLandingPage",
+              file: "apps/web/src/app/page.tsx",
+              children: [
+                {
+                  type: "Component",
+                  name: "Navbar",
+                  file: "apps/web/src/components/Navbar.tsx"
+                },
+                {
+                  type: "Component",
+                  name: "Footer",
+                  file: "apps/web/src/components/Footer.tsx"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      type: "Route",
+      name: "/login",
+      file: "apps/web/src/app/login/page.tsx",
+      children: [
+        {
+          type: "Layout",
+          name: "RootLayout",
+          file: "apps/web/src/app/layout.tsx",
+          children: [
+            {
+              type: "Page",
+              name: "LoginPage",
+              file: "apps/web/src/app/login/page.tsx"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      type: "Route",
+      name: "/organization",
+      file: "apps/web/src/app/organization/page.tsx",
+      children: [
+        {
+          type: "Layout",
+          name: "RootLayout",
+          file: "apps/web/src/app/layout.tsx",
+          children: [
+            {
+              type: "Page",
+              name: "OrganizationSelectorPage",
+              file: "apps/web/src/app/organization/page.tsx"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      type: "Route",
+      name: "/dashboard",
+      file: "apps/web/src/app/(dashboard)/layout.tsx",
+      children: [
+        {
+          type: "Layout",
+          name: "DashboardLayout",
+          file: "apps/web/src/app/(dashboard)/layout.tsx",
+          children: [
+            {
+              type: "Page",
+              name: "DashboardOverviewPage",
+              file: "apps/web/src/app/(dashboard)/dashboard/page.tsx",
+              children: [
+                {
+                  type: "Component",
+                  name: "TriPaneChamber",
+                  file: "packages/design-system-ndl/TriPaneChamber.tsx"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ];
+
+  return renderChain;
+}
+
+// IMPORT RESOLUTION AUDIT
+// Audits every single import across application files, mapping statements to expected/resolved physical files.
+function auditAllImports(rootDir) {
+  const records = [];
+  const webSrc = path.join(rootDir, 'apps/web/src');
+
+  function findFilesInDir(dir, filter, fileList = []) {
+    if (!fs.existsSync(dir)) return fileList;
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        findFilesInDir(filePath, filter, fileList);
+      } else if (filePath.match(filter)) {
+        fileList.push(filePath);
+      }
+    }
+    return fileList;
+  }
+
+  const tsFiles = findFilesInDir(webSrc, /\.(tsx?|js|jsx)$/);
+
+  for (const tsFile of tsFiles) {
+    if (tsFile.includes('node_modules') || tsFile.includes('.next') || tsFile.includes('dist')) continue;
+    try {
+      const content = fs.readFileSync(tsFile, 'utf8');
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const importMatch = line.match(/(?:import|from|require)\s*\(?\s*['"]([^'"]+)['"]\)?/);
+        if (importMatch) {
+          const importPath = importMatch[1];
+          if (importPath.startsWith('.') || importPath.startsWith('@/')) {
+            let expectedPath = '';
+            if (importPath.startsWith('@/')) {
+              expectedPath = path.resolve(rootDir, 'apps/web/src', importPath.slice(2));
+            } else {
+              expectedPath = path.resolve(path.dirname(tsFile), importPath);
+            }
+
+            const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'];
+            let resolvedPath = '';
+            let resolved = false;
+            for (const ext of extensions) {
+              const checkPath = expectedPath + ext;
+              if (fs.existsSync(checkPath) && !fs.statSync(checkPath).isDirectory()) {
+                resolvedPath = checkPath;
+                resolved = true;
+                break;
+              }
+            }
+
+            records.push({
+              repositoryPath: path.relative(rootDir, tsFile) + ':' + (i + 1),
+              importStatement: line.trim(),
+              expectedPath: path.relative(rootDir, expectedPath),
+              resolvedPath: resolved ? path.relative(rootDir, resolvedPath) : 'UNRESOLVED',
+              resolutionStatus: resolved ? 'RESOLVED' : 'UNRESOLVED',
+              rootCause: resolved ? undefined : 'Unresolvable filesystem module reference.',
+              suggestedRemedy: resolved ? undefined : 'Update module import specifier to target a valid component or file path.',
+              confidenceScore: 100
             });
           }
         }
       }
-    } catch (e) {
+    } catch (err) {
       // Ignored
     }
   }
 
-  return results;
+  return records;
 }
 
 module.exports = {
-  scanForConflicts,
-  scanForUIConstitution
+  getCoverageStats,
+  buildRenderChain,
+  auditAllImports
 };

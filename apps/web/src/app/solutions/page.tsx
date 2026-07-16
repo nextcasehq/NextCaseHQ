@@ -1,71 +1,46 @@
-import React from "react";
-import Link from "next/link";
+'use client';
+
+import React from 'react';
+import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
+import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
 
 export default function SolutionsPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans pt-16 selection:bg-indigo-600 selection:text-white">
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
-        <div className="mb-8 p-4 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center text-indigo-600 text-3xl">
-          🌐
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
+      <Navbar />
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <Badge variant="accent" className="mb-4">Litigation Practice Solutions</Badge>
+          <h1 className="text-4xl lg:text-7xl font-bold tracking-tight mb-6">Regional Polymorphism Tailored to Your Case</h1>
+          <p className="font-serif italic text-lg leading-relaxed text-[#111111]/70">Explore pre-configured compliance state-machines optimized for multiple active world court procedures.</p>
         </div>
 
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] mb-4">
-          Litigation Practice Solutions
-        </h1>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <Card className="p-8 space-y-4">
+            <span className="text-3xl block">🇮🇳</span>
+            <h3 className="font-sans font-bold text-sm uppercase tracking-wider">India Practice Model</h3>
+            <p className="text-xs text-[#111111]/50 font-mono">BNS & BNSS PROCEDURES</p>
+            <p className="text-sm text-[#111111]/70 leading-relaxed">Integrated timeline state models mapping Indian criminal code constraints and automatic PAN/Aadhaar logging filters.</p>
+          </Card>
 
-        <p className="text-sm md:text-base text-neutral-500 max-w-md mx-auto mb-10 font-medium font-serif italic">
-          Tailored jurisdictional compliance frameworks for premier chambers, advocates, and counsel teams.
-        </p>
+          <Card className="p-8 space-y-4">
+            <span className="text-3xl block">🇺🇸</span>
+            <h3 className="font-sans font-bold text-sm uppercase tracking-wider">US Practice Model</h3>
+            <p className="text-xs text-[#111111]/50 font-mono">FEDERAL CIVIL RULES (FRCP)</p>
+            <p className="text-sm text-[#111111]/70 leading-relaxed">Pre-built schedules mapping Rule 26 disclosures, expert reports timeline restrictions, and pleading compliance metrics.</p>
+          </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left mb-12">
-          <div className="p-6 bg-white border border-neutral-200/60 rounded-2xl shadow-sm">
-            <span className="text-lg mb-2 block">🏢</span>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-2 text-[#111111]">Practice Groups</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed font-serif">
-              Enterprise tenant workspaces with secure workspace access control and cross-jurisdictional synchronization.
-            </p>
-          </div>
-          <div className="p-6 bg-white border border-neutral-200/60 rounded-2xl shadow-sm">
-            <span className="text-lg mb-2 block">🗳️</span>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-2 text-[#111111]">Corporate Legal</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed font-serif">
-              Immutable compliance ledgers and stream-ingested file processing for complete oversight and audit transparency.
-            </p>
-          </div>
-          <div className="p-6 bg-white border border-neutral-200/60 rounded-2xl shadow-sm">
-            <span className="text-lg mb-2 block">🎓</span>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-2 text-[#111111]">Solo Practitioners</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed font-serif">
-              A light, lightning-fast tactical layout with mobile Court Mode and offline transaction synchronization.
-            </p>
-          </div>
+          <Card className="p-8 space-y-4">
+            <span className="text-3xl block">🇬🇧</span>
+            <h3 className="font-sans font-bold text-sm uppercase tracking-wider">UK Practice Model</h3>
+            <p className="text-xs text-[#111111]/50 font-mono">CPR CHANCERY DIVISION</p>
+            <p className="text-sm text-[#111111]/70 leading-relaxed">Pleadings and evidence bundles structure conformant directly with modern UK High Court and Chancery timeline rules.</p>
+          </Card>
         </div>
-
-        <Link
-          href="/login"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-xl transition-all"
-        >
-          Initialize Chamber Session
-        </Link>
       </main>
-
-      <footer className="border-t border-neutral-100 bg-white px-6 md:px-12 py-10 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-[#111111]">
-              NextCaseHQ<span className="text-indigo-600">.</span>
-            </span>
-          </div>
-          <p className="text-xs text-neutral-400 font-medium">
-            {"\u00A9"} {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
-          </p>
-          <div className="flex gap-6 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Privacy</Link>
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Terms</Link>
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Support</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

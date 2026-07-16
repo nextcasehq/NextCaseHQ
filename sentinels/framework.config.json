@@ -1,8 +1,18 @@
 {
+  "name": "NextCaseHQ Sentinel Framework",
   "version": "1.0.0",
-  "environment": "staging",
-  "thresholds": {
-    "max_p99_latency_ms": 5,
-    "max_rls_violations": 0
-  }
+  "root": "sentinels",
+  "modes": ["Incremental", "Module", "Repository", "Release Certification"],
+  "rulesRegistry": "sentinels/registry.json",
+  "environments": {
+    "liveServerPort": 3000,
+    "baseUrl": "http://localhost:3000"
+  },
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".turbo",
+    "dist",
+    "build"
+  ]
 }

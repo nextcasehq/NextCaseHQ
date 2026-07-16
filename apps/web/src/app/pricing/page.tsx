@@ -1,75 +1,75 @@
-import React from "react";
-import Link from "next/link";
+'use client';
+
+import React from 'react';
+import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
+import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import Link from 'next/link';
 
 export default function PricingPage() {
+  const tiers = [
+    {
+      name: "Counsel",
+      price: "$99/mo",
+      description: "For independent practitioners managing single-jurisdiction litigation.",
+      features: ["Single Tenant RLS Instance", "India PII Scrubbing Active", "3 Secure Workspaces", "Shared Design Tokens"]
+    },
+    {
+      name: "Chamber",
+      price: "$299/mo",
+      description: "For mid-size practice chambers requiring advanced multi-pack regional polymorphism.",
+      features: ["Multi-Tenant DB Shards", "3 Regional Court Packs", "Uncapped PDF Ingestion API", "OTel Observability Exports"]
+    },
+    {
+      name: "Firm",
+      price: "Custom",
+      description: "For enterprise law firms managing global multi-jurisdiction litigation flows.",
+      features: ["Chained Immutable Auditing", "CloudKMS Key Provider Integration", "Dedicated Workspace Node Shards", "24/7 Priority Support SLAs"]
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans pt-16 selection:bg-indigo-600 selection:text-white">
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
-        <div className="mb-8 p-4 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center text-indigo-600 text-3xl">
-          💳
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
+      <Navbar />
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <Badge variant="accent" className="mb-4">Flexible Subscriptions</Badge>
+          <h1 className="text-4xl lg:text-7xl font-bold tracking-tight mb-6">Transparent Compliance Pricing</h1>
+          <p className="font-serif italic text-lg leading-relaxed text-[#111111]/70">Pick a deployment plan that matches your practice group scale and regional needs.</p>
         </div>
 
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] mb-4">
-          Transparent Professional Tier Plan
-        </h1>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          {tiers.map((tier) => (
+            <Card key={tier.name} className="p-8 flex flex-col justify-between h-full border border-[#111111]/10 rounded shadow-sm hover:border-[#111111]/30 transition-all">
+              <div className="space-y-6">
+                <h3 className="font-sans font-bold text-xs uppercase tracking-widest text-[#111111]/50">{tier.name}</h3>
+                <div className="space-y-1">
+                  <span className="text-4xl lg:text-5xl font-bold text-[#111111]">{tier.price}</span>
+                </div>
+                <p className="text-sm font-serif italic text-[#111111]/70 leading-relaxed">{tier.description}</p>
 
-        <p className="text-sm md:text-base text-neutral-500 max-w-md mx-auto mb-10 font-medium font-serif italic">
-          Fully scale and bind your cryptographic litigation workspaces with our single premium tier.
-        </p>
+                <div className="border-t border-[#111111]/10 pt-6 space-y-4">
+                  {tier.features.map((feat) => (
+                    <div key={feat} className="flex items-center gap-3">
+                      <span className="text-[#C5A059]">✔</span>
+                      <span className="text-xs font-sans font-semibold uppercase tracking-wide text-[#111111]/80">{feat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-        <div className="max-w-md w-full bg-white border border-neutral-200 rounded-2xl p-8 shadow-sm text-left mx-auto mb-12">
-          <div className="flex justify-between items-center mb-6 border-b border-neutral-100 pb-4">
-            <div>
-              <h3 className="font-extrabold text-lg text-[#111111]">Counsel Pro</h3>
-              <p className="text-xs text-neutral-400 font-semibold font-mono mt-0.5">UNLIMITED WORKSPACES</p>
-            </div>
-            <div className="text-right">
-              <span className="text-3xl font-black text-[#111111]">$49</span>
-              <span className="text-xs text-neutral-400 font-semibold">/mo</span>
-            </div>
-          </div>
-
-          <ul className="space-y-3.5 mb-8 text-xs text-neutral-600 font-semibold font-mono">
-            <li className="flex items-center gap-2">
-              <span className="text-indigo-600">✓</span> 3 Unified Secure Practice Tenants
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="text-indigo-600">✓</span> Infinite Context Search Shell & Ingestion
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="text-indigo-600">✓</span> Automated BNS/BNSS Statutory Mapping
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="text-indigo-600">✓</span> Full KMS Circuit-Breaker Access
-            </li>
-          </ul>
-
-          <Link
-            href="/login"
-            className="block text-center w-full bg-[#111111] hover:bg-neutral-800 text-white font-bold text-xs py-3 rounded-xl transition-all"
-          >
-            Start Professional Plan
-          </Link>
+              <Link href="/login" className="w-full mt-8 block">
+                <Button variant={tier.name === "Chamber" ? "secondary" : "primary"} size="sm" className="w-full">
+                  Subscribe
+                </Button>
+              </Link>
+            </Card>
+          ))}
         </div>
       </main>
-
-      <footer className="border-t border-neutral-100 bg-white px-6 md:px-12 py-10 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-[#111111]">
-              NextCaseHQ<span className="text-indigo-600">.</span>
-            </span>
-          </div>
-          <p className="text-xs text-neutral-400 font-medium">
-            {"\u00A9"} {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
-          </p>
-          <div className="flex gap-6 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Privacy</Link>
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Terms</Link>
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Support</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
