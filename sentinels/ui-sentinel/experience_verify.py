@@ -6,19 +6,23 @@ from playwright.sync_api import sync_playwright
 def run_verification():
     print("[PLAYWRIGHT] Initializing browser automation...", flush=True)
 
-    # Resolve target directories strictly under the run-id context
+    # Resolve target directories
     run_dir = os.environ.get("SENTINEL_RUN_DIR")
     if run_dir:
-        screenshots_dir = os.path.join(run_dir, "screenshots")
-        playwright_result_path = os.path.join(run_dir, "playwright", "playwright_result.json")
+        evidence_dir = os.path.join(run_dir, "ui", "evidence")
+        latest_evidence_dir = os.path.join("/app", "reports", "latest", "ui", "evidence")
+        playwright_result_path = os.path.join(run_dir, "ui", "playwright_result.json")
+        latest_playwright_result_path = os.path.join("/app", "reports", "latest", "ui", "playwright_result.json")
     else:
         # Fallback to default ignored folder
-        screenshots_dir = os.path.join("/app", "reports", "runs", "default", "screenshots")
-        playwright_result_path = os.path.join("/app", "reports", "runs", "default", "playwright", "playwright_result.json")
+        evidence_dir = os.path.join("/app", "reports", "runs", "default", "ui", "evidence")
+        latest_evidence_dir = os.path.join("/app", "reports", "latest", "ui", "evidence")
+        playwright_result_path = os.path.join("/app", "reports", "runs", "default", "ui", "playwright_result.json")
+        latest_playwright_result_path = os.path.join("/app", "reports", "latest", "ui", "playwright_result.json")
 
     os.makedirs("/home/jules/verification/screenshots", exist_ok=True)
-    os.makedirs(screenshots_dir, exist_ok=True)
-    os.makedirs(os.path.dirname(playwright_result_path), exist_ok=True)
+    os.makedirs(evidence_dir, exist_ok=True)
+    os.makedirs(latest_evidence_dir, exist_ok=True)
 
     console_errors = []
     page_errors = []
@@ -31,7 +35,10 @@ def run_verification():
         # 1. DESKTOP VIEWPORT TEST
         # ----------------------------------------------------
         print("[PLAYWRIGHT] Launching Desktop Viewport (1280x800)...", flush=True)
-        desktop_ctx = browser.new_context(viewport={"width": 1280, "height": 800})
+        desktop_ctx = browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            record_video_dir=os.path.join(evidence_dir, "videos")
+        )
         desktop_page = desktop_ctx.new_page()
 
         # Wire up console and exception listeners
@@ -45,7 +52,8 @@ def run_verification():
             time.sleep(1.5)
             # Take desktop landing snapshots
             desktop_page.screenshot(path="/home/jules/verification/screenshots/landing_desktop.png")
-            desktop_page.screenshot(path=os.path.join(screenshots_dir, "landing_desktop.png"))
+            desktop_page.screenshot(path=os.path.join(evidence_dir, "landing_desktop.png"))
+            desktop_page.screenshot(path=os.path.join(latest_evidence_dir, "landing_desktop.png"))
             print("[PLAYWRIGHT] Captured landing_desktop.png successfully.", flush=True)
         except Exception as e:
             print(f"[PLAYWRIGHT] ERROR: Failed to load landing page: {e}", flush=True)
@@ -79,7 +87,8 @@ def run_verification():
         # C. Dashboard Visual Audit & TriPaneChamber Check
         # Take desktop dashboard snapshots
         desktop_page.screenshot(path="/home/jules/verification/screenshots/dashboard_desktop.png")
-        desktop_page.screenshot(path=os.path.join(screenshots_dir, "dashboard_desktop.png"))
+        desktop_page.screenshot(path=os.path.join(evidence_dir, "dashboard_desktop.png"))
+        desktop_page.screenshot(path=os.path.join(latest_evidence_dir, "dashboard_desktop.png"))
         print("[PLAYWRIGHT] Captured dashboard_desktop.png successfully.", flush=True)
 
         assert desktop_page.locator("text=Evidence & Citations").first.is_visible() or desktop_page.locator("text=AI Dialogue Stream").first.is_visible(), "TriPaneChamber dashboard panels should render"
@@ -101,7 +110,8 @@ def run_verification():
         mobile_ctx = browser.new_context(
             viewport={"width": 375, "height": 667},
             is_mobile=True,
-            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
+            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
+            record_video_dir=os.path.join(evidence_dir, "videos")
         )
         mobile_page = mobile_ctx.new_page()
 
@@ -112,7 +122,8 @@ def run_verification():
         mobile_page.goto("http://localhost:3001")
         time.sleep(1.5)
         mobile_page.screenshot(path="/home/jules/verification/screenshots/landing_mobile.png")
-        mobile_page.screenshot(path=os.path.join(screenshots_dir, "landing_mobile.png"))
+        mobile_page.screenshot(path=os.path.join(evidence_dir, "landing_mobile.png"))
+        mobile_page.screenshot(path=os.path.join(latest_evidence_dir, "landing_mobile.png"))
         print("[PLAYWRIGHT] Captured landing_mobile.png successfully.", flush=True)
 
         # Sign in and select tenant in mobile viewport
@@ -128,7 +139,8 @@ def run_verification():
         time.sleep(2)
 
         mobile_page.screenshot(path="/home/jules/verification/screenshots/dashboard_mobile.png")
-        mobile_page.screenshot(path=os.path.join(screenshots_dir, "dashboard_mobile.png"))
+        mobile_page.screenshot(path=os.path.join(evidence_dir, "dashboard_mobile.png"))
+        mobile_page.screenshot(path=os.path.join(latest_evidence_dir, "dashboard_mobile.png"))
         print("[PLAYWRIGHT] Captured dashboard_mobile.png successfully.", flush=True)
 
         mobile_ctx.close()
@@ -139,13 +151,14 @@ def run_verification():
 
     # Save a temporary report of the run
     import json
-    with open(playwright_result_path, "w") as f:
-        json.dump({
-            "consoleErrors": console_errors,
-            "runtimeErrors": page_errors,
-            "brokenLinks": broken_links,
-            "success": len(page_errors) == 0
-        }, f, indent=2)
+    for path_target in [playwright_result_path, latest_playwright_result_path]:
+        with open(path_target, "w") as f:
+            json.dump({
+                "consoleErrors": console_errors,
+                "runtimeErrors": page_errors,
+                "brokenLinks": broken_links,
+                "success": len(page_errors) == 0
+            }, f, indent=2)
 
 if __name__ == "__main__":
     run_verification()
