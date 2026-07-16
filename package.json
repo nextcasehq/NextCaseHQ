@@ -4,7 +4,9 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "typecheck": "node scripts/typescript_validation.js",
+    "sentinel": "node scripts/merge_deployment_sentinel.js"
   },
   "devDependencies": {
     "turbo": "latest",
