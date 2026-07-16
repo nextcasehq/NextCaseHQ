@@ -80,49 +80,6 @@ export default function Page() {
           <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
         </div>
 
-        {/* Human-First Memorandum Headline */}
-        <div className="space-y-4 mb-10 mt-16">
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] leading-tight">
-            Every case begins with a question.
-          </h1>
-          <p className="text-sm md:text-base text-neutral-500 max-w-lg mx-auto font-serif italic leading-relaxed">
-            A minimalist workspace built for the way advocates actually work. Gather evidence, query precedents, and assemble pleadings with complete, secure context.
-          </p>
-        </div>
-
-        {/* Centerpiece Intelligent Search Bar with Arrow CTA */}
-        <div className="w-full max-w-xl">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              window.location.href = '/login';
-            }}
-            className="w-full bg-white border border-neutral-200/80 rounded-full p-2.5 shadow-xl shadow-neutral-100/50 flex items-center gap-3 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-600/5 transition-all duration-300"
-          >
-            <span className="pl-4 text-neutral-400 text-lg select-none">🔍</span>
-            <input
-              type="text"
-              placeholder="Search a matter, precedent, or statute..."
-              className="flex-1 bg-transparent border-none outline-none text-[#111111] text-sm font-semibold placeholder-neutral-400 py-2"
-            />
-            <button
-              type="submit"
-              className="bg-[#111111] hover:bg-indigo-600 text-[#FDFBF7] p-2.5 rounded-full transition-all duration-300 flex items-center justify-center hover:shadow-lg hover:shadow-indigo-600/10 cursor-pointer active:scale-95 text-xs font-semibold"
-              aria-label="Submit search query"
-            >
-              <span className="sr-only">Search</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-          </form>
-        </div>
-
-        {/* Warm Colleague Welcome Note */}
-        <p className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-neutral-400 mt-8 select-none">
-          SECURE CLIENT-SIDE PRE-ENCRYPTION // ZERO-KNOWLEDGE SHELL
-        </p>
-
       </main>
 
       {/* 3. Footer (Calm, Elegant, Spacious and Empty) */}
