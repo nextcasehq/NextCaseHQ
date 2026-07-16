@@ -272,3 +272,17 @@ export default function SearchPage() {
     </div>
   );
 }
+
+import { Suspense } from 'react';
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex justify-center items-center py-20">
+        <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
+  );
+}

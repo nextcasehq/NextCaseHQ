@@ -61,8 +61,10 @@ export default function CasesPage() {
       {/* Page Header */}
       <div className="flex justify-between items-center border-b border-[#111111]/10 pb-4">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-widest text-[#111111]">Active Litigation Portfolios</h1>
-          <p className="text-sm font-serif italic text-[#111111]/60">Secure multi-tenant workspace isolation active.</p>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">Active Litigation Portfolios</h1>
+          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-1">
+            Active Tenant Context: <span className="font-mono text-indigo-600">{tenantId.slice(0, 8)}...</span>
+          </p>
         </div>
         <button
           onClick={handleOpenModal}

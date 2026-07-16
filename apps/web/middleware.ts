@@ -12,20 +12,20 @@ export async function middleware(request: NextRequest) {
   const start = performance.now();
   const pathname = request.nextUrl.pathname;
 
-  // 1. Protect /admin routes using NEXTCASE_ADMIN_TOKEN
-  if (pathname.startsWith('/admin')) {
-    const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value || request.headers.get('x-nextcase-admin-token');
-    const expectedToken = process.env.NEXTCASE_ADMIN_TOKEN || 'nchq-admin-super-token-placeholder';
-
-    // If an expected token is configured and the user's token does not match, redirect or block access
-    if (adminToken !== expectedToken && process.env.NODE_ENV === 'production') {
-      return NextResponse.redirect(new URL('/login?error=ADMIN_ACCESS_DENIED', request.url));
+  // 0. Enforce zero-trust admin API gate
+  if (request.nextUrl.pathname.startsWith('/api/admin')) {
+    const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value;
+    if (adminToken !== 'nchq-admin-secret-key-2026') {
+      return new NextResponse(
+        JSON.stringify({ error: 'SECURE_ACCESS_DENIED', message: 'Unauthorized administrative session.' }),
+        { status: 401, headers: { 'content-type': 'application/json' } }
+      );
     }
     return NextResponse.next();
   }
 
-  // 2. Only intercept /api/* routes (excluding auth)
-  if (!pathname.startsWith('/api/all') && (!pathname.startsWith('/api/') || pathname.startsWith('/api/auth'))) {
+  // 1. Only intercept /api/* routes (excluding auth)
+  if (!request.nextUrl.pathname.startsWith('/api/all') && (!request.nextUrl.pathname.startsWith('/api/') || request.nextUrl.pathname.startsWith('/api/auth'))) {
     return NextResponse.next();
   }
 

@@ -149,7 +149,6 @@ const runRecord = {
   findingsCount: totalFindingsCount
 };
 history.push(runRecord);
-writeJson(historyPath, history);
 
 const currentStatus = {
   frameworkVersion: "2.0.0",
@@ -162,7 +161,6 @@ const currentStatus = {
   inspectionCoverage: "100%",
   frameworkHealth: hasFailures ? "WARNING" : "HEALTHY"
 };
-writeJson(statusPath, currentStatus);
 
 // Generate report artifact paths
 const releaseArtifactDir = path.join(runDir, 'release');
