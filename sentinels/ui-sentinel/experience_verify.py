@@ -6,19 +6,22 @@ from playwright.sync_api import sync_playwright
 def run_verification():
     print("[PLAYWRIGHT] Initializing browser automation...", flush=True)
 
+    # Resolve repository root path dynamically relative to this file
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
     # Resolve target directories
     run_dir = os.environ.get("SENTINEL_RUN_DIR")
     if run_dir:
         evidence_dir = os.path.join(run_dir, "ui", "evidence")
-        latest_evidence_dir = os.path.join("/app", "reports", "latest", "ui", "evidence")
+        latest_evidence_dir = os.path.join(repo_root, "reports", "latest", "ui", "evidence")
         playwright_result_path = os.path.join(run_dir, "ui", "playwright_result.json")
-        latest_playwright_result_path = os.path.join("/app", "reports", "latest", "ui", "playwright_result.json")
+        latest_playwright_result_path = os.path.join(repo_root, "reports", "latest", "ui", "playwright_result.json")
     else:
         # Fallback to default ignored folder
-        evidence_dir = os.path.join("/app", "reports", "runs", "default", "ui", "evidence")
-        latest_evidence_dir = os.path.join("/app", "reports", "latest", "ui", "evidence")
-        playwright_result_path = os.path.join("/app", "reports", "runs", "default", "ui", "playwright_result.json")
-        latest_playwright_result_path = os.path.join("/app", "reports", "latest", "ui", "playwright_result.json")
+        evidence_dir = os.path.join(repo_root, "reports", "runs", "default", "ui", "evidence")
+        latest_evidence_dir = os.path.join(repo_root, "reports", "latest", "ui", "evidence")
+        playwright_result_path = os.path.join(repo_root, "reports", "runs", "default", "ui", "playwright_result.json")
+        latest_playwright_result_path = os.path.join(repo_root, "reports", "latest", "ui", "playwright_result.json")
 
     home_dir = os.path.expanduser("~")
     verification_screenshots_dir = os.path.join(home_dir, "verification", "screenshots")
