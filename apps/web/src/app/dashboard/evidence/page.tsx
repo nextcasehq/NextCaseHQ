@@ -1,224 +1,207 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { LitigationDb, Case } from '@/lib/db/litigation-db';
+import React, { useState } from 'react';
 
-interface Exhibit {
+interface EvidenceItem {
   id: string;
-  caseId: string;
-  citation: string;
-  snippet: string;
-  sha256: string;
-  status: 'VERIFIED' | 'PENDING';
-  uploadedBy: string;
+  name: string;
+  size: string;
+  hash: string;
+  timestamp: string;
+  status: string;
+  keyVersion: string;
 }
 
-export default function EvidenceRegisterPage() {
-  const [cases, setCases] = useState<Case[]>([]);
-  const [exhibits, setExhibits] = useState<Exhibit[]>([]);
-  const [showUpload, setShowUpload] = useState(false);
-
-  // Form State
-  const [caseId, setCaseId] = useState('');
-  const [citation, setCitation] = useState('');
-  const [snippet, setSnippet] = useState('');
-
-  const defaultExhibits: Exhibit[] = [
+export default function EvidencePage() {
+  const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([
     {
-      id: 'EX-A',
-      caseId: 'CAS-2026-001',
-      citation: 'WP 132/2026 - Page 14',
-      snippet: 'The petitioner maintains that the limitation period was tolled during the state of emergency...',
-      sha256: '4f46e5ba2b14d244cefcf285e191f4370c202c725e92a87db01245ab6ccc8562',
-      status: 'VERIFIED',
-      uploadedBy: 'Senior Counsel Harish Salve'
+      id: 'EX-2026-001',
+      name: 'ni_act_section_138_demand_notice.pdf',
+      size: '2.4 MB',
+      hash: 'sha256-4f8a3c9b1e2d5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e',
+      timestamp: '12-Jan-2026 10:30 UTC',
+      status: 'ENVELOPE_ENCRYPTED_STABLE',
+      keyVersion: 'v1-active'
     },
     {
-      id: 'EX-B',
-      caseId: 'CAS-2026-001',
-      citation: 'NI Act Section 138 Notice',
-      snippet: 'Notice served via registered post on 12-Jan-2026. Return receipt signed on 15-Jan-2026.',
-      sha256: '0853022c0b14d244e51afb90d723453cefcf285e191f4370c202c725e92a87db',
-      status: 'VERIFIED',
-      uploadedBy: 'Senior Counsel Harish Salve'
+      id: 'EX-2026-002',
+      name: 'registered_post_acknowledgement_receipt.png',
+      size: '840 KB',
+      hash: 'sha256-e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8',
+      timestamp: '15-Jan-2026 14:15 UTC',
+      status: 'ENVELOPE_ENCRYPTED_STABLE',
+      keyVersion: 'v1-active'
     }
-  ];
+  ]);
 
-  useEffect(() => {
-    setCases(LitigationDb.getCases());
-    const saved = localStorage.getItem('nchq_exhibits_store');
-    if (saved) {
-      setExhibits(JSON.parse(saved));
-    } else {
-      setExhibits(defaultExhibits);
-      localStorage.setItem('nchq_exhibits_store', JSON.stringify(defaultExhibits));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (cases.length > 0 && !caseId) {
-      setCaseId(cases[0].id);
-    }
-  }, [cases]);
+  const [fileName, setFileName] = useState('');
+  const [fileSize, setFileSize] = useState('1.2 MB');
+  const [isUploading, setIsUploading] = useState(false);
+  const [keyVersion, setKeyVersion] = useState('v1-active');
 
   const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!caseId || !citation || !snippet) return;
+    if (!fileName.trim()) return;
 
-    const mockHash = Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
-    const newEx: Exhibit = {
-      id: `EX-${String.fromCharCode(65 + exhibits.length)}`,
-      caseId,
-      citation,
-      snippet,
-      sha256: mockHash,
-      status: 'VERIFIED',
-      uploadedBy: 'Counsel Session'
-    };
+    setIsUploading(true);
 
-    const updated = [...exhibits, newEx];
-    setExhibits(updated);
-    localStorage.setItem('nchq_exhibits_store', JSON.stringify(updated));
+    // Simulate multi-tenant secure ingestion timeline
+    setTimeout(() => {
+      const randomId = `EX-2026-${String(Math.floor(100 + Math.random() * 900))}`;
+      // Simulate real cryptographic SHA256 string
+      const randomHash = 'sha256-' + Array.from({ length: 64 }, () =>
+        Math.floor(Math.random() * 16).toString(16)
+      ).join('');
 
-    // Reset Form
-    setCitation('');
-    setSnippet('');
-    setShowUpload(false);
+      const newEvidence: EvidenceItem = {
+        id: randomId,
+        name: fileName,
+        size: fileSize,
+        hash: randomHash,
+        timestamp: new Date().toUTCString().replace('GMT', 'UTC'),
+        status: 'ENVELOPE_ENCRYPTED_STABLE',
+        keyVersion: keyVersion
+      };
+
+      setEvidenceList([newEvidence, ...evidenceList]);
+      setFileName('');
+      setFileSize('1.2 MB');
+      setIsUploading(false);
+    }, 1200);
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 font-sans text-[#111111] animate-fadeIn">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200/60 pb-6">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">Evidence Registrar</h1>
-          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-1">
-            Cryptographically chained ledger hash integrity (HMAC-SHA256).
-          </p>
-        </div>
-        <button
-          onClick={() => setShowUpload(!showUpload)}
-          className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-lg transition-all shadow-sm"
-        >
-          {showUpload ? 'Close Form' : 'Register New Exhibit'}
-        </button>
+    <div className="p-8 max-w-6xl mx-auto space-y-8 font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
+      {/* Evidence Registrar Title */}
+      <div className="border-b border-[#111111]/10 pb-4">
+        <h1 className="text-2xl font-black uppercase tracking-widest text-[#111111]">Evidence Registrar</h1>
+        <p className="text-sm font-serif italic text-[#111111]/60">Cryptographically chained ledger hash integrity.</p>
       </div>
 
-      {/* Upload Form */}
-      {showUpload && (
-        <div className="p-6 bg-white border border-neutral-200 rounded-xl shadow-sm">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-4">Register Exhibit Metadata</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Side: Drag-and-Drop Intake Simulation */}
+        <div className="lg:col-span-1 p-6 border border-[#111111]/15 rounded bg-white space-y-6">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#111111] border-b border-[#111111]/5 pb-2">
+            Secure Exhibit Ingestion
+          </h2>
 
-          {cases.length === 0 ? (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs rounded-lg font-semibold text-center">
-              ⚠️ No Active Cases exist in this tenant partition. You must spawn a Case Workspace before uploading exhibit evidence.
+          <form onSubmit={handleUpload} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-1">
+                File Title
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. bank_statement_q1_2026.pdf"
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                disabled={isUploading}
+                className="w-full px-4 py-2.5 bg-[#FDFBF7] border border-[#111111]/15 rounded outline-none focus:border-[#111111] text-sm font-sans"
+              />
             </div>
-          ) : (
-            <form onSubmit={handleUpload} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">Bind to Case Workspace *</label>
-                  <select
-                    value={caseId}
-                    onChange={(e) => setCaseId(e.target.value)}
-                    className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium"
-                  >
-                    {cases.map(c => (
-                      <option key={c.id} value={c.id}>{c.id} // {c.title}</option>
-                    ))}
-                  </select>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">Exhibit Citation / Source *</label>
-                  <input
-                    type="text"
-                    required
-                    value={citation}
-                    onChange={(e) => setCitation(e.target.value)}
-                    placeholder="e.g. Bank Statement page 5"
-                    className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium"
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-1">
+                  File Size
+                </label>
+                <select
+                  value={fileSize}
+                  onChange={(e) => setFileSize(e.target.value)}
+                  disabled={isUploading}
+                  className="w-full px-3 py-2 bg-[#FDFBF7] border border-[#111111]/15 rounded outline-none focus:border-[#111111] text-xs font-sans"
+                >
+                  <option value="512 KB">512 KB</option>
+                  <option value="1.2 MB">1.2 MB</option>
+                  <option value="3.5 MB">3.5 MB</option>
+                  <option value="14.8 MB">14.8 MB</option>
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">Evidentiary Text Snippet *</label>
-                <textarea
-                  required
-                  value={snippet}
-                  onChange={(e) => setSnippet(e.target.value)}
-                  placeholder="Paste OCR extract or text content representing the core evidence..."
-                  rows={4}
-                  className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium font-sans"
-                />
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-1">
+                  Key Version
+                </label>
+                <select
+                  value={keyVersion}
+                  onChange={(e) => setKeyVersion(e.target.value)}
+                  disabled={isUploading}
+                  className="w-full px-3 py-2 bg-[#FDFBF7] border border-[#111111]/15 rounded outline-none focus:border-[#111111] text-xs font-sans"
+                >
+                  <option value="v1-active">v1-active</option>
+                  <option value="v2-legacy">v2-legacy</option>
+                  <option value="hsm-key-prod">hsm-key-prod</option>
+                </select>
               </div>
+            </div>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowUpload(false)}
-                  className="px-4 py-2 border border-neutral-200 text-neutral-500 text-xs font-bold uppercase rounded-lg hover:bg-neutral-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase rounded-lg shadow"
-                >
-                  Encrypt & Upload Exhibit
-                </button>
-              </div>
-            </form>
-          )}
+            <div className="border border-dashed border-[#111111]/20 rounded-lg p-6 text-center bg-[#111111]/2 hover:bg-[#111111]/5 transition-colors cursor-pointer">
+              <span className="text-2xl mb-1 block">📥</span>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50">Click or Drag Files Here</p>
+              <p className="text-[10px] text-[#111111]/30 font-serif mt-1">Multi-tenant client-side pre-encryption secure pool.</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isUploading || !fileName.trim()}
+              className="w-full py-3 bg-[#111111] text-[#FDFBF7] text-xs uppercase tracking-wider font-bold rounded shadow hover:bg-[#111111]/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            >
+              {isUploading ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-[#FDFBF7] border-t-transparent rounded-full animate-spin"></span>
+                  AES-GCM Envelope Encryption...
+                </>
+              ) : (
+                'Register Exhibit'
+              )}
+            </button>
+          </form>
         </div>
-      )}
 
-      {/* Exhibits Table List */}
-      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-neutral-50 border-b border-neutral-200">
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Exhibit ID</th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Bound Case</th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Citation Source</th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Extracted Content Snippet</th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">SHA-256 Ledger Signature</th>
-              <th className="p-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {exhibits.map(ex => (
-              <tr key={ex.id} className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors">
-                <td className="p-4">
-                  <span className="font-mono text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded">
-                    {ex.id}
+        {/* Right Side: Registered Exhibits List */}
+        <div className="lg:col-span-2 space-y-4">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#111111]/50">
+            Registered Tenant Ledger Entries
+          </h2>
+
+          <div className="space-y-4">
+            {evidenceList.map((item) => (
+              <div
+                key={item.id}
+                className="p-5 border border-[#111111]/10 rounded bg-white hover:border-[#111111] transition-all group"
+              >
+                <div className="flex justify-between items-start gap-4 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                      {item.id}
+                    </span>
+                    <span className="text-[10px] bg-[#111111]/5 text-[#111111]/60 px-2 py-0.5 rounded font-mono uppercase font-bold">
+                      {item.size}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-600 font-bold tracking-widest uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    {item.status}
                   </span>
-                </td>
-                <td className="p-4 text-xs font-bold text-neutral-600 font-mono">
-                  {ex.caseId}
-                </td>
-                <td className="p-4 text-xs font-bold text-neutral-800">
-                  {ex.citation}
-                </td>
-                <td className="p-4 text-xs text-neutral-500 max-w-xs truncate font-mono italic">
-                  "{ex.snippet}"
-                </td>
-                <td className="p-4">
-                  <span className="font-mono text-[9px] text-neutral-400 block truncate max-w-[120px]" title={ex.sha256}>
-                    {ex.sha256}
-                  </span>
-                </td>
-                <td className="p-4 text-right">
-                  <span className="px-2 py-0.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded text-[9px] font-bold uppercase tracking-wide">
-                    {ex.status}
-                  </span>
-                </td>
-              </tr>
+                </div>
+
+                <h3 className="font-bold text-sm text-[#111111]">{item.name}</h3>
+
+                <div className="mt-4 pt-3 border-t border-[#111111]/5 flex flex-col md:flex-row justify-between text-[10px] font-mono text-[#111111]/50 gap-2">
+                  <div className="truncate">
+                    <span className="font-bold text-[#111111]/70 mr-1">HASH:</span>
+                    <span className="text-[#111111]/60 font-mono select-all">{item.hash}</span>
+                  </div>
+                  <div className="flex-none text-right">
+                    <span className="font-bold text-[#111111]/70 mr-1">KEY_VER:</span>
+                    {item.keyVersion} // {item.timestamp}
+                  </div>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -17,6 +17,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@nextcase/ai-kernel':
+        specifier: workspace:*
+        version: link:../../packages/ai-kernel
       '@nextcase/country-packs':
         specifier: workspace:*
         version: link:../../packages/country-packs
@@ -32,6 +35,9 @@ importers:
       '@nextcase/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@nextcase/prompt-library':
+        specifier: workspace:*
+        version: link:../../packages/prompt-library
       '@nextcase/qa':
         specifier: workspace:*
         version: link:../../packages/qa
@@ -151,7 +157,11 @@ importers:
 
   packages/ndl: {}
 
-  packages/observability: {}
+  packages/observability:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
 
   packages/prompt-library: {}
 
