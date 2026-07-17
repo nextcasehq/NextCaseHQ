@@ -1,0 +1,89 @@
+name: NextCaseHQ Compiler Sentinel
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feat/**"
+      - "fix/**"
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+  workflow_dispatch:
+
+jobs:
+  compiler-validation:
+    name: Compiler Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - name: Verify Toolchain
+        run: |
+          echo "======================================"
+          echo "NEXTCASEHQ TOOLCHAIN"
+          echo "======================================"
+          node -v
+          corepack --version
+          pnpm -v
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Lint
+        run: pnpm lint
+
+      - name: Run TypeScript Compiler Validation
+        run: pnpm typecheck
+
+      - name: Run Production Build
+        run: pnpm build
+
+      - name: Compiler Certification
+        if: success()
+        run: |
+          echo ""
+          echo "======================================"
+          echo " NEXTCASEHQ COMPILER CERTIFICATION"
+          echo "======================================"
+          echo "Node                : PASS"
+          echo "Dependencies        : PASS"
+          echo "Lint                : PASS"
+          echo "TypeScript          : PASS"
+          echo "Production Build    : PASS"
+          echo ""
+          echo "STATUS"
+          echo "🟢 CERTIFIED FOR MERGE"
+          echo "======================================"
+
+      - name: Compiler Failure
+        if: failure()
+        run: |
+          echo ""
+          echo "======================================"
+          echo " NEXTCASEHQ COMPILER CERTIFICATION"
+          echo "======================================"
+          echo "❌ COMPILER VALIDATION FAILED"
+          echo ""
+          echo "Locate the FIRST compiler error."
+          echo "Ignore ELIFECYCLE and exit code messages."
+          echo "======================================"
