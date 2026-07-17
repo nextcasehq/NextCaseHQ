@@ -118,24 +118,7 @@ function SearchPageContent() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setHasSearched(true);
-
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
-    const filtered = legalDatabase.filter(item => {
-      const matchesQuery =
-        item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.source.toLowerCase().includes(query.toLowerCase()) ||
-        item.snippet.toLowerCase().includes(query.toLowerCase()) ||
-        item.id.toLowerCase().includes(query.toLowerCase());
-
-      return matchesQuery;
-    });
-
-    setResults(filtered);
+    executeSearch(query);
   };
 
   const displayedResults = results.filter(item => {
