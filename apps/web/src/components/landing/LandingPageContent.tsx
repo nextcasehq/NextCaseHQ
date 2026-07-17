@@ -17,7 +17,10 @@ export default function LandingPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
+    <div
+      className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col justify-between font-sans selection:bg-indigo-600 selection:text-white overflow-hidden bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/landing-bg.jpg')" }}
+    >
       {/* Structural JSON-LD schemas for Search Crawlers */}
       <JsonLd type="WebSite" />
       <JsonLd type="SoftwareApplication" />

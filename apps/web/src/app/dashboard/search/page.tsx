@@ -86,54 +86,40 @@ function SearchPageContent() {
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const searchParams = useSearchParams();
-  useEffect(() => {
-  const q = searchParams.get("q") || searchParams.get("query");
+
+  const executeSearch = (searchVal: string) => {
+    setHasSearched(true);
+    if (!searchVal.trim()) {
+      setResults([]);
+      return;
+    }
+
+    const filtered = legalDatabase.filter(item => {
+      const matchesQuery =
+        item.title.toLowerCase().includes(searchVal.toLowerCase()) ||
+        item.source.toLowerCase().includes(searchVal.toLowerCase()) ||
+        item.snippet.toLowerCase().includes(searchVal.toLowerCase()) ||
+        item.id.toLowerCase().includes(searchVal.toLowerCase());
+
+      return matchesQuery;
+    });
+
+    setResults(filtered);
+  };
+
+  React.useEffect(() => {
+    const urlQuery = searchParams.get('q') || searchParams.get('query') || '';
+    if (urlQuery.trim()) {
+      setQuery(urlQuery);
+      executeSearch(urlQuery);
+    }
+  }, [searchParams]);
 
   if (q && q.trim()) {
     setQuery(q);
   }
 }, [searchParams]);
 
-  // Pre-load pending query on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const pendingQuery = sessionStorage.getItem('NEXTCASE_PENDING_SEARCH_QUERY');
-      if (pendingQuery) {
-        setQuery(pendingQuery);
-        setHasSearched(true);
-        sessionStorage.removeItem('NEXTCASE_PENDING_SEARCH_QUERY');
-
-        const filtered = legalDatabase.filter(item => {
-          return (
-            item.title.toLowerCase().includes(pendingQuery.toLowerCase()) ||
-            item.source.toLowerCase().includes(pendingQuery.toLowerCase()) ||
-            item.snippet.toLowerCase().includes(pendingQuery.toLowerCase()) ||
-            item.id.toLowerCase().includes(pendingQuery.toLowerCase())
-          );
-        });
-        setResults(filtered);
-      }
-    }
-  }, []);
-const executeSearch = (searchQuery: string) => {
-  const normalized = searchQuery.trim().toLowerCase();
-
-  setHasSearched(true);
-
-  if (!normalized) {
-    setResults([]);
-    return;
-  }
-
-  const filtered = legalDatabase.filter((item) =>
-    item.title.toLowerCase().includes(normalized) ||
-    item.source.toLowerCase().includes(normalized) ||
-    item.snippet.toLowerCase().includes(normalized) ||
-    item.id.toLowerCase().includes(normalized)
-  );
-
-  setResults(filtered);
-};
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     executeSearch(query);
