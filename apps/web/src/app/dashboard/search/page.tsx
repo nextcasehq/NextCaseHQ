@@ -115,7 +115,25 @@ function SearchPageContent() {
       }
     }
   }, []);
+const executeSearch = (searchQuery: string) => {
+  const normalized = searchQuery.trim().toLowerCase();
 
+  setHasSearched(true);
+
+  if (!normalized) {
+    setResults([]);
+    return;
+  }
+
+  const filtered = legalDatabase.filter((item) =>
+    item.title.toLowerCase().includes(normalized) ||
+    item.source.toLowerCase().includes(normalized) ||
+    item.snippet.toLowerCase().includes(normalized) ||
+    item.id.toLowerCase().includes(normalized)
+  );
+
+  setResults(filtered);
+};
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     executeSearch(query);
