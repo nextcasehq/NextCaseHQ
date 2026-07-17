@@ -115,11 +115,6 @@ function SearchPageContent() {
     }
   }, [searchParams]);
 
-  if (q && q.trim()) {
-    setQuery(q);
-  }
-}, [searchParams]);
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     executeSearch(query);
