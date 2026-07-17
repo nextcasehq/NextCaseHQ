@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] = [
   {
@@ -36,16 +37,7 @@ export default function SiteFooter() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <svg
-                className="h-7 w-7 text-[#F6F1E7] transition-colors group-hover:text-[#E4C77E]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                aria-hidden="true"
-              >
-                <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Logo size={30} className="transition-transform group-hover:scale-105" />
               <span className="font-serif text-lg font-bold tracking-tight text-[#F6F1E7]">
                 NextCase<span className="text-[#E4C77E]">HQ</span>
               </span>
