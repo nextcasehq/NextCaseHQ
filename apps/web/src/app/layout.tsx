@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { Lora, Source_Sans_3 } from "next/font/google";
 import "@nextcase/ndl";
 import "./globals.css";
 import NavbarWrapper from "@/components/NavbarWrapper";
+
+const lora = Lora({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
+const sourceSans = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 export const metadata: Metadata = {
   title: "NextCaseHQ - Zero-Knowledge Litigation Operating System",
@@ -31,8 +35,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-[#FDFBF7] text-[#111111]">
+    <html lang="en" className={`${lora.variable} ${sourceSans.variable} bg-[#F4EEE0]`}>
+      <body className="bg-[#F4EEE0] font-sans text-[#241E17]">
         <NavbarWrapper />
         <main className="pt-16">{children}</main>
       </body>

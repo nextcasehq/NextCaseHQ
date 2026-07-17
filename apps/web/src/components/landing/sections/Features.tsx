@@ -78,16 +78,16 @@ const FEATURES: Feature[] = [
 
 export default function Features() {
   return (
-    <section id="features" className="bg-[#FDFBF7]">
+    <section id="features" className="bg-[#F4EEE0]">
       <div className="mx-auto w-full max-w-7xl px-6 py-16 md:px-12 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-700">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A6D2F]">
             Capabilities
           </span>
-          <h2 className="mt-3 text-balance text-3xl font-black tracking-tight text-[#111111] md:text-4xl">
+          <h2 className="mt-3 text-balance font-serif text-3xl font-black tracking-tight text-[#241E17] md:text-4xl">
             Everything a litigation team needs, in one secure workspace
           </h2>
-          <p className="mt-4 text-pretty text-base leading-relaxed text-neutral-600">
+          <p className="mt-4 text-pretty text-base leading-relaxed text-[#5C5340]">
             A modular operating system that unifies intake, analysis, drafting,
             and compliance—without ever compromising confidentiality.
           </p>
@@ -97,15 +97,15 @@ export default function Features() {
           {FEATURES.map((feature) => (
             <article
               key={feature.title}
-              className="group flex flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg hover:shadow-neutral-200/60"
+              className="group flex flex-col rounded-2xl border border-[#D9CDB2] bg-[#FBF8F1] p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C6A253] hover:shadow-lg hover:shadow-[#8A6D2F]/10"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFE6CE] text-[#8A6D2F] transition-colors group-hover:bg-[#8A6D2F] group-hover:text-[#F6F1E7]">
                 {feature.icon}
               </span>
-              <h3 className="mt-5 text-lg font-bold tracking-tight text-[#111111]">
+              <h3 className="mt-5 font-serif text-lg font-bold tracking-tight text-[#241E17]">
                 {feature.title}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+              <p className="mt-2 text-sm leading-relaxed text-[#5C5340]">
                 {feature.description}
               </p>
             </article>

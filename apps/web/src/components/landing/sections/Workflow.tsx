@@ -20,13 +20,13 @@ const STEPS = [
 
 export default function Workflow() {
   return (
-    <section className="bg-white">
+    <section className="bg-[#FBF8F1]">
       <div className="mx-auto w-full max-w-7xl px-6 py-16 md:px-12 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-700">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A6D2F]">
             Workflow
           </span>
-          <h2 className="mt-3 text-balance text-3xl font-black tracking-tight text-[#111111] md:text-4xl">
+          <h2 className="mt-3 text-balance font-serif text-3xl font-black tracking-tight text-[#241E17] md:text-4xl">
             From intake to filing in one continuous flow
           </h2>
         </div>
@@ -35,15 +35,15 @@ export default function Workflow() {
           {STEPS.map((item) => (
             <li
               key={item.step}
-              className="relative rounded-2xl border border-neutral-200 bg-[#FDFBF7] p-8"
+              className="relative rounded-2xl border border-[#D9CDB2] bg-[#F4EEE0] p-8"
             >
-              <span className="font-mono text-4xl font-black text-indigo-600/20">
+              <span className="font-serif text-4xl font-black text-[#8A6D2F]/30">
                 {item.step}
               </span>
-              <h3 className="mt-4 text-xl font-bold tracking-tight text-[#111111]">
+              <h3 className="mt-4 font-serif text-xl font-bold tracking-tight text-[#241E17]">
                 {item.title}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+              <p className="mt-2 text-sm leading-relaxed text-[#5C5340]">
                 {item.body}
               </p>
             </li>
