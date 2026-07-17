@@ -34,7 +34,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-[#FDFBF7] text-[#111111]">
         <NavbarWrapper />
-        <main>{children}</main>
+        <main className="pt-16">{children}</main>
       </body>
     </html>
   );
