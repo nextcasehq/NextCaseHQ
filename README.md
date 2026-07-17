@@ -1,4 +1,4 @@
-# Namecasehq
+# Nextcasehq
 The Operating System of Litigation
 
 ---
