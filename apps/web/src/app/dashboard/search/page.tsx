@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface SearchResult {
   id: string;
@@ -11,80 +12,109 @@ interface SearchResult {
   jurisdiction: string;
 }
 
+const legalDatabase: SearchResult[] = [
+  {
+    id: 'SEC-12-BNSS',
+    category: 'Statutes',
+    title: 'Section 12 - Local Jurisdiction of Judicial Magistrates',
+    source: 'Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023',
+    snippet: 'Subject to the control of the High Court, the Chief Judicial Magistrate may, from time to time, define the local limits of the areas within which the Magistrates...',
+    jurisdiction: 'IN'
+  },
+  {
+    id: 'SEC-138-NIA',
+    category: 'Statutes',
+    title: 'Section 138 - Dishonour of cheque for insufficiency of funds',
+    source: 'Negotiable Instruments Act, 1881',
+    snippet: 'Where any cheque drawn by a person on an account maintained by him with a banker for payment of any amount of money to another person from out of that account...',
+    jurisdiction: 'IN'
+  },
+  {
+    id: 'EX-02-TIMELINE',
+    category: 'Exhibits',
+    title: 'Registered Post Return Receipt',
+    source: 'Matter Exhibit B // Registered Envelope Cover',
+    snippet: 'Delivery confirmation dated 15-Jan-2026. Signed return card bearing the acknowledgment seal of the respondent corp.',
+    jurisdiction: 'IN'
+  },
+  {
+    id: 'EX-04-LEDGER',
+    category: 'Exhibits',
+    title: 'NextCaseHQ Client Ledger Entry',
+    source: 'Matter Exhibit D // Corporate Ledger Extract',
+    snippet: 'Reflects wire transaction ref tx_9948271 amounting to INR 4,50,000 initiated by petitioner on 10-Jan-2026.',
+    jurisdiction: 'IN'
+  },
+  {
+    id: 'SC-2024-81',
+    category: 'Precedents',
+    title: 'M/s. Sterling Exports v. State of Maharashtra',
+    source: 'Supreme Court of India // Criminal Appeal No. 81 of 2024',
+    snippet: 'Held: The tolling of limitation periods for Section 138 filings under special conditions must be strictly calculated starting the day following notice receipt...',
+    jurisdiction: 'IN'
+  },
+  {
+    id: 'FRCP-RULE-4',
+    category: 'Statutes',
+    title: 'Rule 4 - Summons and Service of Process',
+    source: 'US Federal Rules of Civil Procedure (FRCP)',
+    snippet: 'A summons must be served with a copy of the complaint. The plaintiff is responsible for having the summons and complaint served within the time allowed under Rule 4(m)...',
+    jurisdiction: 'US'
+  },
+  {
+    id: 'EX-FRCP-CONTRACT',
+    category: 'Exhibits',
+    title: 'Fraser Inc. Service Contract',
+    source: 'Fraser Matter Exhibit A // Contract Section 8.2',
+    snippet: 'The parties agree that all disputes arising out of this agreement shall be submitted to the exclusive jurisdiction of the S.D.N.Y. Federal Court...',
+    jurisdiction: 'US'
+  },
+  {
+    id: 'CPR-PART-7',
+    category: 'Statutes',
+    title: 'Part 7 - How to Start Proceedings — The Claim Form',
+    source: 'UK Civil Procedure Rules (CPR)',
+    snippet: 'Proceedings are started when the court issues a claim form at the request of the claimant. The claim form must contain brief details of the nature of the claim...',
+    jurisdiction: 'UK'
+  }
+];
+
 function SearchPageContent() {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'Statutes' | 'Exhibits' | 'Precedents'>('ALL');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const searchParams = useSearchParams();
+  useEffect(() => {
+  const q = searchParams.get("q") || searchParams.get("query");
 
-  // High-fidelity litigation database
-  const legalDatabase: SearchResult[] = [
-    {
-      id: 'SEC-12-BNSS',
-      category: 'Statutes',
-      title: 'Section 12 - Local Jurisdiction of Judicial Magistrates',
-      source: 'Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023',
-      snippet: 'Subject to the control of the High Court, the Chief Judicial Magistrate may, from time to time, define the local limits of the areas within which the Magistrates...',
-      jurisdiction: 'IN'
-    },
-    {
-      id: 'SEC-138-NIA',
-      category: 'Statutes',
-      title: 'Section 138 - Dishonour of cheque for insufficiency of funds',
-      source: 'Negotiable Instruments Act, 1881',
-      snippet: 'Where any cheque drawn by a person on an account maintained by him with a banker for payment of any amount of money to another person from out of that account...',
-      jurisdiction: 'IN'
-    },
-    {
-      id: 'EX-02-TIMELINE',
-      category: 'Exhibits',
-      title: 'Registered Post Return Receipt',
-      source: 'Matter Exhibit B // Registered Envelope Cover',
-      snippet: 'Delivery confirmation dated 15-Jan-2026. Signed return card bearing the acknowledgment seal of the respondent corp.',
-      jurisdiction: 'IN'
-    },
-    {
-      id: 'EX-04-LEDGER',
-      category: 'Exhibits',
-      title: 'NextCaseHQ Client Ledger Entry',
-      source: 'Matter Exhibit D // Corporate Ledger Extract',
-      snippet: 'Reflects wire transaction ref tx_9948271 amounting to INR 4,50,000 initiated by petitioner on 10-Jan-2026.',
-      jurisdiction: 'IN'
-    },
-    {
-      id: 'SC-2024-81',
-      category: 'Precedents',
-      title: 'M/s. Sterling Exports v. State of Maharashtra',
-      source: 'Supreme Court of India // Criminal Appeal No. 81 of 2024',
-      snippet: 'Held: The tolling of limitation periods for Section 138 filings under special conditions must be strictly calculated starting the day following notice receipt...',
-      jurisdiction: 'IN'
-    },
-    {
-      id: 'FRCP-RULE-4',
-      category: 'Statutes',
-      title: 'Rule 4 - Summons and Service of Process',
-      source: 'US Federal Rules of Civil Procedure (FRCP)',
-      snippet: 'A summons must be served with a copy of the complaint. The plaintiff is responsible for having the summons and complaint served within the time allowed under Rule 4(m)...',
-      jurisdiction: 'US'
-    },
-    {
-      id: 'EX-FRCP-CONTRACT',
-      category: 'Exhibits',
-      title: 'Fraser Inc. Service Contract',
-      source: 'Fraser Matter Exhibit A // Contract Section 8.2',
-      snippet: 'The parties agree that all disputes arising out of this agreement shall be submitted to the exclusive jurisdiction of the S.D.N.Y. Federal Court...',
-      jurisdiction: 'US'
-    },
-    {
-      id: 'CPR-PART-7',
-      category: 'Statutes',
-      title: 'Part 7 - How to Start Proceedings — The Claim Form',
-      source: 'UK Civil Procedure Rules (CPR)',
-      snippet: 'Proceedings are started when the court issues a claim form at the request of the claimant. The claim form must contain brief details of the nature of the claim...',
-      jurisdiction: 'UK'
+  if (q && q.trim()) {
+    setQuery(q);
+  }
+}, [searchParams]);
+
+  // Pre-load pending query on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pendingQuery = sessionStorage.getItem('NEXTCASE_PENDING_SEARCH_QUERY');
+      if (pendingQuery) {
+        setQuery(pendingQuery);
+        setHasSearched(true);
+        sessionStorage.removeItem('NEXTCASE_PENDING_SEARCH_QUERY');
+
+        const filtered = legalDatabase.filter(item => {
+          return (
+            item.title.toLowerCase().includes(pendingQuery.toLowerCase()) ||
+            item.source.toLowerCase().includes(pendingQuery.toLowerCase()) ||
+            item.snippet.toLowerCase().includes(pendingQuery.toLowerCase()) ||
+            item.id.toLowerCase().includes(pendingQuery.toLowerCase())
+          );
+        });
+        setResults(filtered);
+      }
     }
-  ];
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

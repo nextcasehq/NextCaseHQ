@@ -1,16 +1,29 @@
 import React from "react";
-import Hero from "@/components/landing/Hero";
+import type { Metadata } from "next";
+import Link from "next/link";
+import LandingPageContent from "@/components/landing/LandingPageContent";
 
-/**
- * NextCaseHQ: Premium Reimagined Static Landing Experience
- * Redesigned in full accordance with Product Design Authority guidelines:
- * - Single-viewport design (no-scroll)
- * - Generous whitespace and a warm, calm professional background
- * - Minimalist Apple/Linear/Notion-grade aesthetic
- * - Centerpiece elegant search bar with interactive CTA arrow
- * - Human-first, calm, and confident microcopy
- * - Optimized as a Server Component for maximum Core Web Vitals (FCP/LCP/TBT) performance
- */
+export const metadata: Metadata = {
+  title: "Secure, Zero-Knowledge Litigation Operating System | NextCaseHQ",
+  description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings with complete context.",
+  alternates: {
+    canonical: "https://nextcasehq.com",
+  },
+  openGraph: {
+    title: "Secure, Zero-Knowledge Litigation Operating System | NextCaseHQ",
+    description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings with complete context.",
+    url: "https://nextcasehq.com",
+    siteName: "NextCaseHQ",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Secure, Zero-Knowledge Litigation Operating System | NextCaseHQ",
+    description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings with complete context.",
+  },
+};
+
 export default function Page() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
