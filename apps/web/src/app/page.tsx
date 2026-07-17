@@ -25,8 +25,6 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
-
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
 
