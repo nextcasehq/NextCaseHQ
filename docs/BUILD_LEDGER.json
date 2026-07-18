@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T05:00:00Z",
+  "last_updated": "2026-07-18T06:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "milestones": {
     "database_foundation": {
@@ -44,6 +44,13 @@
       "description": "POST /api/documents/upload now derives tenant identity exclusively from the verified session cookie (lib/auth/session.ts requireSession()); client-supplied x-nextcase-tenant-id/x-tenant-id headers are ignored entirely, closing a real cross-tenant spoofing gap the route previously had. Verified end-to-end against a running server: an authenticated Tenant A request with forged headers claiming Tenant B still resolves to Tenant A.",
       "scope_note": "Deliberately limited to this one existing route per Product Owner decision. /api/webhooks was not modified. No general domain CRUD or advocate-facing features were added.",
       "not_yet_true": "Only /api/documents/upload has server-enforced tenant authorization. Other routes (e.g. /api/webhooks, the disconnected /api/* Bearer-token gate) are unchanged. There is still no real domain CRUD (LegalCase/DocumentEnvelope) to authorize against beyond this one mock ingestion endpoint.",
+      "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "secure_webhook_verification": {
+      "status": "COMPLETE",
+      "description": "POST /api/webhooks now requires an HMAC-SHA256 signature (x-nextcase-signature) over `${timestamp}.${rawBody}` plus a fresh x-nextcase-timestamp (5-minute tolerance, lib/security/webhook-signature.ts). Unsigned, invalid, tampered, expired, and replayed requests are rejected before the body is ever parsed as JSON. Replay protection (lib/security/replay-guard.ts) is an in-memory guard scoped to the tolerance window.",
+      "scope_note": "Deliberately limited to this one existing route. No general domain CRUD or advocate-facing features were added; the payload processing behavior is otherwise unchanged (still a mock, no real persistence).",
+      "not_yet_true": "Replay protection is per-process, in-memory state — correct for a single instance, but a horizontally-scaled multi-instance Edge deployment needs a shared store (Redis or a DB table) for replay protection to hold across instances. This is flagged as known follow-up infrastructure work, not silently assumed away.",
       "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
     }
   }
