@@ -3,6 +3,8 @@ import { DatabaseClient } from '@/lib/db/db-client';
 import { verifyPassword } from '@/lib/auth/password';
 import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_SECONDS } from '@/lib/auth/session-cookie';
+import { isTrustedOrigin } from '@/lib/security/origin-check';
+import { checkRateLimit, getClientIdentifier } from '@/lib/security/rate-limit';
 
 interface UserRow {
   id: string;
@@ -10,6 +12,9 @@ interface UserRow {
   email: string;
   password_hash: string | null;
 }
+
+const LOGIN_RATE_LIMIT_MAX = 10;
+const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * NCHQ Module 9: Auth Session Endpoint
@@ -19,6 +24,22 @@ interface UserRow {
  */
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(
+      `login:${getClientIdentifier(request)}`,
+      LOGIN_RATE_LIMIT_MAX,
+      LOGIN_RATE_LIMIT_WINDOW_MS
+    );
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', message: 'Too many login attempts. Try again later.' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+      );
+    }
+
+    if (!isTrustedOrigin(request)) {
+      return NextResponse.json({ error: 'INVALID_ORIGIN' }, { status: 403 });
+    }
+
     const body = await request.json();
     const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body?.password === 'string' ? body.password : '';

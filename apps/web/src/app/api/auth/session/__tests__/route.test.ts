@@ -3,16 +3,22 @@ import { jwtVerify } from 'jose';
 import { POST } from '../route';
 import { DatabaseClient, closePool } from '@/lib/db/db-client';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
+import { __resetRateLimitForTests } from '@/lib/security/rate-limit';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');
+const TRUSTED_ORIGIN = 'http://localhost:3000';
 
-function buildRequest(body: unknown): Request {
+function buildRequest(body: unknown, headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/auth/session', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', origin: TRUSTED_ORIGIN, ...headers },
     body: JSON.stringify(body),
   });
 }
+
+beforeEach(() => {
+  __resetRateLimitForTests();
+});
 
 function getSessionCookieValue(response: Response): string | undefined {
   const setCookie = response.headers.get('set-cookie') || '';
@@ -89,5 +95,24 @@ describe('POST /api/auth/session — real credential validation', () => {
   test('missing password field returns 401 without throwing', async () => {
     const response = await POST(buildRequest({ email: EMAIL }));
     expect(response.status).toBe(401);
+  });
+
+  test('rejects a request from an untrusted origin (CSRF defense) even with correct credentials', async () => {
+    const response = await POST(
+      buildRequest({ email: EMAIL, password: PASSWORD }, { origin: 'https://attacker.example' })
+    );
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toBe('INVALID_ORIGIN');
+  });
+
+  test('rate-limits repeated login attempts from the same client', async () => {
+    const clientHeaders = { 'x-forwarded-for': '203.0.113.42' };
+    let lastResponse!: Response;
+    for (let i = 0; i < 11; i++) {
+      lastResponse = await POST(buildRequest({ email: EMAIL, password: 'wrong' }, clientHeaders));
+    }
+    expect(lastResponse.status).toBe(429);
+    expect(lastResponse.headers.get('Retry-After')).toBeTruthy();
   });
 });

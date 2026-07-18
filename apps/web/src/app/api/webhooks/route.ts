@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyWebhookSignature, WEBHOOK_TOLERANCE_SECONDS } from '@/lib/security/webhook-signature';
 import { hasBeenSeen, remember } from '@/lib/security/replay-guard';
+import { checkRateLimit, getClientIdentifier } from '@/lib/security/rate-limit';
 
 /**
  * NCHQ Module 13: Core Webhook Entry Point (Edge Runtime)
@@ -19,8 +20,25 @@ const WebhookPayloadSchema = z.object({
   timestamp: z.string().datetime().optional(),
 });
 
+const WEBHOOK_RATE_LIMIT_MAX = 60;
+const WEBHOOK_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 60 requests/minute per IP
+
 export async function POST(request: Request) {
   const start = performance.now();
+
+  // Rate limit before any signature/body work, so a flood of garbage
+  // requests can't spend CPU on HMAC computation before being turned away.
+  const rateLimit = checkRateLimit(
+    `webhook:${getClientIdentifier(request)}`,
+    WEBHOOK_RATE_LIMIT_MAX,
+    WEBHOOK_RATE_LIMIT_WINDOW_MS
+  );
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'RATE_LIMITED' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+    );
+  }
 
   // Signature covers the exact raw bytes — must read as text before any
   // JSON parsing, since re-serializing would change the signed content.

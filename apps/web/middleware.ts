@@ -2,12 +2,21 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
+import { constantTimeEqual } from '@/lib/security/constant-time';
+import { INSECURE_ADMIN_TOKEN_PLACEHOLDER } from '@/lib/security/env-validation';
 
 /**
  * NCHQ Module 9: Secure Multi-Tenant API Gateway (Edge Middleware)
+ *
+ * Static security headers (CSP, HSTS, etc.) are applied globally via
+ * next.config.ts's headers(), not here — they don't depend on anything
+ * request-specific, so there's no need to route them through middleware
+ * or widen this file's matcher to cover pages it otherwise has no reason
+ * to touch.
  */
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');
+const ADMIN_ACCESS_TOKEN = process.env.ADMIN_ACCESS_TOKEN || INSECURE_ADMIN_TOKEN_PLACEHOLDER;
 
 export async function middleware(request: NextRequest) {
   const start = performance.now();
@@ -16,7 +25,7 @@ export async function middleware(request: NextRequest) {
   // 0. Enforce zero-trust admin API gate
   if (pathname.startsWith('/api/admin')) {
     const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value;
-    if (adminToken !== 'nchq-admin-secret-key-2026') {
+    if (!adminToken || !constantTimeEqual(adminToken, ADMIN_ACCESS_TOKEN)) {
       return new NextResponse(
         JSON.stringify({ error: 'SECURE_ACCESS_DENIED', message: 'Unauthorized administrative session.' }),
         { status: 401, headers: { 'content-type': 'application/json' } }
@@ -52,10 +61,10 @@ export async function middleware(request: NextRequest) {
   // nothing in the app actually issues, effectively making the route
   // unreachable.
   const isSelfAuthorizedApiRoute =
-    request.nextUrl.pathname.startsWith('/api/auth') ||
-    request.nextUrl.pathname.startsWith('/api/documents/upload') ||
-    request.nextUrl.pathname.startsWith('/api/webhooks');
-  if (!request.nextUrl.pathname.startsWith('/api/all') && (!request.nextUrl.pathname.startsWith('/api/') || isSelfAuthorizedApiRoute)) {
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/documents/upload') ||
+    pathname.startsWith('/api/webhooks');
+  if (!pathname.startsWith('/api/all') && (!pathname.startsWith('/api/') || isSelfAuthorizedApiRoute)) {
     return NextResponse.next();
   }
 
