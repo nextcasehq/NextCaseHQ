@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T10:00:00Z",
+  "last_updated": "2026-07-18T11:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -96,6 +96,15 @@
       "verification": "Verified against a real local Redis instance (not mocked): unit tests prove atomic counting and a shared-across-instances property; runtime verification started two fully independent `next start` OS processes on different ports pointed at the same Redis and confirmed the second process immediately inherited the first process's exhausted rate-limit state for the same client IP — the actual property this milestone exists to provide, not just unit-tested in isolation. Also verified the REDIS_URL-unset fallback path still passes the full test suite unchanged.",
       "scope_note": "Did not touch /api/webhooks, replay-guard.ts, or rate-limit.ts (both remain exactly as they were, still used by the webhook route). No UI changes, no new features.",
       "out_of_scope_next": ["webhook_rate_limit_and_replay_still_in_memory_edge_runtime (awaiting Product Owner decision)", "search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "real_case_management_api": {
+      "status": "COMPLETE — backend only",
+      "status_note": "The first real, RLS-backed domain CRUD API. Backend only by design: the existing /cases, /cases/[id], /cases/new, /matters pages still render mock/local-state data and were NOT touched — wiring them to this real API is its own follow-up milestone, not bundled in here.",
+      "description": "POST/GET /api/cases and GET/PATCH/DELETE /api/cases/[id] persist real rows in the existing LegalCase table (db/schema.sql — schema and RLS policies unchanged, already present since the database foundation milestone). Tenant identity comes exclusively from the verified session cookie (lib/auth/session.ts requireSession()), never a client-supplied field; every query runs through DatabaseClient.execute(tenantId, ...) so Postgres RLS enforces isolation independent of application code. A request for a real case ID belonging to another tenant returns 404 (matching actual RLS behavior — zero rows, not a permission error), on GET, PATCH, and DELETE alike. middleware.ts's disconnected Bearer-token gate now exempts /api/cases, same pattern as /api/documents/upload.",
+      "verification": "Verified against a real running server (not just unit tests): full create -> list -> get -> patch -> delete lifecycle over real HTTP with real session cookies for two separate tenants, confirming list scoping, cross-tenant 404 isolation on GET/PATCH, and correct write/delete behavior end-to-end — not simulated within a single test process.",
+      "scope_note": "No UI changes. No changes to DocumentEnvelope, search, AI, billing, or messaging. No changes to the schema — LegalCase and its RLS policies already existed.",
+      "not_yet_true": "The UI still shows mock data on every case-related page; this milestone only proves the real backend exists and is tenant-safe. DocumentEnvelope (real file/document persistence) is a separate, not-yet-started milestone.",
+      "out_of_scope_next": ["wire_cases_ui_to_real_api", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
     }
   }
 }
