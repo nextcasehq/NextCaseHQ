@@ -1,6 +1,12 @@
 -- NCHQ-MB-V3.0 Authoritative PostgreSQL Schema
 -- Module 2: Agnostic Database Subsystem & RLS
 
+-- 0a. pgvector extension — required for the real `vector` column type and
+-- similarity operators (<=>) used by DocumentChunkVector below. Requires
+-- the postgresql-*-pgvector OS package to be installed alongside the
+-- server; this statement only activates it inside this database.
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- 0. Security Infrastructure
 CREATE OR REPLACE FUNCTION get_active_session_tenant() RETURNS UUID AS $$
 DECLARE
@@ -170,6 +176,52 @@ CREATE TABLE IF NOT EXISTS "DocumentChunkVector" (
     "metadata" JSONB DEFAULT '{}'
 );
 
+-- Additive migration for the Document Search & Indexing milestone. This
+-- table previously had no tenant_id/RLS at all (unlike every other real
+-- domain table) and nothing in the app ever wrote to it, so it's safe to
+-- extend it directly rather than create a parallel table.
+--
+-- tenant_id + its own tenant_isolation_policy below is required rather
+-- than relying on the envelope_id -> DocumentEnvelope FK for scoping:
+-- PostgreSQL foreign key constraint checks always bypass row-level
+-- security by design (confirmed the hard way in the DocumentEnvelope.
+-- case_id fix) — the FK still exists for referential integrity, but it
+-- must never be trusted as a tenant boundary by itself.
+--
+-- "vector_array" is superseded by "embedding" (a real pgvector column,
+-- enabling actual similarity search via <=>) but kept as-is rather than
+-- dropped, matching this codebase's additive-only migration discipline.
+ALTER TABLE "DocumentChunkVector" ADD COLUMN IF NOT EXISTS "tenant_id" UUID REFERENCES "Tenant"("id") ON DELETE CASCADE;
+ALTER TABLE "DocumentChunkVector" ADD COLUMN IF NOT EXISTS "content" TEXT;
+ALTER TABLE "DocumentChunkVector" ADD COLUMN IF NOT EXISTS "embedding" vector(1536);
+
+-- Backfill safety net for a hypothetical pre-existing non-empty table:
+-- since tenant_id can't carry NOT NULL until every row has one, this is a
+-- no-op today (table is empty in every known environment) but keeps the
+-- migration safe to run against any state.
+UPDATE "DocumentChunkVector" SET "tenant_id" = (SELECT "tenant_id" FROM "DocumentEnvelope" WHERE "DocumentEnvelope"."id" = "DocumentChunkVector"."envelope_id") WHERE "tenant_id" IS NULL;
+
+-- ALTER COLUMN ... SET NOT NULL has no named-constraint form to guard on,
+-- but is itself idempotent (a no-op error-free re-run once already set).
+ALTER TABLE "DocumentChunkVector" ALTER COLUMN "tenant_id" SET NOT NULL;
+
+-- Full-text half of hybrid search: a generated, indexed tsvector kept
+-- automatically in sync with "content" by Postgres itself (no app-level
+-- trigger to maintain).
+ALTER TABLE "DocumentChunkVector" ADD COLUMN IF NOT EXISTS "content_tsv" tsvector
+    GENERATED ALWAYS AS (to_tsvector('english', coalesce("content", ''))) STORED;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentchunkvector_envelope_chunk_unique'
+    ) THEN
+        ALTER TABLE "DocumentChunkVector" ADD CONSTRAINT documentchunkvector_envelope_chunk_unique
+            UNIQUE ("envelope_id", "chunk_index");
+    END IF;
+END
+$$;
+
 -- 6. TenantWallet
 CREATE TABLE IF NOT EXISTS "TenantWallet" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -214,6 +266,8 @@ ALTER TABLE "DocumentEnvelope" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentEnvelope" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "TenantWallet" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "TenantWallet" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentChunkVector" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentChunkVector" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -230,11 +284,23 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "TenantWallet";
 CREATE POLICY tenant_isolation_policy ON "TenantWallet"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentChunkVector";
+CREATE POLICY tenant_isolation_policy ON "DocumentChunkVector"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
 CREATE INDEX IF NOT EXISTS idx_documentenvelope_case ON "DocumentEnvelope"("case_id");
 CREATE INDEX IF NOT EXISTS idx_documentchunkvector_envelope ON "DocumentChunkVector"("envelope_id");
+CREATE INDEX IF NOT EXISTS idx_documentchunkvector_tenant ON "DocumentChunkVector"("tenant_id");
+-- Full-text half of hybrid search.
+CREATE INDEX IF NOT EXISTS idx_documentchunkvector_content_tsv ON "DocumentChunkVector" USING GIN ("content_tsv");
+-- Vector-similarity half of hybrid search. HNSW (pgvector >=0.5) needs no
+-- data-distribution tuning parameter the way ivfflat's "lists" does, so it
+-- stays correct and reasonably performant whether built empty or full.
+CREATE INDEX IF NOT EXISTS idx_documentchunkvector_embedding_hnsw ON "DocumentChunkVector"
+    USING hnsw ("embedding" vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_wallettransaction_wallet ON "WalletTransactionRecord"("wallet_id");
 CREATE INDEX IF NOT EXISTS idx_securityaudit_tenant_time ON "SecurityAuditTrail"("tenant_id", "created_at");
 

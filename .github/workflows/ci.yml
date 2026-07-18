@@ -75,7 +75,10 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        # pgvector/pgvector:pg16 is the official pgvector-maintained image —
+        # plain postgres:16 doesn't have the extension installed, and
+        # db/schema.sql's `CREATE EXTENSION vector` would fail without it.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: nextcase
           POSTGRES_PASSWORD: nextcase_ci_pw

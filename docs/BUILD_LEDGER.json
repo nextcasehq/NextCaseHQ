@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T15:00:00Z",
+  "last_updated": "2026-07-18T18:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -42,6 +42,10 @@
     {
       "id": "admin_auth_shared_secret_no_individual_accountability",
       "description": "PR #65 made admin login server-verified (signed httpOnly/Secure/SameSite=Strict session, real POST /api/admin/session endpoint) but deliberately kept the single shared ADMIN_ACCESS_TOKEN 'operator secret' model rather than moving to real per-admin user accounts. Every operator who knows the one secret is indistinguishable from any other in logs/audit trail, and there is no per-person revocation — only rotating the single shared secret revokes everyone at once. Real per-admin accounts (tied to the User table, role-based, individually attributable) were evaluated and deferred as a separate, larger, future milestone — deliberately out of scope for PR #65 to avoid touching the regular user auth system."
+    },
+    {
+      "id": "embedding_provider_defaults_to_local_hashing_without_a_real_vendor_key",
+      "description": "lib/search/embedding-provider.ts requires EMBEDDING_API_BASE_URL + EMBEDDING_API_KEY to use a real semantic embedding model (any HTTP endpoint matching the OpenAI embeddings API shape). Without them, a deterministic local 'feature hashing' provider is used so indexing/hybrid search stay fully functional in dev/CI, but vector similarity is only as good as shared-vocabulary overlap, not real semantic understanding. This degrades gracefully rather than failing (unlike S3/Redis, which 503/hard-fail when unconfigured), so it is not enforced by env-validation.ts — but production deployments should set both vars for real search quality."
     }
   ],
   "milestones": {
@@ -49,27 +53,53 @@
       "status": "COMPLETE",
       "description": "Replaced in-memory DatabaseClient simulation with a real PostgreSQL connection (raw pg driver, no ORM). db/schema.sql applied via scripts/db/migrate.js. Tenant RLS verified against a real database with FORCE ROW LEVEL SECURITY.",
       "provider": "Supabase PostgreSQL (pending project provisioning — see PR)",
-      "out_of_scope_next": ["authentication", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "authentication",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "real_authentication_and_user_storage": {
       "status": "COMPLETE",
       "description": "POST /api/auth/session validates bcrypt-hashed credentials against a real User row and mints a signed httpOnly JWT session cookie. /dashboard/* is now actually enforced by middleware (previously matched in the config but not actually gated — a real pre-existing bug, not a regression). Logout invalidates the session. User.email is now globally unique and User.password_hash was added. Verified against real PostgreSQL, bcryptjs, and a running server end-to-end.",
       "not_yet_true": "Authentication is real; tenant AUTHORIZATION is not. A valid session proves who the user is, not that their tenant matches what they are accessing — that is the next milestone, not this one. General LegalCase/Tenant domain CRUD was explicitly out of scope and was not touched.",
-      "out_of_scope_next": ["server_enforced_tenant_authorization", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "server_enforced_tenant_authorization",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "server_enforced_tenant_authorization": {
       "status": "COMPLETE",
       "description": "POST /api/documents/upload now derives tenant identity exclusively from the verified session cookie (lib/auth/session.ts requireSession()); client-supplied x-nextcase-tenant-id/x-tenant-id headers are ignored entirely, closing a real cross-tenant spoofing gap the route previously had. Verified end-to-end against a running server: an authenticated Tenant A request with forged headers claiming Tenant B still resolves to Tenant A.",
       "scope_note": "Deliberately limited to this one existing route per Product Owner decision. /api/webhooks was not modified. No general domain CRUD or advocate-facing features were added.",
       "not_yet_true": "Only /api/documents/upload has server-enforced tenant authorization. Other routes (e.g. /api/webhooks, the disconnected /api/* Bearer-token gate) are unchanged. There is still no real domain CRUD (LegalCase/DocumentEnvelope) to authorize against beyond this one mock ingestion endpoint.",
-      "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "secure_webhook_verification": {
       "status": "COMPLETE",
       "description": "POST /api/webhooks now requires an HMAC-SHA256 signature (x-nextcase-signature) over `${timestamp}.${rawBody}` plus a fresh x-nextcase-timestamp (5-minute tolerance, lib/security/webhook-signature.ts). Unsigned, invalid, tampered, expired, and replayed requests are rejected before the body is ever parsed as JSON. Replay protection (lib/security/replay-guard.ts) is an in-memory guard scoped to the tolerance window.",
       "scope_note": "Deliberately limited to this one existing route. No general domain CRUD or advocate-facing features were added; the payload processing behavior is otherwise unchanged (still a mock, no real persistence).",
       "not_yet_true": "Replay protection is per-process, in-memory state — correct for a single instance, but a horizontally-scaled multi-instance Edge deployment needs a shared store (Redis or a DB table) for replay protection to hold across instances. This is flagged as known follow-up infrastructure work, not silently assumed away.",
-      "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "production_security_hardening": {
       "status": "SCOPED_WORK_COMPLETE",
@@ -78,7 +108,14 @@
       "design_correction": "CSP was first implemented with a per-request nonce + 'strict-dynamic' (Next.js's documented pattern), then reverted after real headless-browser testing showed it breaks every statically-prerendered page (the majority of routes in this app): a nonce generated per-request can never match anything baked into HTML built once at compile time, so every script gets blocked. Replaced with a static script-src 'self' 'unsafe-inline' CSP — see known_limitations.static_csp_no_inline_script_protection for what this does and does not protect against. Verified with zero console/CSP errors and a real UI-driven login flow (form fill -> submit -> fetch -> cookie -> client-side navigation) via headless Chromium.",
       "scope_note": "No UI changes, no performance work, no database redesign, no Redis/distributed replay protection, no new features, per Product Owner scope.",
       "not_yet_true": "See known_limitations (static_csp_no_inline_script_protection, in_memory_rate_limiting_and_replay_protection) for what this milestone explicitly does not resolve. The admin_panel_client_side_login blocker this milestone left open was resolved separately by server_verified_admin_authentication below.",
-      "out_of_scope_next": ["real_admin_authentication", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "real_admin_authentication",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "server_verified_admin_authentication": {
       "status": "COMPLETE",
@@ -87,7 +124,13 @@
       "scope_note": "apps/web/src/app/admin/page.tsx markup, labels, tabs, and mock console data are byte-for-byte unchanged — only the login/logout/session-check handlers were rewired. No changes to /api/auth/*, lib/auth/session.ts, lib/auth/jwt.ts, or the User table.",
       "not_yet_true": "See known_limitations.admin_auth_shared_secret_no_individual_accountability. Everything else recorded under production_security_status/known_limitations (static CSP, in-memory rate-limit/replay) is unchanged by this milestone.",
       "merged": "PR #65, commit 4b41b98",
-      "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "distributed_rate_limiting": {
       "status": "PARTIAL — Node.js-runtime routes only",
@@ -95,7 +138,14 @@
       "description": "lib/security/redis-client.ts (lazy ioredis singleton, returns null when REDIS_URL is unset) and lib/security/redis-rate-limit.ts (checkDistributedRateLimit: Redis INCR+PEXPIRE fixed-window counter, same semantics as the existing in-memory limiter, falls back to it automatically when REDIS_URL is unset or Redis is unreachable). POST /api/auth/session and POST /api/admin/session now call checkDistributedRateLimit instead of the in-memory checkRateLimit. env-validation.ts now refuses to boot NODE_ENV=production without REDIS_URL set. CI's test job gained a real redis:7 service container so the Redis-backed code path is exercised in CI, not just the fallback.",
       "verification": "Verified against a real local Redis instance (not mocked): unit tests prove atomic counting and a shared-across-instances property; runtime verification started two fully independent `next start` OS processes on different ports pointed at the same Redis and confirmed the second process immediately inherited the first process's exhausted rate-limit state for the same client IP — the actual property this milestone exists to provide, not just unit-tested in isolation. Also verified the REDIS_URL-unset fallback path still passes the full test suite unchanged.",
       "scope_note": "Did not touch /api/webhooks, replay-guard.ts, or rate-limit.ts (both remain exactly as they were, still used by the webhook route). No UI changes, no new features.",
-      "out_of_scope_next": ["webhook_rate_limit_and_replay_still_in_memory_edge_runtime (awaiting Product Owner decision)", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "webhook_rate_limit_and_replay_still_in_memory_edge_runtime (awaiting Product Owner decision)",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "real_case_management_api": {
       "status": "COMPLETE — backend only",
@@ -104,7 +154,15 @@
       "verification": "Verified against a real running server (not just unit tests): full create -> list -> get -> patch -> delete lifecycle over real HTTP with real session cookies for two separate tenants, confirming list scoping, cross-tenant 404 isolation on GET/PATCH, and correct write/delete behavior end-to-end — not simulated within a single test process.",
       "scope_note": "No UI changes. No changes to DocumentEnvelope, search, AI, billing, or messaging. No changes to the schema — LegalCase and its RLS policies already existed.",
       "not_yet_true": "The UI still shows mock data on every case-related page; this milestone only proves the real backend exists and is tenant-safe. DocumentEnvelope (real file/document persistence) is a separate, not-yet-started milestone.",
-      "out_of_scope_next": ["wire_cases_ui_to_real_api", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "wire_cases_ui_to_real_api",
+        "document_envelope_persistence",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "case_management_api_hardening": {
       "status": "COMPLETE",
@@ -112,14 +170,30 @@
       "description": "All /api/cases and /api/cases/[id] handlers now wrap their logic in try/catch, returning a consistent {error:'INTERNAL_ERROR'} 500 JSON response on unexpected failures (e.g. a DB outage) instead of falling through to Next.js's default error page — matching the established convention already used by /api/webhooks, /api/documents/upload, and /api/admin/session. GET /api/cases now accepts ?limit= (default 50, max 100) and ?offset= (default 0) query params, validated via zod, and returns {cases, total, limit, offset} — total is a real tenant-scoped COUNT(*), so callers can page through more than 100 cases, which the prior hardcoded LIMIT 100 with no way to see more or know the true count could not do.",
       "verification": "Verified against a real running server and real Postgres: created 5 cases for one tenant, fetched limit=2/offset=0 and limit=2/offset=2 pages and confirmed no ID overlap between them plus a correct total=5 on both pages; confirmed out-of-range limit and negative offset both return 400; confirmed the no-query-params default returns limit=50/offset=0 with all 5 rows.",
       "scope_note": "No new endpoints, no schema changes, no UI changes. Response shape addition (total/limit/offset alongside the existing cases array) is additive, not breaking.",
-      "out_of_scope_next": ["wire_cases_ui_to_real_api", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "wire_cases_ui_to_real_api",
+        "document_envelope_persistence",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "legalcase_schema_alignment": {
       "status": "COMPLETE",
       "status_note": "Product Owner-approved architectural decision (Option 1 of 3 presented): additive LegalCase columns, Matter explicitly deferred to its own future milestone.",
       "description": "Added real, structural columns to the existing LegalCase table — status (TEXT, CHECK constrained to PENDING/HEARING/DISPOSED/APPEAL, NOT NULL DEFAULT 'PENDING'), court, judge, stage, hearing_date (TEXT, YYYY-MM-DD — deliberately not DATE, to avoid a UTC/timezone conversion footgun for a field nothing yet does date arithmetic on), and notes. All additive (ADD COLUMN IF NOT EXISTS with a DEFAULT for the NOT NULL one), so existing rows were preserved with zero rewrite and the migration is safe to re-run. Verified idempotent by re-running db/schema.sql twice against the same database with no errors. RLS (tenant_isolation_policy, FORCE ROW LEVEL SECURITY) was not touched and continues to cover the whole table including the new columns. /api/cases and /api/cases/[id] now validate, persist, return, and (list endpoint) filter by these fields.",
       "scope_decision": "Matter is explicitly OUT of scope — no Matter table was created, no matter_id column was added to LegalCase. This was a genuine architectural fork presented to the Product Owner (schema-less state_metadata blob vs. additive real columns vs. a full Matter table+FK); Product Owner chose additive real columns with Matter deferred, matching how the /cases UI actually uses these fields (the list page filters by status, which needs to be a real indexable value, not JSON).",
-      "out_of_scope_next": ["matter_table_and_matter_id_linkage", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "matter_table_and_matter_id_linkage",
+        "document_envelope_persistence",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "cases_ui_wired_to_real_api": {
       "status": "COMPLETE",
@@ -127,7 +201,15 @@
       "verification": "Verified with a real running server and a real headless-browser session (not just unit tests): unauthenticated /cases shows the auth-required state rather than crashing; a freshly-seeded tenant shows the real empty state; a case created through the real UI form appears in the real list with its real HEARING status rendered; filtering to PENDING correctly hides it; opening the case detail page shows the real title/court fields; saving notes through the UI persists via a real PATCH request and survives a full page reload (proving it's server-backed, not local component state); the parent-Matter section is confirmed absent. Zero console errors observed.",
       "scope_note": "Only apps/web/src/app/cases/page.tsx and apps/web/src/app/cases/[id]/page.tsx were touched. apps/web/src/app/cases/new/page.tsx (an already-static placeholder with no mock-data dependency) and every /matters page are untouched.",
       "not_yet_true": "No Matter persistence or case-to-matter linkage — recorded as its own separate future domain milestone, not silently dropped.",
-      "out_of_scope_next": ["matter_table_and_matter_id_linkage", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+      "out_of_scope_next": [
+        "matter_table_and_matter_id_linkage",
+        "document_envelope_persistence",
+        "search",
+        "ai",
+        "file_storage",
+        "billing",
+        "messaging"
+      ]
     },
     "document_envelope_persistence": {
       "status": "COMPLETE — metadata only, object storage still pending",
@@ -137,7 +219,14 @@
       "verification": "Verified against a real running server and real Postgres: uploaded a document, confirmed it round-trips through the real list/get endpoints, confirmed a different tenant's list/get correctly excludes/404s it, confirmed case_id linkage works for the caller's own case and is correctly rejected (400) for another tenant's case, confirmed case_id filtering on the list endpoint, confirmed DELETE removes it and a subsequent GET 404s.",
       "scope_note": "No object storage integration. No changes to /api/cases or the Cases UI. middleware.ts's self-authorized-route exemption was broadened from /api/documents/upload specifically to all of /api/documents, since the new list/detail routes authorize themselves the same way.",
       "not_yet_true": "storage_structure only records byte count and a 'pending' storage_provider marker — no file bytes are durably stored anywhere yet. That is the next approved milestone (object storage integration).",
-      "out_of_scope_next": ["object_storage_integration", "matter_table_and_matter_id_linkage", "search", "ai", "billing", "messaging"]
+      "out_of_scope_next": [
+        "object_storage_integration",
+        "matter_table_and_matter_id_linkage",
+        "search",
+        "ai",
+        "billing",
+        "messaging"
+      ]
     },
     "object_storage_integration": {
       "status": "COMPLETE",
@@ -145,7 +234,28 @@
       "infrastructure_investigation": "MinIO itself could not be run in this development/CI environment: Docker Hub image pull failed (registry-side 403) and direct binary download from dl.min.io is explicitly blocked by the environment's egress policy (confirmed via the proxy's relay-failure log, not something to route around). Investigated and found a real alternative: s3rver, a pure-Node package implementing the genuine S3 HTTP API (not a mock/stub) — smoke-tested and verified working end-to-end against the standard AWS SDK before adopting it. scripts/test/start-s3rver.js starts it for local dev/test and CI (CI: a background process step, since s3rver has no first-party Docker image to use as a services: container) — same role MinIO would have played, satisfying 'MinIO or another S3-compatible local service' from the Product Owner's instruction.",
       "verification": "Verified against a real running server, real Postgres, and a real S3-compatible server (s3rver) — not mocked at any layer: uploaded real file bytes, downloaded them back and confirmed a byte-for-byte match with correct Content-Type/Content-Disposition, confirmed a different tenant's download attempt 404s without ever touching storage, confirmed a disallowed file extension (.exe) is rejected before any bytes are accepted, confirmed DELETE removes both the metadata row and the real object (a subsequent download 404s because the object is genuinely gone, not just because the DB row is gone).",
       "scope_note": "No document parsing, OCR, search indexing, or AI processing — explicitly out of scope for this milestone. No changes to /api/cases or the Cases UI. The PR #71 metadata layer is otherwise preserved; storage_structure's shape changed from a 'pending' placeholder to real {storage_provider, object_key, content_type, bytes_stored, etag} once this milestone landed.",
-      "out_of_scope_next": ["matter_table_and_matter_id_linkage", "search", "ai", "billing", "messaging"]
+      "out_of_scope_next": [
+        "matter_table_and_matter_id_linkage",
+        "search",
+        "ai",
+        "billing",
+        "messaging"
+      ]
+    },
+    "document_search_and_indexing": {
+      "status": "COMPLETE",
+      "description": "Implemented hybrid document search & indexing per the Product Owner's explicit architecture decision: PostgreSQL + pgvector as the sole search substrate (no Elasticsearch/OpenSearch/Meilisearch/Typesense). DocumentChunkVector — previously dead schema with no tenant_id/RLS and no code path ever writing to it — was extended additively: tenant_id (+ its own tenant_isolation_policy, ENABLE+FORCE ROW LEVEL SECURITY), content (TEXT), content_tsv (a GENERATED ALWAYS AS to_tsvector(...) STORED column, GIN-indexed — the full-text half), and embedding (a real vector(1536) pgvector column, HNSW-indexed with vector_cosine_ops — the similarity half). The legacy vector_array column is kept, unused, rather than dropped (additive-only migration discipline). Indexing pipeline (lib/search/indexing.ts): RLS-scoped fetch of the DocumentEnvelope, fetches the real stored object via the existing object-storage adapter, extracts plain text (lib/search/text-extraction.ts — a pluggable seam: only text/plain is supported today, PDF/DOC/image content types return a defined 'UNSUPPORTED_CONTENT_TYPE' SKIPPED result rather than a fake success, so OCR/parsers can be added later without redesigning the pipeline), chunks it (lib/search/chunking.ts — fixed-size character chunking with overlap), generates one embedding per chunk through a provider-agnostic abstraction (lib/search/embedding-provider.ts), and persists chunks (re-indexing replaces prior chunks for that envelope outright). Exposed as POST /api/documents/[id]/index. Embedding provider abstraction: no AI vendor is hardcoded. A generic HTTP client (lib/search/embedding-provider.ts HttpEmbeddingProvider) speaks the widely-adopted OpenAI embeddings API shape (POST {EMBEDDING_API_BASE_URL}/embeddings) when EMBEDDING_API_BASE_URL + EMBEDDING_API_KEY are set — works against OpenAI itself or any self-hosted/gateway server exposing that same shape (vLLM, Ollama's OpenAI-compatible mode, LiteLLM, etc). When unconfigured, a deterministic local 'feature hashing' provider (a real, if crude, bag-of-words embedding technique — not random noise) is used instead, so the full pipeline and hybrid search are exercisable end-to-end in dev/CI without a live AI vendor key. Hybrid search: GET /api/search?q=&case_id=&limit=&offset= combines the vector-similarity ranking and full-text ranking via Reciprocal Rank Fusion (RRF, k=60 — the standard constant used across hybrid-search implementations), avoiding the need to normalize two differently-scaled scores against each other. Tenant-scoped throughout: DocumentChunkVector's own tenant_id + RLS policy protects both the indexing writes and the search reads — the envelope_id foreign key to DocumentEnvelope is never relied on alone for isolation, consistent with the FK-bypasses-RLS lesson from PR #71.",
+      "verification": "Real Postgres with the pgvector 0.6.0 extension actually installed and CREATE EXTENSION'd (not assumed); schema migration re-run twice confirming full idempotency; 26 new automated tests (chunking, text-extraction, vector-format, embedding-provider including a cosine-similarity sanity check that related text scores higher than unrelated text, indexDocument integration tests against real Postgres + s3rver, and both new route handlers) plus the full existing 191-test suite passing with zero regressions. Full production-mode runtime verification against a real `next start` server with real minted session JWTs: uploaded a real document, indexed it, searched for a matching phrase and confirmed the correct chunk came back with a higher fused score than an unrelated query, confirmed a second tenant's index-attempt on the first tenant's document returns 404, confirmed a second tenant's search never returns the first tenant's chunks even when their own vector-similarity ranking has no textual match to fall back on, and confirmed an unauthenticated index attempt returns 401.",
+      "architecture_decision": "Per explicit Product Owner instruction: PostgreSQL + pgvector only, reusing DocumentChunkVector, embeddings behind a swappable provider abstraction, hybrid (vector + full-text) search, tenant isolation enforced throughout, and an indexing pipeline designed so OCR/parsers/future AI enrichment can plug in later without redesign.",
+      "scope_note": "Explicitly excluded per Product Owner instruction: LLM chat, RAG answer generation, OCR, AI summarization, UI redesign, external search engines. No changes to /dashboard/search or /search pages (existing stub UI pages untouched). packages/search-engine remains the pre-existing unused stub scaffold — not wired to anything and out of scope to touch.",
+      "known_gap_documented_not_blocking": "The HNSW index (idx_documentchunkvector_embedding_hnsw) is built against whatever data exists at migration time — fine functionally at any volume, but a production deployment with a large pre-existing corpus indexed all at once may want a REINDEX after bulk-loading for optimal graph quality. Real semantic search quality depends on EMBEDDING_API_BASE_URL/EMBEDDING_API_KEY being set in production — without them the always-available local-hashing fallback keeps the feature functional but not semantically meaningful beyond shared-vocabulary overlap; this is a soft (non-blocking) requirement rather than a hard env-validation failure, since unlike S3/Redis the feature degrades gracefully rather than 503ing.",
+      "out_of_scope_next": [
+        "matter_table_and_matter_id_linkage",
+        "ocr_and_binary_document_parsing",
+        "ai_integration",
+        "billing",
+        "messaging"
+      ]
     }
   }
 }
