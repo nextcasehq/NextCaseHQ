@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 
 /**
  * NCHQ Module 17: Advanced File Ingestion Controller
@@ -10,28 +11,35 @@ import { z } from 'zod';
 const MAX_DOCUMENT_SIZE = 128 * 1024 * 1024; // 128MB
 
 const IngestHeadersSchema = z.object({
-  'x-nextcase-tenant-id': z.string().uuid().optional(),
-  'x-tenant-id': z.string().uuid().optional(),
   'x-tenant-key-version': z.string().min(1),
-}).refine(data => data['x-nextcase-tenant-id'] || data['x-tenant-id'], {
-  message: "Tenant ID must be provided in 'x-nextcase-tenant-id' or 'x-tenant-id' header.",
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const start = performance.now();
 
   try {
-    const headerList = await headers();
+    // Tenant identity comes ONLY from the verified session cookie — never
+    // from a client-supplied header. Any x-nextcase-tenant-id/x-tenant-id
+    // header a caller sends is ignored entirely; this is what makes
+    // cross-tenant spoofing impossible rather than merely unlikely.
+    let session;
+    try {
+      session = await requireSession(request);
+    } catch (error) {
+      if (error instanceof UnauthenticatedError) {
+        return NextResponse.json(
+          { error: 'SECURE_ACCESS_DENIED', message: 'Authentication required.' },
+          { status: 401 }
+        );
+      }
+      throw error;
+    }
+    const tenantId = session.tenantId;
 
-    // Extract headers for validation
-    const headerData = {
-      'x-nextcase-tenant-id': headerList.get('x-nextcase-tenant-id'),
-      'x-tenant-id': headerList.get('x-tenant-id') || headerList.get('X-Tenant-ID'),
-      'x-tenant-key-version': headerList.get('x-tenant-key-version') || headerList.get('X-Tenant-Key-Version'),
-    };
-
-    // Strict Zod validation for headers
-    const headerResult = IngestHeadersSchema.safeParse(headerData);
+    // Strict Zod validation for the remaining (non-identity) headers
+    const headerResult = IngestHeadersSchema.safeParse({
+      'x-tenant-key-version': request.headers.get('x-tenant-key-version') || request.headers.get('X-Tenant-Key-Version'),
+    });
     if (!headerResult.success) {
       return NextResponse.json({
         error: 'BAD_REQUEST',
@@ -69,8 +77,8 @@ export async function POST(request: Request) {
       .replace(/[2-9]{1}[0-9]{3}\s[0-9]{4}\s[0-9]{4}/g, '[REDACTED_INDIA_PII]');
 
     // We scrub the file name or document metadata from incoming headers if present
-    const rawFileName = headerList.get('x-file-name') || '';
-    const rawMetadata = headerList.get('x-document-metadata') || '';
+    const rawFileName = request.headers.get('x-file-name') || '';
+    const rawMetadata = request.headers.get('x-document-metadata') || '';
 
     const scrubbedFileName = rawFileName ? scrubPII(rawFileName) : '';
     const scrubbedMetadata = rawMetadata ? scrubPII(rawMetadata) : '';
@@ -83,20 +91,14 @@ export async function POST(request: Request) {
     }
 
     // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
-    const validatedTenantId = headerResult.data['x-nextcase-tenant-id'] || headerResult.data['x-tenant-id'];
-
-    // NCHQ Module 20: RLS Session Guard Verification
-    try {
-      console.log(`[DB_CONTEXT] SET LOCAL nextcase.current_tenant_id = '${validatedTenantId}'`);
-      // In a production Prisma context, this would be:
-      // await db.$executeRawUnsafe(`SET LOCAL nextcase.current_tenant_id = '${validatedTenantId}'`);
-    } catch (dbError) {
-      return NextResponse.json({ error: 'DB_ACCESS_VIOLATION', status: 'ABORTED' }, { status: 403 });
-    }
+    console.log(`[DB_CONTEXT] SET LOCAL nextcase.current_tenant_id = '${tenantId}'`);
+    // In a production context, this would be:
+    // await db.execute(tenantId, `INSERT INTO "DocumentEnvelope" ...`, [...]);
 
     return NextResponse.json({
       status: 'ACCEPTED',
       id: crypto.randomUUID(),
+      tenant_id: tenantId,
       bytes_received: totalBytesReceived,
       scrubbed_metadata: {
         file_name: scrubbedFileName,
