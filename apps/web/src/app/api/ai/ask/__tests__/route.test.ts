@@ -4,6 +4,7 @@ import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { askQuestion } from '@/lib/ai/rag';
 import { AIProviderNotConfiguredError, AIProviderRequestError } from '@/lib/ai/errors';
+import { MatterNotFoundError, EntitlementDeniedError } from '@/lib/ai/context/gateway';
 
 jest.mock('@/lib/ai/rag');
 const mockedAskQuestion = askQuestion as jest.MockedFunction<typeof askQuestion>;
@@ -83,7 +84,59 @@ describe('POST /api/ai/ask', () => {
     const body = await res.json();
     expect(body.answer).toBe('The answer is 42.');
     expect(body.sources).toHaveLength(1);
-    expect(mockedAskQuestion).toHaveBeenCalledWith(TENANT_ID, 'What is the answer?', null);
+    // estimated_provider_tokens/estimated_cost_usd must never reach the
+    // client (Milestone 2, Decision 7) — instrumentation only.
+    expect(body).not.toHaveProperty('estimated_provider_tokens');
+    expect(body).not.toHaveProperty('estimated_cost_usd');
+    expect(mockedAskQuestion).toHaveBeenCalledWith(TENANT_ID, USER_ID, 'What is the answer?', {
+      caseId: null,
+      matterId: null,
+    });
+  });
+
+  test('passes matter_id through to askQuestion when provided', async () => {
+    const matterId = '00000000-0000-4000-8000-000000000ac1';
+    mockedAskQuestion.mockResolvedValue({
+      status: 'ANSWERED',
+      answer: 'Grounded in matter context.',
+      sources: [],
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+    });
+    const res = await POST(
+      buildRequest({ cookie: await sessionCookieHeader() }, { question: 'What is next?', matter_id: matterId })
+    );
+    expect(res.status).toBe(200);
+    expect(mockedAskQuestion).toHaveBeenCalledWith(TENANT_ID, USER_ID, 'What is next?', {
+      caseId: null,
+      matterId,
+    });
+  });
+
+  test('rejects an invalid matter_id format (400)', async () => {
+    const res = await POST(
+      buildRequest({ cookie: await sessionCookieHeader() }, { question: 'test?', matter_id: 'not-a-uuid' })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test('returns 404 when the matter belongs to another tenant or does not exist', async () => {
+    mockedAskQuestion.mockRejectedValue(new MatterNotFoundError());
+    const res = await POST(
+      buildRequest(
+        { cookie: await sessionCookieHeader() },
+        { question: 'test?', matter_id: '00000000-0000-4000-8000-000000000ac2' }
+      )
+    );
+    expect(res.status).toBe(404);
+  });
+
+  test('returns 403 when entitlement is denied', async () => {
+    mockedAskQuestion.mockRejectedValue(new EntitlementDeniedError('Trial expired.'));
+    const res = await POST(buildRequest({ cookie: await sessionCookieHeader() }, { question: 'test?' }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe('ENTITLEMENT_DENIED');
   });
 
   test('rejects an untrusted origin (403)', async () => {

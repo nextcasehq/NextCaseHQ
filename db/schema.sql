@@ -391,6 +391,54 @@ CREATE TABLE IF NOT EXISTS "Notification" (
     "created_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- 7c. AiUsageEvent — instrumentation only (Milestone 2C). Every AI operation
+-- that reaches a real provider call records exactly one row here, success
+-- or failure — never updated or deleted afterward (see the REVOKE at the
+-- bottom of this file, which makes that a real grant restriction, not just
+-- a convention). No billing logic reads this table yet; it exists so a
+-- future Commercial Credit Engine can derive real charges from real
+-- history instead of being built against no data at all. operation_type is
+-- billed, not estimated_provider_tokens — see lib/ai/usage-metering.ts.
+CREATE TABLE IF NOT EXISTS "AiUsageEvent" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "user_id" UUID REFERENCES "User"("id"),
+    "matter_id" UUID REFERENCES "Matter"("id"),
+    "proceeding_id" UUID REFERENCES "LegalCase"("id"),
+    "document_id" UUID REFERENCES "DocumentEnvelope"("id"),
+    "billing_transaction_id" UUID REFERENCES "WalletTransactionRecord"("id"),
+    "operation_type" TEXT NOT NULL,
+    "provider" TEXT,
+    "model" TEXT,
+    "estimated_context_size" INT,
+    "estimated_provider_tokens" INT,
+    "estimated_cost_usd" NUMERIC(10,4),
+    "status" TEXT NOT NULL DEFAULT 'SUCCESS',
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'aiusageevent_operation_type_check'
+    ) THEN
+        ALTER TABLE "AiUsageEvent" ADD CONSTRAINT aiusageevent_operation_type_check
+            CHECK ("operation_type" IN (
+                'AI_CHAT', 'DRAFT_CREATE', 'DRAFT_IMPROVE', 'LEGAL_RESEARCH',
+                'DOCUMENT_SUMMARIZE', 'DOCUMENT_COMPARE', 'OCR', 'TRANSLATION',
+                'CITATION_ANALYSIS', 'TIMELINE_ANALYSIS', 'EVIDENCE_ANALYSIS',
+                'TEMPLATE_GENERATION', 'MATTER_CONTEXT', 'EMBEDDING', 'RERANKING'
+            ));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'aiusageevent_status_check'
+    ) THEN
+        ALTER TABLE "AiUsageEvent" ADD CONSTRAINT aiusageevent_status_check
+            CHECK ("status" IN ('SUCCESS', 'FAILED'));
+    END IF;
+END
+$$;
+
 -- 8. SecurityAuditTrail
 CREATE TABLE IF NOT EXISTS "SecurityAuditTrail" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -421,6 +469,8 @@ ALTER TABLE "WalletTransactionRecord" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "WalletTransactionRecord" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "AiUsageEvent" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "AiUsageEvent" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Client" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Client" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Matter" ENABLE ROW LEVEL SECURITY;
@@ -473,6 +523,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterEvent";
 CREATE POLICY tenant_isolation_policy ON "MatterEvent"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "AiUsageEvent";
+CREATE POLICY tenant_isolation_policy ON "AiUsageEvent"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -497,9 +551,18 @@ CREATE INDEX IF NOT EXISTS idx_matter_client ON "Matter"("client_id");
 CREATE INDEX IF NOT EXISTS idx_matterparticipant_matter ON "MatterParticipant"("matter_id");
 CREATE INDEX IF NOT EXISTS idx_matterparticipant_user ON "MatterParticipant"("user_id");
 CREATE INDEX IF NOT EXISTS idx_matterevent_matter_date ON "MatterEvent"("matter_id", "event_date");
+CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_created ON "AiUsageEvent"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_matter ON "AiUsageEvent"("tenant_id", "matter_id");
 
 -- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
 GRANT USAGE ON SCHEMA public TO nextcase_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nextcase_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO nextcase_app;
 GRANT EXECUTE ON FUNCTION get_active_session_tenant() TO nextcase_app;
+
+-- AiUsageEvent is meant to be an append-only ledger — the application role
+-- may INSERT and SELECT rows but must never UPDATE or DELETE one, even by
+-- accident. Must run after the blanket GRANT above, which would otherwise
+-- re-grant UPDATE/DELETE on every table including this one; REVOKE is
+-- always safe to re-run regardless of what was previously granted.
+REVOKE UPDATE, DELETE ON "AiUsageEvent" FROM nextcase_app;
