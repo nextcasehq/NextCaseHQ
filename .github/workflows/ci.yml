@@ -70,3 +70,62 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nextcase
+          POSTGRES_PASSWORD: nextcase_ci_pw
+          POSTGRES_DB: nextcase_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Migrations run as the service container's bootstrap user, which the
+      # official postgres image always makes a superuser — fine here since
+      # this step only needs DDL privileges (CREATE TABLE/ROLE/POLICY).
+      - name: Apply Database Schema
+        env:
+          MIGRATION_DATABASE_URL: postgres://nextcase:nextcase_ci_pw@localhost:5432/nextcase_test
+        run: pnpm db:migrate
+
+      # The app/tests must NOT run as that bootstrap user: Postgres
+      # superusers always bypass RLS regardless of FORCE ROW LEVEL SECURITY,
+      # which would make the RLS test pass for the wrong reason (or silently
+      # hide a real isolation bug). db/schema.sql creates a dedicated
+      # `nextcase_app` role with no BYPASSRLS and no password; set one here,
+      # scoped to this ephemeral CI database only.
+      - name: Provision Least-Privilege Application Role
+        run: >-
+          PGPASSWORD=nextcase_ci_pw psql -h localhost -U nextcase -d nextcase_test
+          -c "ALTER ROLE nextcase_app WITH PASSWORD 'nextcase_app_ci_pw';"
+
+      - name: Run Web Unit & Integration Tests
+        env:
+          DATABASE_URL: postgres://nextcase_app:nextcase_app_ci_pw@localhost:5432/nextcase_test
+        run: pnpm --filter web test
+
+      - name: Run Crypto Unit Tests
+        run: pnpm --filter @nextcase/crypto test

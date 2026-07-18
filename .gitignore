@@ -62,6 +62,7 @@
 .dynamodb/
 .env
 .env.*
+!.env.example
 .eslintcache
 .firebase/
 .fusebox/

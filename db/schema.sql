@@ -6,13 +6,29 @@ CREATE OR REPLACE FUNCTION get_active_session_tenant() RETURNS UUID AS $$
 DECLARE
     _tenant_id TEXT;
 BEGIN
-    _tenant_id := current_setting('nextcase.active_tenant_id', true);
+    _tenant_id := current_setting('nextcase.current_tenant_id', true);
     IF _tenant_id IS NULL OR _tenant_id = '' THEN
         RAISE EXCEPTION 'SECURE_ACCESS_DENIED: No active tenant context found.';
     END IF;
     RETURN _tenant_id::UUID;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- 0b. Application Role
+-- The application must NEVER connect as the schema owner/admin role: Postgres
+-- exempts superusers unconditionally from RLS (FORCE included), and also
+-- exempts the table owner unless FORCE is set. Supabase's own default
+-- `postgres` role bypasses RLS for the same reason. This role is created
+-- with no password here (out of scope for a file committed to git) — set
+-- one out-of-band via `ALTER ROLE nextcase_app WITH PASSWORD '...'` per
+-- environment, then point the app's DATABASE_URL at it.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'nextcase_app') THEN
+        CREATE ROLE nextcase_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+    END IF;
+END
+$$;
 
 -- 1. Tenant
 -- 1. Country & Jurisdiction Configuration
@@ -138,24 +154,43 @@ CREATE TABLE IF NOT EXISTS "SecurityAuditTrail" (
 );
 
 -- Activation of RLS
+-- FORCE is required in addition to ENABLE: without it, Postgres exempts the
+-- table owner from RLS policies, and the application's runtime role is
+-- expected to be that same owner in most single-role deployments (including
+-- this one) — so ENABLE alone would silently make RLS a no-op for all app
+-- traffic while still looking "enabled" in \d output.
 ALTER TABLE "LegalCase" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "LegalCase" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentEnvelope" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentEnvelope" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "TenantWallet" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "TenantWallet" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
+-- (dropped and recreated so this script is safe to re-run against an
+-- already-migrated database)
+DROP POLICY IF EXISTS tenant_isolation_policy ON "LegalCase";
 CREATE POLICY tenant_isolation_policy ON "LegalCase"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentEnvelope";
 CREATE POLICY tenant_isolation_policy ON "DocumentEnvelope"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "TenantWallet";
 CREATE POLICY tenant_isolation_policy ON "TenantWallet"
     USING ("tenant_id" = get_active_session_tenant());
 
 -- High-performance Target Indexes
-CREATE INDEX idx_user_tenant ON "User"("tenant_id");
-CREATE INDEX idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
-CREATE INDEX idx_documentenvelope_case ON "DocumentEnvelope"("case_id");
-CREATE INDEX idx_documentchunkvector_envelope ON "DocumentChunkVector"("envelope_id");
-CREATE INDEX idx_wallettransaction_wallet ON "WalletTransactionRecord"("wallet_id");
-CREATE INDEX idx_securityaudit_tenant_time ON "SecurityAuditTrail"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
+CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
+CREATE INDEX IF NOT EXISTS idx_documentenvelope_case ON "DocumentEnvelope"("case_id");
+CREATE INDEX IF NOT EXISTS idx_documentchunkvector_envelope ON "DocumentChunkVector"("envelope_id");
+CREATE INDEX IF NOT EXISTS idx_wallettransaction_wallet ON "WalletTransactionRecord"("wallet_id");
+CREATE INDEX IF NOT EXISTS idx_securityaudit_tenant_time ON "SecurityAuditTrail"("tenant_id", "created_at");
+
+-- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
+GRANT USAGE ON SCHEMA public TO nextcase_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nextcase_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO nextcase_app;
+GRANT EXECUTE ON FUNCTION get_active_session_tenant() TO nextcase_app;

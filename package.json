@@ -5,10 +5,11 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "typecheck": "node scripts/typescript_validation.js"
-    
+    "typecheck": "node scripts/typescript_validation.js",
+    "db:migrate": "node scripts/db/migrate.js"
   },
   "devDependencies": {
+    "pg": "^8.22.0",
     "turbo": "latest",
     "typescript": "^5.0.0"
   },

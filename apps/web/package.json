@@ -11,16 +11,17 @@
   },
   "dependencies": {
     "@nextcase/ai-kernel": "workspace:*",
-    "@nextcase/prompt-library": "workspace:*",
     "@nextcase/country-packs": "workspace:*",
     "@nextcase/design-system-ndl": "workspace:*",
     "@nextcase/messaging": "workspace:*",
     "@nextcase/ndl": "workspace:*",
     "@nextcase/observability": "workspace:*",
+    "@nextcase/prompt-library": "workspace:*",
     "@nextcase/qa": "workspace:*",
     "idb": "^8.0.3",
     "jose": "^6.2.3",
     "next": "16.2.10",
+    "pg": "^8.22.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "zod": "^4.4.3"
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.0.0",

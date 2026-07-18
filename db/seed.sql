@@ -44,6 +44,10 @@ INSERT INTO "User" ("id", "tenant_id", "email", "name")
 VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'admin@nextcase.hq', 'System Admin')
 ON CONFLICT DO NOTHING;
 
+-- "LegalCase" and "TenantWallet" have FORCE ROW LEVEL SECURITY, so seeding
+-- them (even as the table owner) requires an active tenant session context.
+SELECT set_config('nextcase.current_tenant_id', '00000000-0000-0000-0000-000000000001', false);
+
 INSERT INTO "TenantWallet" ("tenant_id", "balance", "currency")
 VALUES ('00000000-0000-0000-0000-000000000001', 50000.00, 'INR')
 ON CONFLICT (tenant_id) DO NOTHING;
