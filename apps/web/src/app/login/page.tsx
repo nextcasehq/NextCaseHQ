@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import BrandBackground from '@/components/BrandBackground';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,9 +44,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col justify-center items-center px-6 py-12 font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
+    <div className="relative isolate min-h-screen overflow-hidden bg-[#FDFBF7] text-[#111111] flex flex-col justify-center items-center px-6 py-12 font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
+      <BrandBackground />
+
       {/* Brand Header */}
-      <div className="mb-8 text-center">
+      <div className="relative mb-8 text-center">
         <Link href="/" className="text-3xl font-black tracking-tight text-[#111111]">
           NextCase<span className="text-[#111111]/60">HQ</span>
         </Link>
@@ -55,7 +58,7 @@ export default function LoginPage() {
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-[#C6A253]/30 rounded shadow-sm p-8">
+      <div className="relative w-full max-w-md bg-white border border-[#C6A253]/30 rounded-xl shadow-lg shadow-black/5 p-8">
         <h2 className="text-xl font-bold uppercase tracking-wider text-center mb-6">
           Enterprise Sign In
         </h2>
@@ -114,7 +117,7 @@ export default function LoginPage() {
         </form>
       </div>
 
-      <div className="mt-8 text-center">
+      <div className="relative mt-8 text-center">
         <Link href="/" className="text-xs uppercase tracking-wider font-bold text-[#111111]/50 hover:text-[#111111] transition-colors">
           ← Back to Marketing Site
         </Link>

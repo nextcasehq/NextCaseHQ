@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { LitigationDb, Matter } from '@/lib/db/litigation-db';
+import BrandBackground from '@/components/BrandBackground';
 
 export default function MattersChamberPage() {
   const [matters, setMatters] = useState<Matter[]>([]);
@@ -75,7 +76,8 @@ export default function MattersChamberPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+      <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+        <BrandBackground />
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
           <div>
