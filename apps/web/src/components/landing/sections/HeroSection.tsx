@@ -61,7 +61,7 @@ export default function HeroSection() {
           {/* Search — preserves existing /dashboard/search behavior */}
           <form
             onSubmit={handleSearchSubmit}
-            className="mt-4 flex w-full max-w-xl items-center gap-2 rounded-2xl border border-[#C6A253]/30 bg-[#F6F1E7] p-1.5 shadow-2xl shadow-black/40 transition-all duration-300 focus-within:border-[#C6A253] focus-within:ring-4 focus-within:ring-[#C6A253]/20"
+            className="mt-4 flex w-full max-w-xl items-center gap-2 rounded-2xl border border-[#C6A253]/30 bg-[#F6F1E7] p-1.5 shadow-lg shadow-black/15 transition-all duration-300 focus-within:border-[#C6A253] focus-within:ring-4 focus-within:ring-[#C6A253]/20"
             role="search"
           >
             <span className="pl-3 text-[#8A7A56]" aria-hidden="true">
@@ -111,7 +111,7 @@ export default function HeroSection() {
 
         {/* Right column: product preview */}
         <div className="relative">
-          <div className="relative overflow-hidden rounded-2xl border border-[#C6A253]/30 bg-white shadow-2xl shadow-black/50">
+          <div className="relative overflow-hidden rounded-2xl border border-[#C6A253]/30 bg-white shadow-xl shadow-black/20">
             {/* Window chrome */}
             <div className="flex items-center gap-2 border-b border-[#E7DFC9] bg-[#FBF6EA] px-4 py-3">
               <span className="h-3 w-3 rounded-full bg-[#D9C48F]" aria-hidden="true" />
@@ -206,7 +206,7 @@ export default function HeroSection() {
           </div>
 
           {/* Floating security badge */}
-          <div className="absolute -bottom-4 -left-4 hidden items-center gap-3 rounded-xl border border-[#C6A253]/30 bg-[#F6F1E7] px-4 py-3 shadow-xl sm:flex">
+          <div className="absolute -bottom-4 -left-4 hidden items-center gap-3 rounded-xl border border-[#C6A253]/30 bg-[#F6F1E7] px-4 py-3 shadow-md sm:flex">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#8A6D2F] text-[#F6F1E7]" aria-hidden="true">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z" strokeLinecap="round" strokeLinejoin="round" />
