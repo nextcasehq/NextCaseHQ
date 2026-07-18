@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T11:00:00Z",
+  "last_updated": "2026-07-18T12:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -104,6 +104,14 @@
       "verification": "Verified against a real running server (not just unit tests): full create -> list -> get -> patch -> delete lifecycle over real HTTP with real session cookies for two separate tenants, confirming list scoping, cross-tenant 404 isolation on GET/PATCH, and correct write/delete behavior end-to-end — not simulated within a single test process.",
       "scope_note": "No UI changes. No changes to DocumentEnvelope, search, AI, billing, or messaging. No changes to the schema — LegalCase and its RLS policies already existed.",
       "not_yet_true": "The UI still shows mock data on every case-related page; this milestone only proves the real backend exists and is tenant-safe. DocumentEnvelope (real file/document persistence) is a separate, not-yet-started milestone.",
+      "out_of_scope_next": ["wire_cases_ui_to_real_api", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "case_management_api_hardening": {
+      "status": "COMPLETE",
+      "status_note": "Closes the gap between real_case_management_api's initial CRUD and production-readiness, per explicit Product Owner priority to finish the backend fully before starting UI work.",
+      "description": "All /api/cases and /api/cases/[id] handlers now wrap their logic in try/catch, returning a consistent {error:'INTERNAL_ERROR'} 500 JSON response on unexpected failures (e.g. a DB outage) instead of falling through to Next.js's default error page — matching the established convention already used by /api/webhooks, /api/documents/upload, and /api/admin/session. GET /api/cases now accepts ?limit= (default 50, max 100) and ?offset= (default 0) query params, validated via zod, and returns {cases, total, limit, offset} — total is a real tenant-scoped COUNT(*), so callers can page through more than 100 cases, which the prior hardcoded LIMIT 100 with no way to see more or know the true count could not do.",
+      "verification": "Verified against a real running server and real Postgres: created 5 cases for one tenant, fetched limit=2/offset=0 and limit=2/offset=2 pages and confirmed no ID overlap between them plus a correct total=5 on both pages; confirmed out-of-range limit and negative offset both return 400; confirmed the no-query-params default returns limit=50/offset=0 with all 5 rows.",
+      "scope_note": "No new endpoints, no schema changes, no UI changes. Response shape addition (total/limit/offset alongside the existing cases array) is additive, not breaking.",
       "out_of_scope_next": ["wire_cases_ui_to_real_api", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
     }
   }
