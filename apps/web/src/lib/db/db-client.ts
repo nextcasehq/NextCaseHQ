@@ -1,41 +1,68 @@
+import { Pool, type QueryResultRow } from 'pg';
+
 /**
  * Multi-Tenant Database Client with RLS enforcement.
+ *
+ * Every query runs inside a transaction that first binds
+ * `nextcase.current_tenant_id` via set_config(..., true) — the parameterized
+ * equivalent of `SET LOCAL` — so Postgres RLS policies (see db/schema.sql)
+ * scope every statement to the calling tenant for the lifetime of that
+ * transaction only.
  */
-export class DatabaseClient {
-  private static dataStore: Map<string, any[]> = new Map();
 
-  /**
-   * Simulated execute function with SET LOCAL nextcase.current_tenant_id enforcement.
-   */
-  public async execute(tenantId: string, sql: string, params: any[]): Promise<any[]> {
-    console.log(`[DB] EXECUTING: SET LOCAL nextcase.current_tenant_id = '${tenantId}'`);
+const TENANT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    // RLS Enforcement Simulation
-    if (sql.includes('SELECT') || sql.includes('UPDATE') || sql.includes('DELETE')) {
-      return this.rlsFilter(tenantId, sql, params);
+let pool: Pool | undefined;
+
+function getPool(): Pool {
+  if (!pool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error(
+        'DATABASE_URL is not set. A PostgreSQL connection string is required to reach the database.'
+      );
     }
-
-    if (sql.includes('INSERT')) {
-      const table = sql.split(' ')[2];
-      const rows = DatabaseClient.dataStore.get(table) || [];
-      const newRow = { ...params[0], tenant_id: tenantId };
-      rows.push(newRow);
-      DatabaseClient.dataStore.set(table, rows);
-      return [newRow];
-    }
-
-    return [];
+    pool = new Pool({ connectionString });
   }
+  return pool;
+}
 
-  private rlsFilter(tenantId: string, sql: string, params: any[]): any[] {
-    const table = sql.split(' ')[sql.split(' ').indexOf('FROM') + 1] || sql.split(' ')[1];
-    const rows = DatabaseClient.dataStore.get(table) || [];
+/**
+ * Closes the shared connection pool. Intended for test teardown and
+ * graceful process shutdown — not needed during normal request handling.
+ */
+export async function closePool(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = undefined;
+  }
+}
 
-    // CRITICAL: The Postgres RLS policy equivalent
-    // SELECT * FROM table WHERE tenant_id = current_setting('nextcase.current_tenant_id')
-    const filtered = rows.filter(row => row.tenant_id === tenantId);
+export class DatabaseClient {
+  public async execute<T extends QueryResultRow = any>(
+    tenantId: string,
+    sql: string,
+    params: any[] = []
+  ): Promise<T[]> {
+    if (!TENANT_ID_PATTERN.test(tenantId)) {
+      throw new Error(`SECURE_ACCESS_DENIED: Invalid tenant context '${tenantId}'.`);
+    }
 
-    console.log(`[DB] RLS Applied for tenant ${tenantId}. Accessible rows: ${filtered.length}/${rows.length}`);
-    return filtered;
+    const client = await getPool().connect();
+    try {
+      await client.query('BEGIN');
+      // set_config is injection-safe and transaction-scoped (is_local = true),
+      // matching `SET LOCAL nextcase.current_tenant_id = <tenantId>` without
+      // string-interpolating an identifier into the SQL text.
+      await client.query(`SELECT set_config('nextcase.current_tenant_id', $1, true)`, [tenantId]);
+      const result = await client.query<T>(sql, params);
+      await client.query('COMMIT');
+      return result.rows;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }

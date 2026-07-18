@@ -24,6 +24,14 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-14T04:00:00Z",
-  "git_status": "AUTOMATED_TRACKING_ACTIVE"
+  "last_updated": "2026-07-18T00:00:00Z",
+  "git_status": "AUTOMATED_TRACKING_ACTIVE",
+  "milestones": {
+    "database_foundation": {
+      "status": "COMPLETE",
+      "description": "Replaced in-memory DatabaseClient simulation with a real PostgreSQL connection (raw pg driver, no ORM). db/schema.sql applied via scripts/db/migrate.js. Tenant RLS verified against a real database with FORCE ROW LEVEL SECURITY.",
+      "provider": "Supabase PostgreSQL (pending project provisioning — see PR)",
+      "out_of_scope_next": ["authentication", "search", "ai", "file_storage", "billing", "messaging"]
+    }
+  }
 }

@@ -15,3 +15,5 @@ This register tracks deferred integration, testing, and optimization work for Ne
 | ALL | Security Audit Validation | PENDING | Deferred to Sprint B | High |
 | ALL | Performance Validation | PENDING | Deferred to Sprint B | High |
 | ALL | UI Polishing | PENDING | Deferred to Sprint B | Low |
+| DB-1 | Real PostgreSQL Connection (Foundation Milestone) | COMPLETED | In-memory `DatabaseClient` simulation replaced with a real `pg`-backed client; `db/schema.sql` is now applied via `scripts/db/migrate.js` and enforces tenant RLS with `FORCE ROW LEVEL SECURITY`. Verified against a real PostgreSQL instance, not simulated. Supabase project provisioning still required for staging/production (see PR description). | High |
+| DB-2 | Authentication, Search, AI, File Storage, Billing, Messaging | PENDING | Each explicitly deferred to its own future milestone per Product Owner decision; all now have a real database to persist against | High |

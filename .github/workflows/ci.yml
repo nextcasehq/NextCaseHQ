@@ -70,3 +70,46 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nextcase
+          POSTGRES_PASSWORD: nextcase_ci_pw
+          POSTGRES_DB: nextcase_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://nextcase:nextcase_ci_pw@localhost:5432/nextcase_test
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply Database Schema
+        run: pnpm db:migrate
+
+      - name: Run Web Unit & Integration Tests
+        run: pnpm --filter web test
+
+      - name: Run Crypto Unit Tests
+        run: pnpm --filter @nextcase/crypto test

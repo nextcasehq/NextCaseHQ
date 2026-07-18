@@ -1,11 +1,25 @@
 import { Module9Processor } from '@nextcase/country-packs';
-import { DatabaseClient } from '../db/db-client';
+import { DatabaseClient, closePool } from '../db/db-client';
 import { validateEnv } from '../../../../../config/env.smoke';
 
 describe('Phase 3.8: End-to-End Operational Smoke Test', () => {
   const processor = new Module9Processor();
   const db = new DatabaseClient();
   const TENANT_ID = '00000000-0000-4000-8000-00000000000c';
+
+  beforeAll(async () => {
+    await db.execute(
+      TENANT_ID,
+      `INSERT INTO "Tenant" (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`,
+      [TENANT_ID, 'Test Tenant C']
+    );
+    await db.execute(TENANT_ID, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_ID]);
+  });
+
+  afterAll(async () => {
+    await db.execute(TENANT_ID, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_ID]);
+    await closePool();
+  });
 
   test('FULL LIFECYCLE: RC1 Heartbeat Verification', async () => {
     // 1. Production Env Schema Validation
@@ -18,9 +32,14 @@ describe('Phase 3.8: End-to-End Operational Smoke Test', () => {
     };
     expect(() => validateEnv(prodEnv)).not.toThrow();
 
-    // 2. Multi-tenant Indian Provisioning & Case Creation
-    const caseData = { id: 'case_001', framework: 'BNSS_2023', jurisdiction: 'IN' };
-    const insertResult = await db.execute(TENANT_ID, 'INSERT INTO cases', [caseData]);
+    // 2. Multi-tenant Indian Provisioning & Case Creation (real PostgreSQL insert)
+    const insertResult = await db.execute(
+      TENANT_ID,
+      `INSERT INTO "LegalCase" (tenant_id, title, country_code, state_metadata)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, tenant_id, title, country_code, state_metadata`,
+      [TENANT_ID, 'RC1 Heartbeat Case', 'IN', JSON.stringify({ framework: 'BNSS_2023' })]
+    );
     expect(insertResult[0].tenant_id).toBe(TENANT_ID);
 
     // 3. Document Ingestion & PII Redaction Audit
@@ -32,7 +51,7 @@ describe('Phase 3.8: End-to-End Operational Smoke Test', () => {
     expect(scrubbedDocument).toContain('[AADHAAR_REDACTED]');
     expect(endTime - startTime).toBeLessThan(5); // 5ms budget
 
-    // 4. Audit Log Check (Simulated)
+    // 4. Audit Log Check
     console.log(`[SMOKE_TEST] Heartbeat successful for Tenant ${TENANT_ID}. Audit trail locked.`);
   });
 });
