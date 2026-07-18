@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
+import { isTrustedOrigin } from '@/lib/security/origin-check';
 
 /**
  * NCHQ Module 17: Advanced File Ingestion Controller
@@ -18,6 +19,10 @@ export async function POST(request: NextRequest) {
   const start = performance.now();
 
   try {
+    if (!isTrustedOrigin(request)) {
+      return NextResponse.json({ error: 'INVALID_ORIGIN' }, { status: 403 });
+    }
+
     // Tenant identity comes ONLY from the verified session cookie — never
     // from a client-supplied header. Any x-nextcase-tenant-id/x-tenant-id
     // header a caller sends is ignored entirely; this is what makes

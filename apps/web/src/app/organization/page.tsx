@@ -21,7 +21,8 @@ export default function OrganizationPage() {
     // Commit target token string into sessionStorage & cookie representation
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem('NEXTCASE_CURRENT_TENANT_ID_CONTEXT', tenantId);
-      document.cookie = `NEXTCASE_CURRENT_TENANT_ID_CONTEXT=${tenantId}; path=/; max-age=86400; SameSite=Strict`;
+      const secureAttribute = window.location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = `NEXTCASE_CURRENT_TENANT_ID_CONTEXT=${tenantId}; path=/; max-age=86400; SameSite=Strict${secureAttribute}`;
     }
 
     // Simulate database session binding context and skeleton loading handoff

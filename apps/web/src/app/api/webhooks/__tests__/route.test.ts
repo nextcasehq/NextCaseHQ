@@ -1,6 +1,7 @@
 import { POST } from '../route';
 import { signWebhookPayload } from '@/lib/security/webhook-signature';
 import { __resetForTests } from '@/lib/security/replay-guard';
+import { __resetRateLimitForTests } from '@/lib/security/rate-limit';
 
 function buildRequest(body: string, headers: Record<string, string>): Request {
   return new Request('http://localhost/api/webhooks', {
@@ -25,6 +26,7 @@ async function buildSignedRequest(
 
 beforeEach(() => {
   __resetForTests();
+  __resetRateLimitForTests();
 });
 
 describe('POST /api/webhooks — secure webhook verification', () => {
@@ -134,5 +136,15 @@ describe('POST /api/webhooks — secure webhook verification', () => {
     const req = await buildSignedRequest(invalidShape);
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  test('rate-limits a flood of requests from the same client, even unsigned ones', async () => {
+    const clientHeaders = { 'x-forwarded-for': '198.51.100.7' };
+    let lastResponse!: Response;
+    for (let i = 0; i < 61; i++) {
+      lastResponse = await POST(buildRequest('garbage', clientHeaders));
+    }
+    expect(lastResponse.status).toBe(429);
+    expect(lastResponse.headers.get('Retry-After')).toBeTruthy();
   });
 });

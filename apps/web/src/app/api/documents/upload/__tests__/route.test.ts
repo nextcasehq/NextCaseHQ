@@ -19,12 +19,24 @@ async function sessionCookieHeader(tenantId: string): Promise<string> {
 function buildRequest(headers: Record<string, string>): NextRequest {
   return new NextRequest(new URL('http://localhost/api/documents/upload'), {
     method: 'POST',
-    headers,
+    headers: { origin: 'http://localhost:3000', ...headers },
     body: 'file-bytes',
   });
 }
 
 describe('POST /api/documents/upload — server-enforced tenant authorization', () => {
+  test('rejects a request from an untrusted origin (CSRF defense) even with a valid session', async () => {
+    const req = buildRequest({
+      'x-tenant-key-version': 'v1',
+      cookie: await sessionCookieHeader(TENANT_A),
+      origin: 'https://attacker.example',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe('INVALID_ORIGIN');
+  });
+
   test('rejects requests with no session cookie (401)', async () => {
     const req = buildRequest({ 'x-tenant-key-version': 'v1' });
     const res = await POST(req);
