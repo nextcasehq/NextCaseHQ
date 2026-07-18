@@ -1,71 +1,79 @@
 import React from "react";
 import Link from "next/link";
+import { Footer } from "@/components/Footer";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans pt-16 selection:bg-indigo-600 selection:text-white">
-      <main className="flex-1 flex flex-col justify-center items-center px-6 py-20 max-w-4xl mx-auto w-full text-center">
-        <div className="mb-8 p-4 bg-white border border-neutral-100 rounded-2xl shadow-sm inline-flex items-center justify-center text-indigo-600 text-3xl">
-          ⚡
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
+            <svg viewBox="0 0 40 40" className="h-8 w-8" fill="none">
+              <g stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 8 12 22h7l-2 10 11-15h-7l2-9z" />
+              </g>
+            </svg>
+          </div>
+          <Badge variant="accent" className="mb-4">Platform Features</Badge>
+          <h1 className="text-4xl lg:text-6xl font-bold tracking-tight mb-6">Litigation Operating System Features</h1>
+          <p className="font-serif italic text-lg leading-relaxed text-[#111111]/70">
+            Explore the modular zero-knowledge litigation workspace designed to empower modern counsel.
+          </p>
         </div>
 
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#111111] mb-4">
-          Litigation Operating System Features
-        </h1>
-
-        <p className="text-sm md:text-base text-neutral-500 max-w-md mx-auto mb-10 font-medium font-serif italic">
-          Explore the modular zero-knowledge litigation workspace designed to empower modern counsel.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left mb-12">
-          <div className="p-6 bg-white border border-neutral-200/60 rounded-2xl shadow-sm">
-            <span className="text-lg mb-2 block">🔒</span>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-2 text-[#111111]">Zero-Knowledge Envelope</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed font-serif">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+          <Card className="p-8 space-y-3">
+            <svg viewBox="0 0 40 40" className="h-7 w-7" fill="none">
+              <g stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6l11 4v9c0 8-5 13-11 15-6-2-11-7-11-15v-9l11-4z" />
+                <path d="M15.5 20l3 3 6-6" />
+              </g>
+            </svg>
+            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Zero-Knowledge Envelope</h3>
+            <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               End-to-end envelope cryptography and hardware-backed KMS keys shield counsel transcripts and exhibits.
             </p>
-          </div>
-          <div className="p-6 bg-white border border-neutral-200/60 rounded-2xl shadow-sm">
-            <span className="text-lg mb-2 block">⚖️</span>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-2 text-[#111111]">Statutory Engines</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed font-serif">
+          </Card>
+          <Card className="p-8 space-y-3">
+            <svg viewBox="0 0 40 40" className="h-7 w-7" fill="none">
+              <g stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 9v22" /><path d="M14.5 31h11" /><path d="M11 13h18" />
+                <path d="M13 13l-2.5 6h5L13 13z" /><path d="M9.5 19a3.5 3.5 0 0 0 7 0" />
+                <path d="M27 13l-2.5 6h5L27 13z" /><path d="M23.5 19a3.5 3.5 0 0 0 7 0" />
+              </g>
+              <circle cx="20" cy="9" r="1.8" fill="#8A6D2F" />
+            </svg>
+            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Statutory Engines</h3>
+            <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               Instant, automated compliance mappings for BNS, BNSS, FRCP, CPR, and Negotiable Instruments (NI) Act timelines.
             </p>
-          </div>
-          <div className="p-6 bg-white border border-neutral-200/60 rounded-2xl shadow-sm">
-            <span className="text-lg mb-2 block">✍️</span>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-2 text-[#111111]">Interactive Draft Sheet</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed font-serif">
+          </Card>
+          <Card className="p-8 space-y-3">
+            <svg viewBox="0 0 40 40" className="h-7 w-7" fill="none">
+              <g stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M27 8l5 5-16 16H11v-5L27 8z" />
+                <path d="M23 12l5 5" />
+              </g>
+            </svg>
+            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Interactive Draft Sheet</h3>
+            <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               A premium WYSIWYG legal document engine with automated citation reference binding.
             </p>
-          </div>
+          </Card>
         </div>
 
-        <Link
-          href="/login"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-xl transition-all"
-        >
-          Initialize Chamber Session
-        </Link>
+        <div className="text-center">
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-3 text-sm font-bold text-[#F6F1E7] transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg hover:shadow-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 active:scale-[0.98]"
+          >
+            Initialize Chamber Session
+          </Link>
+        </div>
       </main>
-
-      <footer className="border-t border-neutral-100 bg-white px-6 md:px-12 py-10 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-[#111111]">
-              NextCaseHQ<span className="text-indigo-600">.</span>
-            </span>
-          </div>
-          <p className="text-xs text-neutral-400 font-medium">
-            {"\u00A9"} {new Date().getFullYear()} NextCaseHQ. Zero-Knowledge. Infinite Context.
-          </p>
-          <div className="flex gap-6 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Privacy</Link>
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Terms</Link>
-            <Link href="/login" className="hover:text-indigo-600 transition-colors">Support</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
