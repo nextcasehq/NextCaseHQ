@@ -36,19 +36,23 @@ export default function HeroSection() {
         className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0B1F17]/80 via-[#0E241B]/55 to-[#0E241B]/25"
       />
 
-      <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-10 px-6 py-16 md:px-12 lg:grid-cols-2 lg:gap-12 lg:py-24">
-        {/* Left column: copy + search + CTAs */}
+      <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-6 px-6 py-8 md:px-12 lg:grid-cols-2 lg:gap-10 lg:py-10">
+        {/* Left column: copy + search + CTAs. Sizing/spacing here is
+            deliberately compact — the search bar must be visible in the
+            first viewport frame on a 13" laptop without scrolling, so
+            every element above it (badge/heading/paragraph) is kept as
+            small as the design can reasonably take. */}
         <div className="flex flex-col items-start text-left">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#C6A253]/40 bg-[#0B1F17]/60 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[#E4C77E] shadow-sm backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#C6A253]/40 bg-[#0B1F17]/60 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#E4C77E] shadow-sm backdrop-blur-sm">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
             Zero-Knowledge · End-to-End Encrypted
           </span>
 
-          <h1 className="mt-6 text-balance font-serif text-4xl font-black leading-tight tracking-tight text-[#F6F1E7] md:text-6xl">
+          <h1 className="mt-3 text-balance font-serif text-2xl font-black leading-tight tracking-tight text-[#F6F1E7] md:text-4xl lg:text-[2.75rem]">
             The litigation operating system built for absolute confidentiality.
           </h1>
 
-          <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-[#D9CBB2] md:text-lg">
+          <p className="mt-2 max-w-xl text-pretty text-sm leading-snug text-[#D9CBB2] md:text-base">
             Search cases, analyze evidence, and draft compliant filings in one
             unified, client-side-encrypted workspace. Your data stays private by
             design—NextCaseHQ never holds the keys.
@@ -57,7 +61,7 @@ export default function HeroSection() {
           {/* Search — preserves existing /dashboard/search behavior */}
           <form
             onSubmit={handleSearchSubmit}
-            className="mt-8 flex w-full max-w-xl items-center gap-2 rounded-2xl border border-[#C6A253]/30 bg-[#F6F1E7] p-2 shadow-2xl shadow-black/40 transition-all duration-300 focus-within:border-[#C6A253] focus-within:ring-4 focus-within:ring-[#C6A253]/20"
+            className="mt-4 flex w-full max-w-xl items-center gap-2 rounded-2xl border border-[#C6A253]/30 bg-[#F6F1E7] p-1.5 shadow-2xl shadow-black/40 transition-all duration-300 focus-within:border-[#C6A253] focus-within:ring-4 focus-within:ring-[#C6A253]/20"
             role="search"
           >
             <span className="pl-3 text-[#8A7A56]" aria-hidden="true">
@@ -82,10 +86,10 @@ export default function HeroSection() {
             </button>
           </form>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-3 text-sm font-semibold text-[#F6F1E7] transition-all duration-200 hover:bg-[#6F5624] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B] active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-2.5 text-sm font-semibold text-[#F6F1E7] transition-all duration-200 hover:bg-[#6F5624] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B] active:scale-[0.98]"
             >
               Access your chamber
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -94,13 +98,13 @@ export default function HeroSection() {
             </Link>
             <Link
               href="/features"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#C6A253]/40 bg-[#0B1F17]/40 px-6 py-3 text-sm font-semibold text-[#F6F1E7] backdrop-blur-sm transition-all duration-200 hover:border-[#C6A253]/70 hover:bg-[#0B1F17]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#C6A253]/40 bg-[#0B1F17]/40 px-6 py-2.5 text-sm font-semibold text-[#F6F1E7] backdrop-blur-sm transition-all duration-200 hover:border-[#C6A253]/70 hover:bg-[#0B1F17]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
             >
               Explore features
             </Link>
           </div>
 
-          <p className="mt-6 text-[11px] font-mono font-bold uppercase tracking-widest text-[#B0A180]">
+          <p className="mt-3 text-[11px] font-mono font-bold uppercase tracking-widest text-[#B0A180]">
             Secure client-side pre-encryption // zero-knowledge shell
           </p>
         </div>
