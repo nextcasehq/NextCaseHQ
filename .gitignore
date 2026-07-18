@@ -111,6 +111,9 @@ vite.config.ts.timestamp-*
 # Redis RDB snapshot (created by a local redis-server run from this directory)
 *.rdb
 
+# Local s3rver test data (scripts/test/start-s3rver.js)
+.s3rver-data/
+
 # Sentinel Framework execution artifacts
 /reports/
 /artifacts/

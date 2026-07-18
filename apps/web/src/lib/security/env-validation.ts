@@ -66,6 +66,16 @@ export function collectStartupEnvIssues(env: NodeJS.ProcessEnv = process.env): E
     });
   }
 
+  const s3Vars = ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const;
+  const missingS3Vars = s3Vars.filter((name) => !env[name]);
+  if (missingS3Vars.length > 0) {
+    issues.push({
+      variable: missingS3Vars.join(', '),
+      message:
+        'S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY must all be set in production — document uploads persist file bytes to this S3-compatible storage; without it, POST /api/documents/upload can only fail.',
+    });
+  }
+
   return issues;
 }
 

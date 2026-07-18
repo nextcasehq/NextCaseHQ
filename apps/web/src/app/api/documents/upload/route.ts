@@ -4,15 +4,16 @@ import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
+import { isObjectStorageConfigured, putObject, deleteObject } from '@/lib/storage/object-storage';
+import { validateFileType, buildObjectKey } from '@/lib/storage/document-key';
 
 /**
  * NCHQ Module 17: Advanced File Ingestion Controller
  * Sprint B: Runtime Input Schema & Data Locking
  *
- * Persists a real DocumentEnvelope row (metadata only). Object storage
- * integration — actually storing the file bytes somewhere durable — is a
- * separate, not-yet-started milestone; storage_structure documents that
- * honestly rather than pretending the bytes are stored anywhere.
+ * Persists a real DocumentEnvelope row AND the actual file bytes, via the
+ * provider-agnostic object storage adapter (lib/storage/object-storage.ts
+ * — real S3 API, works against any S3-compatible endpoint).
  */
 
 const MAX_DOCUMENT_SIZE = 128 * 1024 * 1024; // 128MB
@@ -48,6 +49,13 @@ export async function POST(request: NextRequest) {
     }
     const tenantId = session.tenantId;
 
+    if (!isObjectStorageConfigured()) {
+      return NextResponse.json(
+        { error: 'OBJECT_STORAGE_NOT_CONFIGURED', message: 'Object storage is not configured on this server.' },
+        { status: 503 }
+      );
+    }
+
     // Strict Zod validation for the remaining (non-identity) headers
     const headerResult = IngestHeadersSchema.safeParse({
       'x-tenant-key-version': request.headers.get('x-tenant-key-version') || request.headers.get('X-Tenant-Key-Version'),
@@ -67,9 +75,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'Invalid x-case-id.' }, { status: 400 });
     }
 
+    const rawFileName = request.headers.get('x-file-name') || '';
+    if (!rawFileName) {
+      return NextResponse.json({ error: 'BAD_REQUEST', message: 'x-file-name is required.' }, { status: 400 });
+    }
+
+    const fileTypeResult = validateFileType(rawFileName);
+    if (!fileTypeResult.valid) {
+      return NextResponse.json({ error: 'BAD_REQUEST', message: fileTypeResult.reason }, { status: 400 });
+    }
+
     if (!request.body) return NextResponse.json({ error: 'BAD_REQUEST', message: 'Empty request body.' }, { status: 400 });
 
     const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
     let totalBytesReceived = 0;
 
     while (true) {
@@ -83,6 +102,12 @@ export async function POST(request: NextRequest) {
           status: 'ABORTED'
         }, { status: 413 });
       }
+      chunks.push(value);
+    }
+    const fileBuffer = Buffer.concat(chunks);
+
+    if (fileBuffer.length === 0) {
+      return NextResponse.json({ error: 'BAD_REQUEST', message: 'Empty file body.' }, { status: 400 });
     }
 
     const duration = performance.now() - start;
@@ -93,26 +118,21 @@ export async function POST(request: NextRequest) {
       .replace(/[A-Z]{5}[0-9]{4}[A-Z]{1}/g, '[REDACTED_INDIA_PII]')
       .replace(/[2-9]{1}[0-9]{3}\s[0-9]{4}\s[0-9]{4}/g, '[REDACTED_INDIA_PII]');
 
-    // We scrub the file name or document metadata from incoming headers if present
-    const rawFileName = request.headers.get('x-file-name') || '';
     const rawMetadata = request.headers.get('x-document-metadata') || '';
-
-    const scrubbedFileName = rawFileName ? scrubPII(rawFileName) : '';
+    const scrubbedFileName = scrubPII(rawFileName);
     const scrubbedMetadata = rawMetadata ? scrubPII(rawMetadata) : '';
 
-    if (rawFileName || rawMetadata) {
-      console.log('[INGEST] Metadata PII Scrubbed:', {
-        fileName: scrubbedFileName,
-        metadata: scrubbedMetadata
-      });
-    }
+    console.log('[INGEST] Metadata PII Scrubbed:', {
+      fileName: scrubbedFileName,
+      metadata: scrubbedMetadata
+    });
 
     const db = new DatabaseClient();
 
     // PostgreSQL foreign key checks always bypass row security by design
     // ("Referential integrity checks ... always bypass row security" —
     // this is documented Postgres behavior, not a bug) — so the
-    // DocumentEnvenvelope.case_id -> LegalCase(id) FK alone would silently
+    // DocumentEnvelope.case_id -> LegalCase(id) FK alone would silently
     // accept a case_id belonging to a DIFFERENT tenant. Confirmed with a
     // real cross-tenant case_id in testing: the FK let it through. This
     // explicit, RLS-scoped SELECT is what actually enforces tenant
@@ -131,23 +151,43 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const rows = await db.execute<{ id: string; tenant_id: string; case_id: string | null; created_at: string }>(
-      tenantId,
-      `INSERT INTO "DocumentEnvelope" (tenant_id, case_id, title, storage_structure)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, tenant_id, case_id, created_at`,
-      [
+    // Generated up front (rather than letting Postgres's gen_random_uuid()
+    // default assign it) so the object key can incorporate the real
+    // DocumentEnvelope id, keeping storage and metadata identifiers in sync.
+    const documentId = crypto.randomUUID();
+    const objectKey = buildObjectKey(tenantId, documentId, scrubbedFileName);
+
+    const uploadResult = await putObject(objectKey, fileBuffer, fileTypeResult.contentType!);
+
+    let envelope;
+    try {
+      const rows = await db.execute<{ id: string; tenant_id: string; case_id: string | null; created_at: string }>(
         tenantId,
-        rawCaseId ?? null,
-        scrubbedFileName || 'Untitled Document',
-        {
-          bytes_received: totalBytesReceived,
-          storage_provider: 'pending',
-          note: 'Object storage integration pending — metadata persisted, file bytes not yet durably stored.',
-        },
-      ]
-    );
-    const envelope = rows[0];
+        `INSERT INTO "DocumentEnvelope" (id, tenant_id, case_id, title, storage_structure)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, tenant_id, case_id, created_at`,
+        [
+          documentId,
+          tenantId,
+          rawCaseId ?? null,
+          scrubbedFileName,
+          {
+            storage_provider: 's3',
+            object_key: objectKey,
+            content_type: fileTypeResult.contentType,
+            bytes_stored: fileBuffer.length,
+            etag: uploadResult.etag,
+          },
+        ]
+      );
+      envelope = rows[0];
+    } catch (dbError) {
+      // The object is already durably stored — if the metadata row fails
+      // to save, clean up the now-orphaned object rather than leaking
+      // storage with no DB record pointing at it.
+      await deleteObject(objectKey).catch(() => {});
+      throw dbError;
+    }
 
     return NextResponse.json({
       status: 'ACCEPTED',

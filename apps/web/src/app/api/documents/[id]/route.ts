@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
+import { deleteObject } from '@/lib/storage/object-storage';
 
 interface DocumentEnvelopeRow {
   id: string;
@@ -84,15 +85,26 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const db = new DatabaseClient();
-    const rows = await db.execute<{ id: string }>(
+    const rows = await db.execute<{ id: string; storage_structure: { object_key?: string } }>(
       session.tenantId,
-      `DELETE FROM "DocumentEnvelope" WHERE id = $1 RETURNING id`,
+      `DELETE FROM "DocumentEnvelope" WHERE id = $1 RETURNING id, storage_structure`,
       [id]
     );
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
+
+    // Metadata row is already gone; deleting the underlying object is
+    // best-effort — a storage-side failure here shouldn't resurrect a
+    // record we've already committed to removing.
+    const objectKey = rows[0].storage_structure?.object_key;
+    if (objectKey) {
+      await deleteObject(objectKey).catch((err) => {
+        console.error('[DOCUMENTS_API] Failed to delete underlying object after DB delete:', err);
+      });
+    }
+
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (error) {
     console.error('[DOCUMENTS_API] DELETE /api/documents/[id] failed:', error);

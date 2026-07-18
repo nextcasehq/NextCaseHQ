@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T14:00:00Z",
+  "last_updated": "2026-07-18T15:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -138,6 +138,14 @@
       "scope_note": "No object storage integration. No changes to /api/cases or the Cases UI. middleware.ts's self-authorized-route exemption was broadened from /api/documents/upload specifically to all of /api/documents, since the new list/detail routes authorize themselves the same way.",
       "not_yet_true": "storage_structure only records byte count and a 'pending' storage_provider marker — no file bytes are durably stored anywhere yet. That is the next approved milestone (object storage integration).",
       "out_of_scope_next": ["object_storage_integration", "matter_table_and_matter_id_linkage", "search", "ai", "billing", "messaging"]
+    },
+    "object_storage_integration": {
+      "status": "COMPLETE",
+      "description": "POST /api/documents/upload now durably stores the actual file bytes via lib/storage/object-storage.ts — a provider-agnostic adapter using the standard @aws-sdk/client-s3 client against whatever S3-compatible endpoint S3_ENDPOINT/S3_BUCKET/S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY point at (real AWS S3, Supabase Storage's S3-compatible endpoint, MinIO, Cloudflare R2, etc. — nothing here is vendor-specific). Object keys are tenant- and document-namespaced (lib/storage/document-key.ts buildObjectKey: '{tenantId}/{documentId}/{sanitizedFileName}'), with path-traversal-safe filename sanitization and a file-type allowlist (PDF/DOC/DOCX/TXT/JPG/JPEG/PNG) enforced before any bytes are accepted. Added GET /api/documents/[id]/download (tenant-scoped fetch of the real stored bytes with correct Content-Type/Content-Disposition). DELETE /api/documents/[id] now also removes the underlying object, not just the metadata row (best-effort — a storage-side failure doesn't resurrect an already-deleted record). Object storage is a hard requirement once configured: uploads return 503 OBJECT_STORAGE_NOT_CONFIGURED if S3_* is unset, matching the DATABASE_URL/REDIS_URL posture rather than silently no-op'ing; env-validation.ts requires all four S3_* vars in production.",
+      "infrastructure_investigation": "MinIO itself could not be run in this development/CI environment: Docker Hub image pull failed (registry-side 403) and direct binary download from dl.min.io is explicitly blocked by the environment's egress policy (confirmed via the proxy's relay-failure log, not something to route around). Investigated and found a real alternative: s3rver, a pure-Node package implementing the genuine S3 HTTP API (not a mock/stub) — smoke-tested and verified working end-to-end against the standard AWS SDK before adopting it. scripts/test/start-s3rver.js starts it for local dev/test and CI (CI: a background process step, since s3rver has no first-party Docker image to use as a services: container) — same role MinIO would have played, satisfying 'MinIO or another S3-compatible local service' from the Product Owner's instruction.",
+      "verification": "Verified against a real running server, real Postgres, and a real S3-compatible server (s3rver) — not mocked at any layer: uploaded real file bytes, downloaded them back and confirmed a byte-for-byte match with correct Content-Type/Content-Disposition, confirmed a different tenant's download attempt 404s without ever touching storage, confirmed a disallowed file extension (.exe) is rejected before any bytes are accepted, confirmed DELETE removes both the metadata row and the real object (a subsequent download 404s because the object is genuinely gone, not just because the DB row is gone).",
+      "scope_note": "No document parsing, OCR, search indexing, or AI processing — explicitly out of scope for this milestone. No changes to /api/cases or the Cases UI. The PR #71 metadata layer is otherwise preserved; storage_structure's shape changed from a 'pending' placeholder to real {storage_provider, object_key, content_type, bytes_stored, etag} once this milestone landed.",
+      "out_of_scope_next": ["matter_table_and_matter_id_linkage", "search", "ai", "billing", "messaging"]
     }
   }
 }
