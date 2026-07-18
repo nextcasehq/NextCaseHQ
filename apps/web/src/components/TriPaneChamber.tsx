@@ -75,25 +75,58 @@ export const TriPaneChamber = () => {
       text: 'Analysis of the timeline in Exhibit B suggests that the limitation period remains within strict statutory bounds. The notice was served on 12-Jan-2026, creating a 15-day compliance window expiring on 27-Jan-2026. The cause of action arose on 28-Jan-2026, allowing the 30-day filing window under Section 142 to run until 27-Feb-2026. To ensure zero procedural risk, I recommend drafting the petition concurrently.'
     }
   ]);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return;
-    const userMsg = { role: 'user', text: inputText };
+  const handleSendMessage = async () => {
+    const question = inputText.trim();
+    if (!question || isSendingMessage) return;
 
-    // Proactive legal assistant responses based on keywords
-    let responseText = "Understood, Counsel. Analyzing active litigation context and cross-referencing your Evidence Ledger indexes.";
-    const lowerText = inputText.toLowerCase();
-
-    if (lowerText.includes('contradict') || lowerText.includes('liar') || lowerText.includes('paradox')) {
-      responseText = "CONTRADICTION DETECTED: Statement of witness Mr. Sharma in deposition contradicts service certificate EX-B. Sharma asserts notice was never received, but certified return receipt EX-B bears his verified signature dated 15-Jan-2026.";
-    } else if (lowerText.includes('strategy') || lowerText.includes('win')) {
-      responseText = "AI STRATEGY RECOMMENDATION: Shift oral argument focus to the statutory presumption under Section 139 of the Negotiable Instruments Act. This shifts the burden of proof entirely to the defense to prove the cheque was not issued for debt discharge.";
-    } else if (lowerText.includes('limit') || lowerText.includes('days') || lowerText.includes('deadline')) {
-      responseText = "LIMITATION ANALYSIS: Writ petition filing timeline remains active. Enforced filing window runs until 27-Feb-2026. Filing readiness currently stands at 95%.";
-    }
-
-    setChatMessages(prev => [...prev, userMsg, { role: 'assistant', text: responseText }]);
+    setChatMessages(prev => [...prev, { role: 'user', text: question }]);
     setInputText('');
+    setIsSendingMessage(true);
+
+    try {
+      const response = await fetch('/api/ai/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, case_id: caseContext?.id }),
+      });
+
+      if (response.status === 422) {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          text: 'No indexed documents matched this question yet — index a document first, or rephrase your question.'
+        }]);
+        return;
+      }
+      if (response.status === 503) {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          text: 'The AI assistant is not configured on this server yet.'
+        }]);
+        return;
+      }
+      if (!response.ok) {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          text: 'The AI assistant could not process that question. Please try again.'
+        }]);
+        return;
+      }
+
+      const data = await response.json();
+      const citations = data.sources?.length
+        ? `\n\nSources: ${data.sources.map((s: { index: number }) => `[${s.index}]`).join(', ')}`
+        : '';
+      setChatMessages(prev => [...prev, { role: 'assistant', text: `${data.answer}${citations}` }]);
+    } catch {
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        text: 'Unable to reach the AI assistant. Please check your connection and try again.'
+      }]);
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   return (
@@ -361,8 +394,7 @@ export const TriPaneChamber = () => {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!inputText.trim()) return;
-            setInputText('');
+            handleSendMessage();
           }}
           className="p-4 md:p-6 border-t border-[#F4EEE0] bg-[#FBF8F1]/30"
         >
@@ -373,9 +405,12 @@ export const TriPaneChamber = () => {
               className="w-full bg-transparent pl-4 pr-12 py-3 text-sm text-[#3A3222] placeholder-[#B0A588] outline-none font-medium"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              disabled={isSendingMessage}
             />
             <button
-              className="absolute right-2 p-1.5 rounded-lg text-[#B0A588] hover:text-[#8A6D2F] hover:bg-[#FBF8F1] transition-all"
+              type="submit"
+              disabled={isSendingMessage}
+              className="absolute right-2 p-1.5 rounded-lg text-[#B0A588] hover:text-[#8A6D2F] hover:bg-[#FBF8F1] disabled:opacity-40 transition-all"
               aria-label="Send message"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
