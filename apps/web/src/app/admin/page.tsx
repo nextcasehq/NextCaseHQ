@@ -89,14 +89,22 @@ export default function AdminConsolePage() {
     bevs: { status: 'PASS', duration: '1.20s', lastRun: '2026-03-31 14:15', commit: 'e28f321' }
   });
 
-  // Check for admin token cookie on load
+  // Ask the server whether a valid admin session already exists. The
+  // session cookie is httpOnly (server-verified, PR: Server-Verified Admin
+  // Authentication) so the client can no longer read or forge it directly.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isCookiePresent = document.cookie.split('; ').find(row => row.startsWith('NEXTCASE_ADMIN_TOKEN='));
-      if (isCookiePresent && isCookiePresent.split('=')[1] === 'nchq-admin-secret-key-2026') {
-        setIsAdminAuthorized(true);
+    const checkAdminSession = async () => {
+      try {
+        const res = await fetch('/api/admin/session');
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdminAuthorized(Boolean(data.authorized));
+        }
+      } catch (e) {
+        // Network failure: stay on the login gate.
       }
-    }
+    };
+    checkAdminSession();
     // Fetch real sentinel statuses dynamically
     fetchSentinelStatuses();
   }, []);
@@ -113,38 +121,48 @@ export default function AdminConsolePage() {
     }
   };
 
-  // Secure Sign In handler
-  const handleAdminSignIn = (e: React.FormEvent) => {
+  // Secure Sign In handler — verified server-side against ADMIN_ACCESS_TOKEN
+  // by POST /api/admin/session, which mints the (httpOnly) session cookie.
+  const handleAdminSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (accessKeyInput === 'nchq-admin-ops-2026' || accessKeyInput === 'admin') {
-      if (typeof window !== 'undefined') {
-        document.cookie = 'NEXTCASE_ADMIN_TOKEN=nchq-admin-secret-key-2026; path=/; max-age=86400; SameSite=Strict';
+    try {
+      const res = await fetch('/api/admin/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessKey: accessKeyInput }),
+      });
+      if (res.ok) {
+        setIsAdminAuthorized(true);
+        setAuthError('');
+        // Log event
+        const newAuditLog = {
+          timestamp: new Date().toISOString(),
+          type: 'SECURITY',
+          message: 'Platform Operator logged in with valid master authentication keys.',
+          ip: '127.0.0.1'
+        };
+        setLogs([newAuditLog, ...logs]);
+      } else {
+        setAuthError('INVALID_ADMINISTRATIVE_SECRET_KEY. INCIDENT RECORDED IN AUDIT LOG.');
+        const newAuditLog = {
+          timestamp: new Date().toISOString(),
+          type: 'AUTH',
+          message: `Failed admin sign in attempt with invalid key: "${accessKeyInput}"`,
+          ip: '127.0.0.1'
+        };
+        setLogs([newAuditLog, ...logs]);
       }
-      setIsAdminAuthorized(true);
-      setAuthError('');
-      // Log event
-      const newAuditLog = {
-        timestamp: new Date().toISOString(),
-        type: 'SECURITY',
-        message: 'Platform Operator logged in with valid master authentication keys.',
-        ip: '127.0.0.1'
-      };
-      setLogs([newAuditLog, ...logs]);
-    } else {
-      setAuthError('INVALID_ADMINISTRATIVE_SECRET_KEY. INCIDENT RECORDED IN AUDIT LOG.');
-      const newAuditLog = {
-        timestamp: new Date().toISOString(),
-        type: 'AUTH',
-        message: `Failed admin sign in attempt with invalid key: "${accessKeyInput}"`,
-        ip: '127.0.0.1'
-      };
-      setLogs([newAuditLog, ...logs]);
+    } catch (err) {
+      setAuthError('ADMIN_AUTH_SERVICE_UNAVAILABLE. TRY AGAIN.');
     }
   };
 
-  const handleAdminLogout = () => {
-    if (typeof window !== 'undefined') {
-      document.cookie = 'NEXTCASE_ADMIN_TOKEN=; path=/; max-age=0; SameSite=Strict';
+  const handleAdminLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch (e) {
+      // Cookie is short-lived (24h) even if this call fails; proceed to
+      // clear local UI state regardless.
     }
     setIsAdminAuthorized(false);
     setAccessKeyInput('');

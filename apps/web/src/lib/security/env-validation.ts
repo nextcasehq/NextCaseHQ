@@ -12,6 +12,7 @@
 export const INSECURE_JWT_SECRET_PLACEHOLDER = 'nchq-secret-placeholder';
 export const INSECURE_WEBHOOK_SECRET_PLACEHOLDER = 'nchq-webhook-secret-placeholder';
 export const INSECURE_ADMIN_TOKEN_PLACEHOLDER = 'nchq-admin-secret-key-2026';
+export const INSECURE_ADMIN_SESSION_SECRET_PLACEHOLDER = 'nchq-admin-session-secret-placeholder';
 
 export interface EnvValidationIssue {
   variable: string;
@@ -47,6 +48,13 @@ export function collectStartupEnvIssues(env: NodeJS.ProcessEnv = process.env): E
     issues.push({
       variable: 'ADMIN_ACCESS_TOKEN',
       message: 'ADMIN_ACCESS_TOKEN must be set to a real secret in production (missing or using the known insecure default).',
+    });
+  }
+
+  if (!env.ADMIN_SESSION_SECRET || env.ADMIN_SESSION_SECRET === INSECURE_ADMIN_SESSION_SECRET_PLACEHOLDER) {
+    issues.push({
+      variable: 'ADMIN_SESSION_SECRET',
+      message: 'ADMIN_SESSION_SECRET must be set to a real secret in production (missing or using the known insecure default).',
     });
   }
 
