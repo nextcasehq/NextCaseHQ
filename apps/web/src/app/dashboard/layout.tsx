@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import BrandBackground from '@/components/BrandBackground';
 
 interface NotificationItem {
   id: string;
@@ -164,7 +165,8 @@ export default function DashboardLayout({
         </header>
 
         {/* Dynamic Route Content */}
-        <main className="flex-1 overflow-auto bg-white h-[calc(100vh-64px)] w-full relative">
+        <main className="flex-1 overflow-auto bg-white h-[calc(100vh-64px)] w-full relative isolate">
+          <BrandBackground />
           {children}
 
           {/* Sliding Notifications Drawer */}

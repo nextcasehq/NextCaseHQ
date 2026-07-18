@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
+import BrandBackground from '@/components/BrandBackground';
 
 interface LegalCase {
   id: string;
@@ -110,7 +111,8 @@ function CasesChamberContent() {
   }
 
   return (
-    <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+    <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+      <BrandBackground />
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
         <div>
