@@ -17,6 +17,7 @@ interface DocumentEnvelopeRow {
   id: string;
   tenant_id: string;
   case_id: string | null;
+  matter_id: string | null;
   title: string;
   storage_structure: Record<string, unknown>;
   created_at: string;
@@ -30,6 +31,7 @@ const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_LIMIT).optional().default(DEFAULT_PAGE_LIMIT),
   offset: z.coerce.number().int().min(0).optional().default(0),
   case_id: z.string().regex(UUID_PATTERN).optional(),
+  matter_id: z.string().regex(UUID_PATTERN).optional(),
 });
 
 async function resolveSession(request: NextRequest) {
@@ -57,6 +59,7 @@ export async function GET(request: NextRequest) {
       limit: request.nextUrl.searchParams.get('limit') ?? undefined,
       offset: request.nextUrl.searchParams.get('offset') ?? undefined,
       case_id: request.nextUrl.searchParams.get('case_id') ?? undefined,
+      matter_id: request.nextUrl.searchParams.get('matter_id') ?? undefined,
     });
     if (!queryResult.success) {
       return NextResponse.json(
@@ -64,28 +67,36 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { limit, offset, case_id } = queryResult.data;
+    const { limit, offset, case_id, matter_id } = queryResult.data;
 
     const db = new DatabaseClient();
-    const caseFilter = case_id ? `WHERE case_id = $3` : '';
-    const listParams: unknown[] = case_id ? [limit, offset, case_id] : [limit, offset];
-    const countFilter = case_id ? `WHERE case_id = $1` : '';
-    const countParams: unknown[] = case_id ? [case_id] : [];
+    const conditions: string[] = [];
+    const filterParams: unknown[] = [];
+    if (case_id) {
+      filterParams.push(case_id);
+      conditions.push(`case_id = $${filterParams.length}`);
+    }
+    if (matter_id) {
+      filterParams.push(matter_id);
+      conditions.push(`matter_id = $${filterParams.length}`);
+    }
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const listParams = [...filterParams, limit, offset];
 
     const [rows, countRows] = await Promise.all([
       db.execute<DocumentEnvelopeRow>(
         session.tenantId,
-        `SELECT id, tenant_id, case_id, title, storage_structure, created_at
+        `SELECT id, tenant_id, case_id, matter_id, title, storage_structure, created_at
          FROM "DocumentEnvelope"
-         ${caseFilter}
+         ${whereClause}
          ORDER BY created_at DESC
-         LIMIT $1 OFFSET $2`,
+         LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}`,
         listParams
       ),
       db.execute<{ count: number }>(
         session.tenantId,
-        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" ${countFilter}`,
-        countParams
+        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" ${whereClause}`,
+        filterParams
       ),
     ]);
 

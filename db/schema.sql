@@ -291,6 +291,103 @@ CREATE TABLE IF NOT EXISTS "DocumentEnvelope" (
     "created_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- 4a. Document Ownership & Linkage Hardening (Sprint 3, PR 3A)
+--
+-- A Document may now link directly to a Matter, not only to a Proceeding
+-- (LegalCase) — matching the same optional-parent shape LegalCase.matter_id
+-- already established, for pre-litigation/advisory Matters that have no
+-- Proceeding at all. Additive, nullable: every existing DocumentEnvelope
+-- row and every existing query against this table keeps working unchanged.
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "matter_id" UUID REFERENCES "Matter"("id");
+
+-- Safety hardening: DocumentEnvelope.case_id was originally ON DELETE
+-- CASCADE. That silently deleted a DocumentEnvelope row (and, since PR 3A,
+-- its entire DocumentVersion history) whenever its parent Proceeding was
+-- deleted — removing only the DB metadata, never the underlying
+-- object-storage bytes those rows pointed at (storage_structure/
+-- object_key), leaving orphaned objects in the bucket with no DB record
+-- left to ever clean them up. DELETE /api/cases/[id] and
+-- DELETE /api/matters/[id] now check for and block (409) on linked
+-- documents explicitly (see route handlers), so the FK no longer needs —
+-- and must not have — CASCADE: RESTRICT (the default with no ON DELETE
+-- clause) is what makes that application-level check actually enforceable
+-- at the database level too, instead of racing a caller/script that
+-- bypasses the API and deletes the Proceeding directly.
+--
+-- Guarded on the constraint's current delete action (confdeltype = 'c')
+-- rather than existence alone, so this block is a no-op on a database
+-- that already ran this migration once.
+-- Postgres auto-generated this constraint's name from the table's actual
+-- (mixed-case, quoted) identifier — "DocumentEnvelope_case_id_fkey", not
+-- the all-lowercase "documentenvelope_case_id_fkey" every other named
+-- constraint in this file uses by deliberate convention — so it must be
+-- looked up and referenced quoted, exactly as Postgres itself created it.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'DocumentEnvelope_case_id_fkey' AND confdeltype = 'c'
+    ) THEN
+        ALTER TABLE "DocumentEnvelope" DROP CONSTRAINT "DocumentEnvelope_case_id_fkey";
+        ALTER TABLE "DocumentEnvelope" ADD CONSTRAINT "DocumentEnvelope_case_id_fkey"
+            FOREIGN KEY ("case_id") REFERENCES "LegalCase"("id");
+    END IF;
+END
+$$;
+
+-- 4b. DocumentVersion — append-only version history for a DocumentEnvelope.
+-- Every real upload (initial or a later replacement) gets its own
+-- immutable row here; DocumentEnvelope.storage_structure/title always
+-- mirror the current/latest version so every pre-existing reader
+-- (download, index, list, GET) keeps working completely unchanged.
+--
+-- tenant_id + its own tenant_isolation_policy is required rather than
+-- relying on the envelope_id -> DocumentEnvelope FK for tenant scoping —
+-- same lesson as DocumentChunkVector/WalletTransactionRecord above:
+-- PostgreSQL foreign key constraint checks always bypass row-level
+-- security by design, so the FK alone must never be trusted as a tenant
+-- boundary by itself.
+--
+-- envelope_id deliberately has no ON DELETE clause (RESTRICT), for the
+-- same orphaned-storage reason as case_id above: deleting a
+-- DocumentEnvelope must first explicitly delete each version's own
+-- storage object and then its DocumentVersion row (see
+-- DELETE /api/documents/[id]), never silently cascade past real,
+-- independently-addressable storage objects.
+CREATE TABLE IF NOT EXISTS "DocumentVersion" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "envelope_id" UUID NOT NULL REFERENCES "DocumentEnvelope"("id"),
+    "version_number" INTEGER NOT NULL,
+    "title" TEXT NOT NULL,
+    "storage_structure" JSONB DEFAULT '{}',
+    "created_by" UUID REFERENCES "User"("id"),
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    UNIQUE ("envelope_id", "version_number")
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentversion_number_positive'
+    ) THEN
+        ALTER TABLE "DocumentVersion" ADD CONSTRAINT documentversion_number_positive
+            CHECK ("version_number" > 0);
+    END IF;
+END
+$$;
+
+-- Backfill: every DocumentEnvelope that predates this milestone gets a
+-- synthetic version 1 row mirroring its current storage_structure, so
+-- version history is complete from day one rather than silently starting
+-- empty for pre-existing documents. Guarded by NOT EXISTS so this is a
+-- no-op on rows that already have a version (i.e. every subsequent
+-- migration run, and every row created through the app after this PR).
+INSERT INTO "DocumentVersion" ("tenant_id", "envelope_id", "version_number", "title", "storage_structure", "created_at")
+SELECT de."tenant_id", de."id", 1, de."title", de."storage_structure", de."created_at"
+FROM "DocumentEnvelope" de
+WHERE NOT EXISTS (SELECT 1 FROM "DocumentVersion" dv WHERE dv."envelope_id" = de."id");
+
 -- 5. DocumentChunkVector
 CREATE TABLE IF NOT EXISTS "DocumentChunkVector" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -479,6 +576,8 @@ ALTER TABLE "MatterParticipant" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterParticipant" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "MatterEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterEvent" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentVersion" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentVersion" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -523,6 +622,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterEvent";
 CREATE POLICY tenant_isolation_policy ON "MatterEvent"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentVersion";
+CREATE POLICY tenant_isolation_policy ON "DocumentVersion"
+    USING ("tenant_id" = get_active_session_tenant());
+
 DROP POLICY IF EXISTS tenant_isolation_policy ON "AiUsageEvent";
 CREATE POLICY tenant_isolation_policy ON "AiUsageEvent"
     USING ("tenant_id" = get_active_session_tenant());
@@ -532,6 +635,9 @@ CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
 CREATE INDEX IF NOT EXISTS idx_legalcase_matter ON "LegalCase"("matter_id");
 CREATE INDEX IF NOT EXISTS idx_documentenvelope_case ON "DocumentEnvelope"("case_id");
+CREATE INDEX IF NOT EXISTS idx_documentenvelope_matter ON "DocumentEnvelope"("matter_id");
+CREATE INDEX IF NOT EXISTS idx_documentversion_envelope ON "DocumentVersion"("envelope_id", "version_number");
+CREATE INDEX IF NOT EXISTS idx_documentversion_tenant ON "DocumentVersion"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_documentchunkvector_envelope ON "DocumentChunkVector"("envelope_id");
 CREATE INDEX IF NOT EXISTS idx_documentchunkvector_tenant ON "DocumentChunkVector"("tenant_id");
 -- Full-text half of hybrid search.

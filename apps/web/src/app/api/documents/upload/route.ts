@@ -5,7 +5,7 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { isObjectStorageConfigured, putObject, deleteObject } from '@/lib/storage/object-storage';
-import { validateFileType, buildObjectKey } from '@/lib/storage/document-key';
+import { validateFileType, buildObjectKey, MAX_DOCUMENT_SIZE_BYTES } from '@/lib/storage/document-key';
 
 /**
  * NCHQ Module 17: Advanced File Ingestion Controller
@@ -16,7 +16,7 @@ import { validateFileType, buildObjectKey } from '@/lib/storage/document-key';
  * — real S3 API, works against any S3-compatible endpoint).
  */
 
-const MAX_DOCUMENT_SIZE = 128 * 1024 * 1024; // 128MB
+const MAX_DOCUMENT_SIZE = MAX_DOCUMENT_SIZE_BYTES;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const IngestHeadersSchema = z.object({
@@ -73,6 +73,11 @@ export async function POST(request: NextRequest) {
     const rawCaseId = request.headers.get('x-case-id');
     if (rawCaseId && !UUID_PATTERN.test(rawCaseId)) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'Invalid x-case-id.' }, { status: 400 });
+    }
+
+    const rawMatterId = request.headers.get('x-matter-id');
+    if (rawMatterId && !UUID_PATTERN.test(rawMatterId)) {
+      return NextResponse.json({ error: 'BAD_REQUEST', message: 'Invalid x-matter-id.' }, { status: 400 });
     }
 
     const rawFileName = request.headers.get('x-file-name') || '';
@@ -132,20 +137,57 @@ export async function POST(request: NextRequest) {
     // PostgreSQL foreign key checks always bypass row security by design
     // ("Referential integrity checks ... always bypass row security" —
     // this is documented Postgres behavior, not a bug) — so the
-    // DocumentEnvelope.case_id -> LegalCase(id) FK alone would silently
-    // accept a case_id belonging to a DIFFERENT tenant. Confirmed with a
-    // real cross-tenant case_id in testing: the FK let it through. This
-    // explicit, RLS-scoped SELECT is what actually enforces tenant
-    // ownership of case_id before the insert is allowed to proceed.
+    // DocumentEnvelope.case_id/matter_id -> LegalCase/Matter(id) FKs alone
+    // would silently accept an id belonging to a DIFFERENT tenant.
+    // Confirmed with a real cross-tenant case_id in testing: the FK let it
+    // through. These explicit, RLS-scoped SELECTs are what actually
+    // enforce tenant ownership before the insert is allowed to proceed.
+    let caseMatterId: string | null = null;
     if (rawCaseId) {
-      const caseRows = await db.execute<{ id: string }>(
+      const caseRows = await db.execute<{ id: string; matter_id: string | null }>(
         tenantId,
-        `SELECT id FROM "LegalCase" WHERE id = $1`,
+        `SELECT id, matter_id FROM "LegalCase" WHERE id = $1`,
         [rawCaseId]
       );
       if (caseRows.length === 0) {
         return NextResponse.json(
           { error: 'BAD_REQUEST', message: 'x-case-id does not reference an accessible case.' },
+          { status: 400 }
+        );
+      }
+      caseMatterId = caseRows[0].matter_id;
+    }
+
+    // Proceeding/Matter consistency: a document explicitly tagged with
+    // both x-case-id and x-matter-id must not disagree with the
+    // Proceeding's own parent Matter — that would let a document appear
+    // linked to a Matter it has no real relationship to.
+    if (rawMatterId && caseMatterId && rawMatterId !== caseMatterId) {
+      return NextResponse.json(
+        {
+          error: 'BAD_REQUEST',
+          code: 'PROCEEDING_MATTER_MISMATCH',
+          message: "x-matter-id does not match the parent Matter of the Proceeding referenced by x-case-id.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // When x-matter-id is omitted but x-case-id resolves to a Proceeding
+    // that itself belongs to a Matter, the document inherits that Matter
+    // link automatically — so it's directly discoverable from the Matter
+    // workspace without every caller having to pass both ids explicitly.
+    const effectiveMatterId = rawMatterId ?? caseMatterId;
+
+    if (effectiveMatterId) {
+      const matterRows = await db.execute<{ id: string }>(
+        tenantId,
+        `SELECT id FROM "Matter" WHERE id = $1`,
+        [effectiveMatterId]
+      );
+      if (matterRows.length === 0) {
+        return NextResponse.json(
+          { error: 'BAD_REQUEST', message: 'x-matter-id does not reference an accessible matter.' },
           { status: 400 }
         );
       }
@@ -159,26 +201,38 @@ export async function POST(request: NextRequest) {
 
     const uploadResult = await putObject(objectKey, fileBuffer, fileTypeResult.contentType!);
 
+    const storageStructure = {
+      storage_provider: 's3',
+      object_key: objectKey,
+      content_type: fileTypeResult.contentType,
+      bytes_stored: fileBuffer.length,
+      etag: uploadResult.etag,
+    };
+
     let envelope;
     try {
-      const rows = await db.execute<{ id: string; tenant_id: string; case_id: string | null; created_at: string }>(
+      // A single statement — the DocumentEnvelope row and its version-1
+      // DocumentVersion row are created atomically (DatabaseClient.execute
+      // wraps every query in its own transaction; a CTE keeps both inserts
+      // inside that same transaction rather than needing a second one).
+      const rows = await db.execute<{
+        id: string;
+        tenant_id: string;
+        case_id: string | null;
+        matter_id: string | null;
+        created_at: string;
+      }>(
         tenantId,
-        `INSERT INTO "DocumentEnvelope" (id, tenant_id, case_id, title, storage_structure)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, tenant_id, case_id, created_at`,
-        [
-          documentId,
-          tenantId,
-          rawCaseId ?? null,
-          scrubbedFileName,
-          {
-            storage_provider: 's3',
-            object_key: objectKey,
-            content_type: fileTypeResult.contentType,
-            bytes_stored: fileBuffer.length,
-            etag: uploadResult.etag,
-          },
-        ]
+        `WITH envelope AS (
+           INSERT INTO "DocumentEnvelope" (id, tenant_id, case_id, matter_id, title, storage_structure)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, tenant_id, case_id, matter_id, created_at
+         ), version AS (
+           INSERT INTO "DocumentVersion" (tenant_id, envelope_id, version_number, title, storage_structure, created_by)
+           SELECT envelope.tenant_id, envelope.id, 1, $5, $6, $7 FROM envelope
+         )
+         SELECT id, tenant_id, case_id, matter_id, created_at FROM envelope`,
+        [documentId, tenantId, rawCaseId ?? null, effectiveMatterId ?? null, scrubbedFileName, storageStructure, session.sub]
       );
       envelope = rows[0];
     } catch (dbError) {
@@ -194,6 +248,7 @@ export async function POST(request: NextRequest) {
       id: envelope.id,
       tenant_id: envelope.tenant_id,
       case_id: envelope.case_id,
+      matter_id: envelope.matter_id,
       bytes_received: totalBytesReceived,
       scrubbed_metadata: {
         file_name: scrubbedFileName,

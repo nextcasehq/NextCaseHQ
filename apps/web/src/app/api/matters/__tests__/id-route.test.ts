@@ -36,6 +36,12 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
   });
 
   beforeEach(async () => {
+    // DocumentEnvelope.matter_id is RESTRICT, not CASCADE (Sprint 3, PR
+    // 3A) — must be cleared (versions first, then envelopes) before the
+    // matters they reference, or this cleanup itself would fail with a
+    // foreign key violation for any test that links a document to a matter.
+    await db.execute(TENANT_A, `DELETE FROM "DocumentVersion" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "MatterParticipant" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "MatterEvent" WHERE tenant_id = $1`, [TENANT_A]);
@@ -46,6 +52,8 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
   });
 
   afterAll(async () => {
+    await db.execute(TENANT_A, `DELETE FROM "DocumentVersion" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "MatterParticipant" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "MatterEvent" WHERE tenant_id = $1`, [TENANT_A]);
@@ -230,5 +238,29 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
     const eventBody = await eventRes.json();
     expect(eventBody.code).toBe('MATTER_HAS_LINKED_RECORDS');
     expect(eventBody.linked.events).toBe(1);
+  });
+
+  test('DELETE returns 409 when a document is linked directly to the Matter, even with zero Proceedings/participants/events', async () => {
+    const matterWithDocument = await createMatter(TENANT_A, 'Matter With Document');
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, matter_id, title) VALUES ($1, $2, $3)`,
+      [TENANT_A, matterWithDocument, 'Directly Linked Document']
+    );
+
+    const res = await DELETE(
+      new NextRequest(`http://localhost/api/matters/${matterWithDocument}`, {
+        method: 'DELETE',
+        headers: { origin: 'http://localhost:3000', cookie: await sessionCookieHeader(TENANT_A) },
+      }),
+      { params: Promise.resolve({ id: matterWithDocument }) }
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_HAS_LINKED_RECORDS');
+    expect(body.linked.documents).toBe(1);
+
+    const stillThere = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "Matter" WHERE id = $1`, [matterWithDocument]);
+    expect(stillThere).toHaveLength(1);
   });
 });
