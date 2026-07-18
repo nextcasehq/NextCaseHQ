@@ -1,344 +1,479 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { LitigationDb, Matter } from '@/lib/db/litigation-db';
 import BrandBackground from '@/components/BrandBackground';
 import EmptyState from '@/components/EmptyState';
+import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 
-export default function MattersChamberPage() {
+interface Matter {
+  id: string;
+  title: string;
+  matter_number: string | null;
+  engagement_type: MatterEngagementType;
+  practice_area: string | null;
+  status: MatterStatus;
+  client_id: string | null;
+  client_name: string | null;
+  opposing_party_name: string | null;
+  court: string | null;
+  created_at: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
+}
+
+function MattersChamberContent() {
   const [matters, setMatters] = useState<Matter[]>([]);
-  const [tenantId, setTenantId] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
+
+  // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [selectedPractice, setSelectedArea] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Form State
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [clientName, setClientName] = useState('');
   const [title, setTitle] = useState('');
-  const [practiceArea, setPracticeArea] = useState('Constitutional Law');
-  const [jurisdiction, setJurisdiction] = useState('IN');
-  const [advocate, setAdvocate] = useState('');
+  const [matterNumber, setMatterNumber] = useState('');
+  const [engagementType, setEngagementType] = useState<MatterEngagementType>('LITIGATION');
+  const [practiceArea, setPracticeArea] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [opposingPartyName, setOpposingPartyName] = useState('');
+  const [court, setCourt] = useState('');
   const [description, setDescription] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
 
-  useEffect(() => {
-    // Read tenant ID from context
-    setTenantId(LitigationDb.getTenantId());
-    setMatters(LitigationDb.getMatters());
+  const fetchMatters = useCallback(async (status: string) => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const query = status === 'ALL' ? '' : `?status=${status}`;
+      const res = await fetch(`/api/matters${query}`);
+      if (res.status === 401) {
+        setNeedsAuth(true);
+        setMatters([]);
+        return;
+      }
+      if (!res.ok) {
+        setLoadError('Unable to load matters right now.');
+        return;
+      }
+      const data = await res.json();
+      setNeedsAuth(false);
+      setMatters(data.matters);
+    } catch {
+      setLoadError('Unable to reach the matter workspace service.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const handleRefresh = () => {
-    setMatters(LitigationDb.getMatters());
-  };
+  const fetchClients = useCallback(async () => {
+    try {
+      const res = await fetch('/api/clients?limit=100');
+      if (!res.ok) return;
+      const data = await res.json();
+      setClients(data.clients);
+    } catch {
+      // Client list is a convenience for the create form — a failure here
+      // shouldn't block viewing matters.
+    }
+  }, []);
 
-  const handleCreateMatter = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clientName || !title) return;
+  useEffect(() => {
+    fetchMatters(selectedStatus);
+  }, [selectedStatus, fetchMatters]);
 
-    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-    LitigationDb.createMatter({
-      clientName,
-      title,
-      practiceArea,
-      jurisdiction,
-      advocateInCharge: advocate,
-      description,
-      tags
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  const handleCreateNewClient = async () => {
+    if (!newClientName) return;
+    const res = await fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newClientName }),
     });
-
-    // Reset Form
-    setClientName('');
-    setTitle('');
-    setAdvocate('');
-    setDescription('');
-    setTagsInput('');
-    setShowCreateForm(false);
-    handleRefresh();
+    if (!res.ok) return;
+    const data = await res.json();
+    setClients((prev) => [...prev, { id: data.client.id, name: data.client.name }]);
+    setClientId(data.client.id);
+    setNewClientName('');
+    setShowNewClient(false);
   };
 
-  // Unique practice areas for filtering
-  const practiceAreas = Array.from(new Set(matters.map(m => m.practiceArea)));
+  const handleCreateMatter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title) return;
 
-  // Filter & Search Logic
-  const filteredMatters = matters.filter(m => {
-    const matchesSearch =
-      m.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const res = await fetch('/api/matters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        matter_number: matterNumber || undefined,
+        engagement_type: engagementType,
+        practice_area: practiceArea || undefined,
+        client_id: clientId || undefined,
+        opposing_party_name: opposingPartyName || undefined,
+        court: court || undefined,
+        description: description || undefined,
+      }),
+    });
+    if (!res.ok) return;
 
-    const matchesStatus = selectedStatus === 'ALL' || m.status === selectedStatus;
-    const matchesPractice = selectedPractice === 'ALL' || m.practiceArea === selectedPractice;
+    setTitle('');
+    setMatterNumber('');
+    setPracticeArea('');
+    setClientId('');
+    setOpposingPartyName('');
+    setCourt('');
+    setDescription('');
+    setShowCreateForm(false);
+    fetchMatters(selectedStatus);
+  };
 
-    return matchesSearch && matchesStatus && matchesPractice;
+  const filteredMatters = matters.filter((m) => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return (
+      m.title.toLowerCase().includes(q) ||
+      (m.matter_number ?? '').toLowerCase().includes(q) ||
+      (m.client_name ?? '').toLowerCase().includes(q)
+    );
   });
 
+  if (needsAuth) {
+    return (
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
+        <span className="text-3xl">🔒</span>
+        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+          Sign in to view and manage matters under your tenant.
+        </p>
+        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+          Go to Login →
+        </Link>
+      </main>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
-
-      <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
-        <BrandBackground />
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
-          <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
-              Matter Management Chamber
-            </h1>
-            <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-widest mt-1">
-              Active Tenant Context: <span className="font-mono text-[#8A6D2F]">{tenantId.slice(0, 8)}...</span>
-            </p>
-          </div>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="self-start md:self-auto bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs md:text-sm px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
-          >
-            {showCreateForm ? 'Close Form' : 'Initiate New Matter'}
-          </button>
+    <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+      <BrandBackground />
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
+        <div>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
+            Matter Workspace
+          </h1>
+          <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-widest mt-1">
+            Client engagements — litigation, advisory, and everything in between
+          </p>
         </div>
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="self-start md:self-auto bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs md:text-sm px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
+        >
+          {showCreateForm ? 'Close Form' : 'New Matter'}
+        </button>
+      </div>
 
-        {/* Matter Creation Form */}
-        {showCreateForm && (
-          <div className="mb-10 p-6 bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm animate-fadeIn">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#B0A588] mb-4">
-              New Matter Entry Form
-            </h3>
-            <form onSubmit={handleCreateMatter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Client Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="e.g. NextCaseHQ Technologies Inc."
-                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-                />
-              </div>
+      {/* Matter Creation Form */}
+      {showCreateForm && (
+        <div className="mb-10 p-6 bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm animate-fadeIn">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[#B0A588] mb-4">
+            New Matter Entry
+          </h3>
+          <form onSubmit={handleCreateMatter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Matter Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Advisory on Series B financing"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Matter Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Writ Petition (Civil) against Union of India"
-                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Matter Number
+              </label>
+              <input
+                type="text"
+                value={matterNumber}
+                onChange={(e) => setMatterNumber(e.target.value)}
+                placeholder="e.g. MAT-2026-014"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Practice Area
-                </label>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Engagement Type
+              </label>
+              <select
+                value={engagementType}
+                onChange={(e) => setEngagementType(e.target.value as MatterEngagementType)}
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
+              >
+                {MATTER_ENGAGEMENT_TYPES.map((t) => (
+                  <option key={t} value={t}>{t.replace('_', ' ')}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Practice Area
+              </label>
+              <input
+                type="text"
+                value={practiceArea}
+                onChange={(e) => setPracticeArea(e.target.value)}
+                placeholder="e.g. Corporate Governance"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Client
+              </label>
+              <div className="flex gap-2">
                 <select
-                  value={practiceArea}
-                  onChange={(e) => setPracticeArea(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  className="flex-1 px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
                 >
-                  <option value="Constitutional Law">Constitutional Law</option>
-                  <option value="Intellectual Property">Intellectual Property</option>
-                  <option value="Commercial Dispute">Commercial Dispute</option>
-                  <option value="Criminal Law">Criminal Law</option>
-                  <option value="Corporate Governance">Corporate Governance</option>
+                  <option value="">No client linked yet</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Jurisdiction Pack
-                </label>
-                <select
-                  value={jurisdiction}
-                  onChange={(e) => setJurisdiction(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-                >
-                  <option value="IN">India (BNS & BNSS Compliance)</option>
-                  <option value="US">US Federal Litigation (FRCP)</option>
-                  <option value="UK">UK High Court (CPR)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Advocate In Charge
-                </label>
-                <input
-                  type="text"
-                  value={advocate}
-                  onChange={(e) => setAdvocate(e.target.value)}
-                  placeholder="e.g. Senior Counsel Harish Salve"
-                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Tags (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  placeholder="e.g. BNSS, High Court, Patent"
-                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Matter Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Provide comprehensive overview of client representation..."
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222] font-sans"
-                />
-              </div>
-
-              <div className="md:col-span-2 flex justify-end gap-3 mt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 text-xs font-bold uppercase border border-[#E7DFC9] text-[#8A7A56] rounded-lg hover:bg-[#FBF8F1] transition-all"
+                  onClick={() => setShowNewClient(!showNewClient)}
+                  className="px-4 py-2.5 border border-[#E7DFC9] text-[#8A6D2F] hover:bg-[#FBF8F1] text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase rounded-lg shadow transition-all"
-                >
-                  Save Matter
+                  + New Client
                 </button>
               </div>
-            </form>
-          </div>
-        )}
+              {showNewClient && (
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Client name"
+                    className="flex-1 px-4 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateNewClient}
+                    className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase rounded-lg"
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
+            </div>
 
-        {/* Filter Section */}
-        <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center mb-8">
-          <div className="w-full md:flex-1 relative flex items-center bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg p-1.5 focus-within:border-[#A9843F] transition-all">
-            <span className="pl-3 pr-2 text-[#B0A588]">🔍</span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search active matters by title, client name, or ID..."
-              className="w-full bg-transparent border-none outline-none text-[#111111] text-xs md:text-sm font-medium placeholder-[#B0A588] py-1.5"
-            />
-          </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Opposing Party
+              </label>
+              <input
+                type="text"
+                value={opposingPartyName}
+                onChange={(e) => setOpposingPartyName(e.target.value)}
+                placeholder="If applicable"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
+              />
+            </div>
 
-          <div className="w-full md:w-auto flex flex-wrap gap-3">
-            <select
-              value={selectedPractice}
-              onChange={(e) => setSelectedArea(e.target.value)}
-              className="px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg text-xs font-bold text-[#4A4130] outline-none"
-            >
-              <option value="ALL">All Practice Areas</option>
-              {practiceAreas.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Court / Forum
+              </label>
+              <input
+                type="text"
+                value={court}
+                onChange={(e) => setCourt(e.target.value)}
+                placeholder="If applicable"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
+              />
+            </div>
 
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg text-xs font-bold text-[#4A4130] outline-none"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="PENDING">PENDING</option>
-              <option value="ARCHIVED">ARCHIVED</option>
-            </select>
-          </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Provide an overview of the engagement..."
+                rows={3}
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium font-sans"
+              />
+            </div>
+
+            <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="px-4 py-2 text-xs font-bold uppercase border border-[#E7DFC9] text-[#8A7A56] rounded-lg hover:bg-[#FBF8F1] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase rounded-lg shadow transition-all"
+              >
+                Save Matter
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Filter Section */}
+      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center mb-8">
+        <div className="w-full md:flex-1 relative flex items-center bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg p-1.5 focus-within:border-[#A9843F] transition-all">
+          <span className="pl-3 pr-2 text-[#B0A588]">🔍</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search loaded matters by title, matter number, or client..."
+            className="w-full bg-transparent border-none outline-none text-[#111111] text-xs md:text-sm font-medium placeholder-[#B0A588] py-1.5"
+          />
         </div>
 
-        {/* Matters Grid */}
-        {filteredMatters.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
-            {filteredMatters.map((matter) => (
-              <div
-                key={matter.id}
-                className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm hover:border-[#E7DFC9] hover:shadow transition-all group flex flex-col"
-              >
-                <div className="flex justify-between items-start gap-4 mb-3">
-                  <div>
-                    <span className="font-mono text-xs font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
-                      {matter.id}
-                    </span>
-                    <span className="ml-2 text-[10px] font-bold text-[#B0A588] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
-                      {matter.jurisdiction} PACK
-                    </span>
-                  </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                    matter.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border border-green-200' :
-                    matter.status === 'ARCHIVED' ? 'bg-[#F4EEE0] text-[#5C5340] border border-[#E7DFC9]' :
-                    'bg-yellow-50 text-yellow-700 border border-yellow-200'
-                  }`}>
-                    {matter.status}
+        <div className="w-full md:w-auto flex flex-wrap gap-2">
+          {['ALL', ...MATTER_STATUSES].map((status) => (
+            <button
+              key={status}
+              onClick={() => setSelectedStatus(status)}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${
+                selectedStatus === status
+                  ? 'bg-[#8A6D2F] border-[#8A6D2F] text-white'
+                  : 'bg-[#FBF8F1] hover:bg-[#F4EEE0] border-[#E7DFC9] text-[#5C5340]'
+              }`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loadError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-semibold text-center">
+          {loadError}
+        </div>
+      )}
+
+      {/* Matters Grid */}
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
+        </div>
+      ) : filteredMatters.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
+          {filteredMatters.map((matter) => (
+            <div
+              key={matter.id}
+              className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm hover:border-[#E7DFC9] hover:shadow transition-all group flex flex-col"
+            >
+              <div className="flex justify-between items-start gap-4 mb-3">
+                <div>
+                  <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
+                    {matter.matter_number || matter.id.slice(0, 8)}
+                  </span>
+                  <span className="ml-2 text-[10px] font-bold text-[#B0A588] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
+                    {matter.engagement_type.replace('_', ' ')}
                   </span>
                 </div>
-
-                <h3 className="font-bold text-base text-[#111111] group-hover:text-[#8A6D2F] transition-colors mb-1">
-                  {matter.title}
-                </h3>
-                <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mb-3">
-                  Client: {matter.clientName}
-                </p>
-
-                <p className="text-xs text-[#8A7A56] leading-relaxed font-medium mb-4 flex-1 line-clamp-2">
-                  {matter.description || 'No description provided.'}
-                </p>
-
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  {matter.tags.map(tag => (
-                    <span key={tag} className="text-[10px] bg-[#FBF8F1] text-[#8A7A56] border border-[#F4EEE0] px-2 py-0.5 rounded-md font-semibold">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="border-t border-[#F4EEE0] pt-4 flex items-center justify-between mt-auto">
-                  <div className="text-[10px] font-mono text-[#B0A588] uppercase tracking-widest">
-                    Advocate: <span className="font-sans font-bold text-[#5C5340]">{matter.advocateInCharge}</span>
-                  </div>
-                  <Link
-                    href={`/matters/${matter.id}`}
-                    className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624] flex items-center gap-1"
-                  >
-                    Manage Matter →
-                  </Link>
-                </div>
+                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                  matter.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border border-green-200' :
+                  matter.status === 'ON_HOLD' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                  matter.status === 'CLOSED' ? 'bg-[#F4EEE0] text-[#5C5340] border border-[#E7DFC9]' :
+                  'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  {matter.status}
+                </span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={
-              <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
-              </svg>
-            }
-            title="No Matters Found"
-            description="No matters matching current query/filters exist inside your secure multi-tenant partition."
-            action={
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
-              >
-                Initiate New Matter
-              </button>
-            }
-          />
-        )}
-      </main>
+
+              <h3 className="font-bold text-base text-[#111111] group-hover:text-[#8A6D2F] transition-colors mb-1">
+                {matter.title}
+              </h3>
+              <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mb-3">
+                Client: {matter.client_name || 'Not yet linked'}
+              </p>
+
+              <p className="text-xs text-[#8A7A56] leading-relaxed font-medium mb-4 flex-1">
+                {matter.practice_area || 'No practice area set.'}
+              </p>
+
+              <div className="border-t border-[#F4EEE0] pt-4 flex items-center justify-between mt-auto">
+                <div className="text-[10px] font-mono text-[#B0A588] uppercase tracking-widest">
+                  Opened: <span className="font-sans font-bold text-[#5C5340]">{new Date(matter.created_at).toLocaleDateString()}</span>
+                </div>
+                <Link
+                  href={`/matters/${matter.id}`}
+                  className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624] flex items-center gap-1"
+                >
+                  Open Workspace →
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={
+            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+            </svg>
+          }
+          title="No Matters Found"
+          description="No matters matching current query/filters exist inside your secure multi-tenant partition."
+          action={
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
+            >
+              New Matter
+            </button>
+          }
+        />
+      )}
+    </main>
+  );
+}
+
+export default function MattersChamberPage() {
+  return (
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
+      <Suspense fallback={
+        <div className="flex-1 flex justify-center items-center">
+          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
+        </div>
+      }>
+        <MattersChamberContent />
+      </Suspense>
     </div>
   );
 }

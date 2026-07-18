@@ -63,16 +63,18 @@ export async function middleware(request: NextRequest) {
   // 2. Only intercept /api/* routes (excluding auth, and excluding routes
   // that verify their own request authenticity — see
   // apps/web/src/lib/auth/session.ts and
-  // apps/web/src/lib/security/webhook-signature.ts. /api/documents and
-  // /api/cases authorize themselves via the real session cookie;
-  // /api/webhooks authorizes itself via HMAC request signatures. Gating
-  // any of these here too would require a second, disconnected
-  // Bearer-token credential that nothing in the app actually issues,
-  // effectively making the route unreachable.
+  // apps/web/src/lib/security/webhook-signature.ts. /api/documents,
+  // /api/cases, /api/matters, and /api/clients authorize themselves via the
+  // real session cookie; /api/webhooks authorizes itself via HMAC request
+  // signatures. Gating any of these here too would require a second,
+  // disconnected Bearer-token credential that nothing in the app actually
+  // issues, effectively making the route unreachable.
   const isSelfAuthorizedApiRoute =
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/documents') ||
     pathname.startsWith('/api/cases') ||
+    pathname.startsWith('/api/matters') ||
+    pathname.startsWith('/api/clients') ||
     pathname.startsWith('/api/search') ||
     pathname.startsWith('/api/wallet') ||
     pathname.startsWith('/api/notifications') ||
