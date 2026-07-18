@@ -77,6 +77,7 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.case.title).toBe('Owned Case');
+    expect(body.case.status).toBe('PENDING');
   });
 
   test('GET returns 404 (not a permission error) for a real case belonging to a different tenant — RLS-backed, not app-level filtering', async () => {
@@ -124,6 +125,53 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
     const verify = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
     const verifyBody = await verify.json();
     expect(verifyBody.case.title).toBe('New Title');
+  });
+
+  test('PATCH updates the real structural fields (status, court, judge, stage, hearing_date, notes)', async () => {
+    const id = await createCase(TENANT_A, 'Litigation Matter');
+    const res = await PATCH(
+      buildRequest(
+        'PATCH',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        {
+          status: 'HEARING',
+          court: 'US District Court, N.D. California',
+          judge: 'Judge Lucy Koh',
+          stage: 'Fact Discovery / Depositions',
+          hearing_date: '2026-03-01',
+          notes: 'Exhibits A through G loaded.',
+        }
+      ),
+      routeParams(id)
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.case).toMatchObject({
+      status: 'HEARING',
+      court: 'US District Court, N.D. California',
+      judge: 'Judge Lucy Koh',
+      stage: 'Fact Discovery / Depositions',
+      hearing_date: '2026-03-01',
+      notes: 'Exhibits A through G loaded.',
+    });
+  });
+
+  test('PATCH rejects an invalid status value (400)', async () => {
+    const id = await createCase(TENANT_A, 'To Patch');
+    const res = await PATCH(
+      buildRequest('PATCH', { cookie: await sessionCookieHeader(TENANT_A) }, { status: 'NOT_REAL' }),
+      routeParams(id)
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH rejects a malformed hearing_date (400)', async () => {
+    const id = await createCase(TENANT_A, 'To Patch');
+    const res = await PATCH(
+      buildRequest('PATCH', { cookie: await sessionCookieHeader(TENANT_A) }, { hearing_date: 'not-a-date' }),
+      routeParams(id)
+    );
+    expect(res.status).toBe(400);
   });
 
   test('PATCH cannot modify a case belonging to a different tenant (404, no cross-tenant write)', async () => {

@@ -121,6 +121,36 @@ CREATE TABLE IF NOT EXISTS "LegalCase" (
     "updated_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- Idempotent additive migration for databases created before these
+-- existed (safe no-op once already applied, preserves existing rows —
+-- NOT NULL + DEFAULT backfills them without a table rewrite). Real,
+-- structural columns for the fields the /cases UI actually displays and
+-- filters by, deliberately NOT folded into the opaque state_metadata
+-- JSONB blob. hearing_date is TEXT (not DATE) to store the same plain
+-- YYYY-MM-DD the UI already works with, avoiding a UTC/timezone
+-- conversion footgun on serialization for a field nothing here needs to
+-- do date arithmetic on yet. Matter/matter_id linkage is deliberately NOT
+-- added here — Matter has no real table yet (separate future milestone);
+-- the case-detail page's parent-Matter section is disabled rather than
+-- backed by fake data until that milestone lands.
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'PENDING';
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "court" TEXT;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "judge" TEXT;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "stage" TEXT;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "hearing_date" TEXT;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "notes" TEXT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'legalcase_status_check'
+    ) THEN
+        ALTER TABLE "LegalCase" ADD CONSTRAINT legalcase_status_check
+            CHECK ("status" IN ('PENDING', 'HEARING', 'DISPOSED', 'APPEAL'));
+    END IF;
+END
+$$;
+
 -- 4. DocumentEnvelope
 CREATE TABLE IF NOT EXISTS "DocumentEnvelope" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
