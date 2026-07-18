@@ -98,11 +98,11 @@ function CasesChamberContent() {
     return (
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
         <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-neutral-700 mt-3">Authentication Required</h3>
-        <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
+        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
           Sign in to view and manage litigation cases under your tenant.
         </p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-indigo-600 hover:underline">
+        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
           Go to Login →
         </Link>
       </main>
@@ -112,7 +112,7 @@ function CasesChamberContent() {
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-neutral-200/60">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
             Case Workspace Chamber
@@ -120,7 +120,7 @@ function CasesChamberContent() {
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
+          className="self-start md:self-auto bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs md:text-sm px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
         >
           {showCreateForm ? 'Close Form' : 'Initiate New Case'}
         </button>
@@ -128,8 +128,8 @@ function CasesChamberContent() {
 
       {/* Case Creation Form */}
       {showCreateForm && (
-        <div className="mb-10 p-6 bg-white border border-neutral-200/80 rounded-xl shadow-sm">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-4">
+        <div className="mb-10 p-6 bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[#B0A588] mb-4">
             Spawn New Case Workspace
           </h3>
 
@@ -144,7 +144,7 @@ function CasesChamberContent() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Delhi High Court Writ Suit No. 132/2026"
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
               />
             </div>
 
@@ -156,7 +156,7 @@ function CasesChamberContent() {
                 required
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium text-neutral-800"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
               >
                 <option value="IN">IN (BNSS Compliant)</option>
                 <option value="US">US (FRCP Compliant)</option>
@@ -173,7 +173,7 @@ function CasesChamberContent() {
                 value={court}
                 onChange={(e) => setCourt(e.target.value)}
                 placeholder="e.g. Delhi High Court (Bench III)"
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
               />
             </div>
 
@@ -186,7 +186,7 @@ function CasesChamberContent() {
                 value={judge}
                 onChange={(e) => setJudge(e.target.value)}
                 placeholder="e.g. Honble Justice"
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
               />
             </div>
 
@@ -199,7 +199,7 @@ function CasesChamberContent() {
                 value={stage}
                 onChange={(e) => setStage(e.target.value)}
                 placeholder="e.g. Admission / Notice Stage"
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
               />
             </div>
 
@@ -211,7 +211,7 @@ function CasesChamberContent() {
                 type="date"
                 value={hearingDate}
                 onChange={(e) => setHearingDate(e.target.value)}
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
               />
             </div>
 
@@ -222,7 +222,7 @@ function CasesChamberContent() {
               <select
                 value={caseStatus}
                 onChange={(e) => setCaseStatus(e.target.value as typeof caseStatus)}
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium text-neutral-800"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
               >
                 <option value="PENDING">PENDING</option>
                 <option value="HEARING">HEARING</option>
@@ -240,7 +240,7 @@ function CasesChamberContent() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Enter immediate notes, courtroom tasks or next actions..."
                 rows={3}
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium font-sans"
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium font-sans"
               />
             </div>
 
@@ -248,13 +248,13 @@ function CasesChamberContent() {
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 border border-neutral-200 text-neutral-500 text-xs font-bold uppercase rounded-lg hover:bg-neutral-50"
+                className="px-4 py-2 border border-[#E7DFC9] text-[#8A7A56] text-xs font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase rounded-lg shadow"
+                className="px-5 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase rounded-lg shadow"
               >
                 Spawn Case
               </button>
@@ -264,8 +264,8 @@ function CasesChamberContent() {
       )}
 
       {/* Filter Section */}
-      <div className="bg-white border border-neutral-200/80 rounded-xl p-4 shadow-sm flex items-center justify-between gap-4 mb-8">
-        <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex items-center justify-between gap-4 mb-8">
+        <span className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">
           Filters:
         </span>
 
@@ -276,8 +276,8 @@ function CasesChamberContent() {
               onClick={() => setSelectedStatus(status)}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${
                 selectedStatus === status
-                  ? 'bg-indigo-600 border-indigo-600 text-white'
-                  : 'bg-neutral-50 hover:bg-neutral-100 border-neutral-200 text-neutral-600'
+                  ? 'bg-[#8A6D2F] border-[#8A6D2F] text-white'
+                  : 'bg-[#FBF8F1] hover:bg-[#F4EEE0] border-[#E7DFC9] text-[#5C5340]'
               }`}
             >
               {status}
@@ -295,18 +295,18 @@ function CasesChamberContent() {
       {/* Cases Grid */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
         </div>
       ) : cases.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
           {cases.map((c) => (
             <div
               key={c.id}
-              className="bg-white border border-neutral-200/80 rounded-xl p-5 shadow-sm hover:border-indigo-200 hover:shadow transition-all group flex flex-col justify-between"
+              className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 shadow-sm hover:border-[#E7DFC9] hover:shadow transition-all group flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-wider">
+                  <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
                     {c.id.slice(0, 8)}...
                   </span>
                   <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
@@ -320,35 +320,35 @@ function CasesChamberContent() {
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-sm text-[#111111] group-hover:text-indigo-600 transition-colors line-clamp-2">
+                  <h3 className="font-bold text-sm text-[#111111] group-hover:text-[#8A6D2F] transition-colors line-clamp-2">
                     {c.title}
                   </h3>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-neutral-500 font-medium">
+                <div className="space-y-1.5 text-xs text-[#8A7A56] font-medium">
                   <div className="flex justify-between">
-                    <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Forum:</span>
-                    <span className="text-neutral-700 text-right truncate max-w-[70%] font-semibold">{c.court || 'N/A'}</span>
+                    <span className="text-[9px] text-[#B0A588] uppercase font-bold tracking-wider">Forum:</span>
+                    <span className="text-[#4A4130] text-right truncate max-w-[70%] font-semibold">{c.court || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Judge:</span>
-                    <span className="text-neutral-700 text-right truncate max-w-[70%] font-semibold">{c.judge || 'N/A'}</span>
+                    <span className="text-[9px] text-[#B0A588] uppercase font-bold tracking-wider">Judge:</span>
+                    <span className="text-[#4A4130] text-right truncate max-w-[70%] font-semibold">{c.judge || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Stage:</span>
-                    <span className="text-neutral-700 text-right font-semibold">{c.stage || 'N/A'}</span>
+                    <span className="text-[9px] text-[#B0A588] uppercase font-bold tracking-wider">Stage:</span>
+                    <span className="text-[#4A4130] text-right font-semibold">{c.stage || 'N/A'}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-neutral-100 pt-4 mt-5 flex items-center justify-between">
+              <div className="border-t border-[#F4EEE0] pt-4 mt-5 flex items-center justify-between">
                 <div>
-                  <span className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">NEXT HEARING</span>
-                  <span className="text-xs font-mono font-bold text-indigo-600">{c.hearing_date || 'N/A'}</span>
+                  <span className="block text-[8px] font-bold text-[#B0A588] uppercase tracking-widest">NEXT HEARING</span>
+                  <span className="text-xs font-mono font-bold text-[#8A6D2F]">{c.hearing_date || 'N/A'}</span>
                 </div>
                 <Link
                   href={`/cases/${c.id}`}
-                  className="text-xs font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700"
+                  className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624]"
                 >
                   Open Workspace →
                 </Link>
@@ -357,10 +357,10 @@ function CasesChamberContent() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 bg-white border border-neutral-200/80 rounded-xl">
+        <div className="text-center py-20 bg-white border border-[#E7DFC9]/80 rounded-xl">
           <span className="text-3xl">⚖️</span>
-          <h3 className="text-base font-bold text-neutral-700 mt-3">No Active Cases</h3>
-          <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
+          <h3 className="text-base font-bold text-[#4A4130] mt-3">No Active Cases</h3>
+          <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
             No litigation cases exist under the active tenant context. Spawn a new case to initiate the workspace.
           </p>
         </div>
@@ -371,10 +371,10 @@ function CasesChamberContent() {
 
 export default function CasesChamberPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
       <Suspense fallback={
         <div className="flex-1 flex justify-center items-center">
-          <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
         </div>
       }>
         <CasesChamberContent />

@@ -10,7 +10,7 @@ import SiteFooter from "@/components/landing/sections/SiteFooter";
 
 export default function LandingPageContent() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] font-sans text-[#111111] selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#FDFBF7] font-sans text-[#111111] selection:bg-[#8A6D2F] selection:text-white">
       {/* Structural JSON-LD schemas for search crawlers */}
       <JsonLd type="WebSite" />
       <JsonLd type="SoftwareApplication" />

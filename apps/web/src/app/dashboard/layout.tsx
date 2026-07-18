@@ -29,15 +29,15 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white text-neutral-900 font-sans selection:bg-indigo-600 selection:text-white relative">
+    <div className="flex h-screen w-screen overflow-hidden bg-white text-[#241E17] font-sans selection:bg-[#8A6D2F] selection:text-white relative">
       {/* High-density Left Sidebar */}
-      <aside className="w-64 border-r border-neutral-100 bg-white flex flex-col z-20 flex-none h-full">
+      <aside className="w-64 border-r border-[#F4EEE0] bg-white flex flex-col z-20 flex-none h-full">
         {/* Sidebar Header */}
-        <div className="h-16 px-6 border-b border-neutral-100 flex items-center justify-between">
-          <Link href="/dashboard" className="text-xl font-black tracking-tight text-neutral-900 flex items-center gap-1">
-            <span>NextCase</span><span className="text-indigo-600">HQ</span>
+        <div className="h-16 px-6 border-b border-[#F4EEE0] flex items-center justify-between">
+          <Link href="/dashboard" className="text-xl font-black tracking-tight text-[#241E17] flex items-center gap-1">
+            <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </Link>
-          <span className="text-[10px] font-mono border border-neutral-200 text-neutral-500 rounded px-1.5 py-0.5 uppercase bg-neutral-50">
+          <span className="text-[10px] font-mono border border-[#E7DFC9] text-[#8A7A56] rounded px-1.5 py-0.5 uppercase bg-[#FBF8F1]">
             HQ // PRO
           </span>
         </div>
@@ -53,8 +53,8 @@ export default function DashboardLayout({
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded text-sm font-semibold tracking-wide uppercase transition-all
                   ${isActive
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/10'
-                    : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50'
+                    ? 'bg-[#8A6D2F] text-white shadow-sm shadow-[#8A6D2F]/10'
+                    : 'text-[#8A7A56] hover:text-[#241E17] hover:bg-[#FBF8F1]'
                   }
                 `}
               >
@@ -66,14 +66,14 @@ export default function DashboardLayout({
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-neutral-100 bg-neutral-50/50">
+        <div className="p-4 border-t border-[#F4EEE0] bg-[#FBF8F1]/50">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-[#8A6D2F] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
               NC
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-neutral-800">Counsel Session</p>
-              <p className="text-[10px] text-neutral-400 font-mono">Bound Context: ACTIVE</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#3A3222]">Counsel Session</p>
+              <p className="text-[10px] text-[#B0A588] font-mono">Bound Context: ACTIVE</p>
             </div>
           </div>
         </div>
@@ -82,10 +82,10 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden h-full">
         {/* Top Header Row */}
-        <header className="h-16 border-b border-neutral-100 bg-white px-8 flex items-center justify-between z-10 flex-none">
+        <header className="h-16 border-b border-[#F4EEE0] bg-white px-8 flex items-center justify-between z-10 flex-none">
           <div className="flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-xs uppercase tracking-widest font-black text-neutral-400">
+            <span className="text-xs uppercase tracking-widest font-black text-[#B0A588]">
               PostgreSQL Session RLS Active
             </span>
           </div>
@@ -94,11 +94,11 @@ export default function DashboardLayout({
             {/* Interactive Notification Bell */}
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="relative p-1.5 text-neutral-400 hover:text-neutral-800 transition-colors cursor-pointer bg-transparent border-none outline-none"
+              className="relative p-1.5 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
               aria-label="View notifications"
             >
               <span className="text-lg">🔔</span>
-              <span className="absolute top-0 right-0 w-2 h-2 bg-indigo-600 rounded-full"></span>
+              <span className="absolute top-0 right-0 w-2 h-2 bg-[#8A6D2F] rounded-full"></span>
             </button>
 
             <button
@@ -111,7 +111,7 @@ export default function DashboardLayout({
                   window.location.href = '/';
                 }
               }}
-              className="text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-800 transition-colors cursor-pointer bg-transparent border-none outline-none"
+              className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
             >
               Log Out
             </button>
@@ -124,31 +124,31 @@ export default function DashboardLayout({
 
           {/* Sliding Notifications Drawer */}
           {isNotificationsOpen && (
-            <div className="absolute top-0 right-0 h-full w-80 bg-white border-l border-neutral-100 shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-                <h3 className="text-xs font-black uppercase tracking-widest text-neutral-800">Timeline & Notifications</h3>
+            <div className="absolute top-0 right-0 h-full w-80 bg-white border-l border-[#F4EEE0] shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
+              <div className="p-6 border-b border-[#F4EEE0] flex justify-between items-center bg-[#FBF8F1]/50">
+                <h3 className="text-xs font-black uppercase tracking-widest text-[#3A3222]">Timeline & Notifications</h3>
                 <button
                   onClick={() => setIsNotificationsOpen(false)}
-                  className="text-xs font-bold text-neutral-400 hover:text-neutral-800 cursor-pointer bg-transparent border-none outline-none"
+                  className="text-xs font-bold text-[#B0A588] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
                 >
                   ✕
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {notifications.map((notif) => (
-                  <div key={notif.id} className="p-4 bg-white border border-neutral-100 rounded-xl hover:border-indigo-100 transition-all shadow-xs">
+                  <div key={notif.id} className="p-4 bg-white border border-[#F4EEE0] rounded-xl hover:border-[#F1E9D3] transition-all shadow-xs">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[9px] font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                      <span className="text-[9px] font-mono font-bold text-[#8A6D2F] bg-[#FBF6EA] px-1.5 py-0.5 rounded">
                         {notif.type}
                       </span>
-                      <span className="text-[9px] font-mono text-neutral-400">{notif.time}</span>
+                      <span className="text-[9px] font-mono text-[#B0A588]">{notif.time}</span>
                     </div>
-                    <p className="text-xs text-neutral-700 leading-relaxed font-sans">{notif.text}</p>
+                    <p className="text-xs text-[#4A4130] leading-relaxed font-sans">{notif.text}</p>
                   </div>
                 ))}
               </div>
-              <div className="p-4 border-t border-neutral-100 bg-neutral-50/30 text-center">
-                <p className="text-[10px] text-neutral-400 font-mono">NEXTCASE SECURITY TIMELINE</p>
+              <div className="p-4 border-t border-[#F4EEE0] bg-[#FBF8F1]/30 text-center">
+                <p className="text-[10px] text-[#B0A588] font-mono">NEXTCASE SECURITY TIMELINE</p>
               </div>
             </div>
           )}
