@@ -16,15 +16,30 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
 
-    // Simulate enterprise authentication delay
-    setTimeout(() => {
-      if (!email.includes('@')) {
-        setError('Please enter a valid enterprise email address.');
+    if (!email.includes('@')) {
+      setError('Please enter a valid enterprise email address.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        setError('Invalid email or password.');
         setIsLoading(false);
-      } else {
-        router.push('/organization');
+        return;
       }
-    }, 800);
+
+      router.push('/organization');
+    } catch {
+      setError('Unable to reach the authentication service. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (

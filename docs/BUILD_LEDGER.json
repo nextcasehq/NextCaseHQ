@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T00:00:00Z",
+  "last_updated": "2026-07-18T04:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "milestones": {
     "database_foundation": {
@@ -32,6 +32,12 @@
       "description": "Replaced in-memory DatabaseClient simulation with a real PostgreSQL connection (raw pg driver, no ORM). db/schema.sql applied via scripts/db/migrate.js. Tenant RLS verified against a real database with FORCE ROW LEVEL SECURITY.",
       "provider": "Supabase PostgreSQL (pending project provisioning — see PR)",
       "out_of_scope_next": ["authentication", "search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "real_authentication_and_user_storage": {
+      "status": "COMPLETE",
+      "description": "POST /api/auth/session validates bcrypt-hashed credentials against a real User row and mints a signed httpOnly JWT session cookie. /dashboard/* is now actually enforced by middleware (previously matched in the config but not actually gated — a real pre-existing bug, not a regression). Logout invalidates the session. User.email is now globally unique and User.password_hash was added. Verified against real PostgreSQL, bcryptjs, and a running server end-to-end.",
+      "not_yet_true": "Authentication is real; tenant AUTHORIZATION is not. A valid session proves who the user is, not that their tenant matches what they are accessing — that is the next milestone, not this one. General LegalCase/Tenant domain CRUD was explicitly out of scope and was not touched.",
+      "out_of_scope_next": ["server_enforced_tenant_authorization", "search", "ai", "file_storage", "billing", "messaging"]
     }
   }
 }

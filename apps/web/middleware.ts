@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 
 /**
  * NCHQ Module 9: Secure Multi-Tenant API Gateway (Edge Middleware)
@@ -13,7 +14,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // 0. Enforce zero-trust admin API gate
-  if (request.nextUrl.pathname.startsWith('/api/admin')) {
+  if (pathname.startsWith('/api/admin')) {
     const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value;
     if (adminToken !== 'nchq-admin-secret-key-2026') {
       return new NextResponse(
@@ -24,19 +25,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 0. Enforce zero-trust admin API gate
-  if (request.nextUrl.pathname.startsWith('/api/admin')) {
-    const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value;
-    if (adminToken !== 'nchq-admin-secret-key-2026') {
-      return new NextResponse(
-        JSON.stringify({ error: 'SECURE_ACCESS_DENIED', message: 'Unauthorized administrative session.' }),
-        { status: 401, headers: { 'content-type': 'application/json' } }
-      );
+  // 1. Protect authenticated dashboard pages with the real session cookie
+  // minted by POST /api/auth/session. Tenant-authorization enforcement
+  // (does this user's tenant match what they're accessing) is a separate,
+  // later milestone — this only proves "is there a validly signed session".
+  if (pathname.startsWith('/dashboard')) {
+    const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+    if (!sessionToken) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    try {
+      await jwtVerify(sessionToken, JWT_SECRET);
+    } catch {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
     return NextResponse.next();
   }
 
-  // 1. Only intercept /api/* routes (excluding auth)
+  // 2. Only intercept /api/* routes (excluding auth)
   if (!request.nextUrl.pathname.startsWith('/api/all') && (!request.nextUrl.pathname.startsWith('/api/') || request.nextUrl.pathname.startsWith('/api/auth'))) {
     return NextResponse.next();
   }

@@ -6,9 +6,11 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "typecheck": "node scripts/typescript_validation.js",
-    "db:migrate": "node scripts/db/migrate.js"
+    "db:migrate": "node scripts/db/migrate.js",
+    "db:seed:dev-user": "node scripts/db/seed-dev-user.js"
   },
   "devDependencies": {
+    "bcryptjs": "^3.0.3",
     "pg": "^8.22.0",
     "turbo": "latest",
     "typescript": "^5.0.0"
