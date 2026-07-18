@@ -5,6 +5,7 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { CASE_STATUSES } from '@/lib/domain/legal-case';
+import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 const CaseStatusSchema = z.enum(CASE_STATUSES);
 const HEARING_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -158,6 +159,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Any change to this Proceeding — not just matter_id — can alter what
+    // its parent Matter's cached context renders (title/status/court/stage
+    // all feed the proceedingsSource's rendered text), so the Matter this
+    // case is linked to *before* the update also needs invalidating, not
+    // just whatever it's linked to afterward.
+    const beforeRows = await db.execute<{ matter_id: string | null }>(
+      session.tenantId,
+      `SELECT matter_id FROM "LegalCase" WHERE id = $1`,
+      [id]
+    );
+    const previousMatterId = beforeRows[0]?.matter_id ?? null;
+
     const setClauses: string[] = [];
     const values: unknown[] = [];
     let paramIndex = 1;
@@ -182,6 +195,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
+
+    const matterIdsToInvalidate = Array.from(
+      new Set([previousMatterId, rows[0].matter_id].filter((v): v is string => v !== null))
+    );
+    await Promise.all(
+      matterIdsToInvalidate.map((matterId) => invalidateMatterContext(session.tenantId, matterId))
+    );
+
     return NextResponse.json({ case: rows[0] }, { status: 200 });
   } catch (error) {
     console.error('[CASES_API] PATCH /api/cases/[id] failed:', error);
@@ -209,14 +230,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const db = new DatabaseClient();
-    const rows = await db.execute<{ id: string }>(
+    const rows = await db.execute<{ id: string; matter_id: string | null }>(
       session.tenantId,
-      `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id`,
+      `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id, matter_id`,
       [id]
     );
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+    if (rows[0].matter_id) {
+      await invalidateMatterContext(session.tenantId, rows[0].matter_id);
     }
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (error) {

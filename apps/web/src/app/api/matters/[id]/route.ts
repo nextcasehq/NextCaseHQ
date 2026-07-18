@@ -5,6 +5,7 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES } from '@/lib/domain/matter';
+import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 const MatterStatusSchema = z.enum(MATTER_STATUSES);
 const MatterEngagementTypeSchema = z.enum(MATTER_ENGAGEMENT_TYPES);
@@ -187,6 +188,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
+    await invalidateMatterContext(session.tenantId, id);
     return NextResponse.json({ matter: rows[0] }, { status: 200 });
   } catch (error) {
     console.error('[MATTERS_API] PATCH /api/matters/[id] failed:', error);
@@ -300,6 +302,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
+    await invalidateMatterContext(session.tenantId, id);
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (error) {
     console.error('[MATTERS_API] DELETE /api/matters/[id] failed:', error);

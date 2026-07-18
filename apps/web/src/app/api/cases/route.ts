@@ -5,6 +5,7 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { CASE_STATUSES } from '@/lib/domain/legal-case';
+import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 /**
  * Real Case Management API — LegalCase persistence.
@@ -231,6 +232,9 @@ export async function POST(request: NextRequest) {
       ]
     );
 
+    if (input.matter_id) {
+      await invalidateMatterContext(session.tenantId, input.matter_id);
+    }
     return NextResponse.json({ case: rows[0] }, { status: 201 });
   } catch (error) {
     console.error('[CASES_API] POST /api/cases failed:', error);

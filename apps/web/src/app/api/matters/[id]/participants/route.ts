@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
+import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 /**
  * Matter team assignment — a record of who is assigned to a Matter, with a
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       throw error;
     }
 
+    await invalidateMatterContext(session.tenantId, id);
     return NextResponse.json({ participant: rows[0] }, { status: 201 });
   } catch (error) {
     console.error('[MATTERS_API] POST /api/matters/[id]/participants failed:', error);
