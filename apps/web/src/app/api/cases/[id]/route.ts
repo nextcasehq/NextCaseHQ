@@ -4,6 +4,10 @@ import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
+import { CASE_STATUSES } from '@/lib/domain/legal-case';
+
+const CaseStatusSchema = z.enum(CASE_STATUSES);
+const HEARING_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 interface LegalCaseRow {
   id: string;
@@ -15,9 +19,19 @@ interface LegalCaseRow {
   law_pack_id: string | null;
   procedure_pack_id: string | null;
   state_metadata: Record<string, unknown>;
+  status: string;
+  court: string | null;
+  judge: string | null;
+  stage: string | null;
+  hearing_date: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const CASE_COLUMNS = `id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
+                      procedure_pack_id, state_metadata, status, court, judge, stage, hearing_date,
+                      notes, created_at, updated_at`;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -30,6 +44,12 @@ const UpdateCaseSchema = z
     law_pack_id: z.string().max(200).nullable(),
     procedure_pack_id: z.string().max(200).nullable(),
     state_metadata: z.record(z.string(), z.any()),
+    status: CaseStatusSchema,
+    court: z.string().max(300).nullable(),
+    judge: z.string().max(300).nullable(),
+    stage: z.string().max(300).nullable(),
+    hearing_date: z.string().regex(HEARING_DATE_PATTERN, 'Expected YYYY-MM-DD').nullable(),
+    notes: z.string().max(10000).nullable(),
   })
   .partial()
   .refine((data) => Object.keys(data).length > 0, { message: 'At least one field must be provided.' });
@@ -67,8 +87,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // another tenant returns zero rows here, not a permission leak.
     const rows = await db.execute<LegalCaseRow>(
       session.tenantId,
-      `SELECT id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
-              procedure_pack_id, state_metadata, created_at, updated_at
+      `SELECT ${CASE_COLUMNS}
        FROM "LegalCase"
        WHERE id = $1`,
       [id]
@@ -137,8 +156,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       `UPDATE "LegalCase"
        SET ${setClauses.join(', ')}
        WHERE id = $${paramIndex}
-       RETURNING id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
-                 procedure_pack_id, state_metadata, created_at, updated_at`,
+       RETURNING ${CASE_COLUMNS}`,
       values
     );
 

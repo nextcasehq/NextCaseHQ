@@ -87,6 +87,65 @@ describe('POST/GET /api/cases — real LegalCase persistence', () => {
     expect(body.case.tenant_id).not.toBe(TENANT_B);
   });
 
+  test('defaults status to PENDING when not provided', async () => {
+    const req = buildRequest(
+      'POST',
+      { cookie: await sessionCookieHeader(TENANT_A) },
+      { title: 'No Status Given', country_code: 'IN' }
+    );
+    const res = await POST(req);
+    const body = await res.json();
+    expect(body.case.status).toBe('PENDING');
+  });
+
+  test('persists the real structural fields (status, court, judge, stage, hearing_date, notes)', async () => {
+    const req = buildRequest(
+      'POST',
+      { cookie: await sessionCookieHeader(TENANT_A) },
+      {
+        title: 'Delhi High Court Writ Suit No. 132/2026',
+        country_code: 'IN',
+        status: 'HEARING',
+        court: 'Delhi High Court (Bench III)',
+        judge: 'Honble Mr. Justice D. Y. Chandrachud',
+        stage: 'Admission / Notice Stage',
+        hearing_date: '2026-02-12',
+        notes: 'Primary draft served on opposite counsel.',
+      }
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.case).toMatchObject({
+      status: 'HEARING',
+      court: 'Delhi High Court (Bench III)',
+      judge: 'Honble Mr. Justice D. Y. Chandrachud',
+      stage: 'Admission / Notice Stage',
+      hearing_date: '2026-02-12',
+      notes: 'Primary draft served on opposite counsel.',
+    });
+  });
+
+  test('rejects an invalid status value (400)', async () => {
+    const req = buildRequest(
+      'POST',
+      { cookie: await sessionCookieHeader(TENANT_A) },
+      { title: 'Bad Status', country_code: 'IN', status: 'NOT_A_REAL_STATUS' }
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  test('rejects a malformed hearing_date (400)', async () => {
+    const req = buildRequest(
+      'POST',
+      { cookie: await sessionCookieHeader(TENANT_A) },
+      { title: 'Bad Date', country_code: 'IN', hearing_date: '12-02-2026' }
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
   test('rejects GET with no session (401)', async () => {
     const req = buildRequest('GET', {});
     const res = await GET(req);
@@ -162,6 +221,45 @@ describe('POST/GET /api/cases — real LegalCase persistence', () => {
   test('rejects a negative offset (400)', async () => {
     const res = await GET(
       buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }, undefined, '?offset=-1')
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test('filters the list by status, matching what the UI actively filters by', async () => {
+    await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { title: 'Pending Case', country_code: 'IN', status: 'PENDING' }
+      )
+    );
+    await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { title: 'Hearing Case', country_code: 'IN', status: 'HEARING' }
+      )
+    );
+
+    const pendingOnly = await GET(
+      buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }, undefined, '?status=PENDING')
+    );
+    const pendingBody = await pendingOnly.json();
+    expect(pendingBody.cases).toHaveLength(1);
+    expect(pendingBody.cases[0].title).toBe('Pending Case');
+    expect(pendingBody.total).toBe(1);
+
+    const hearingOnly = await GET(
+      buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }, undefined, '?status=HEARING')
+    );
+    const hearingBody = await hearingOnly.json();
+    expect(hearingBody.cases).toHaveLength(1);
+    expect(hearingBody.cases[0].title).toBe('Hearing Case');
+  });
+
+  test('rejects an invalid status filter value (400)', async () => {
+    const res = await GET(
+      buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }, undefined, '?status=NOT_REAL')
     );
     expect(res.status).toBe(400);
   });

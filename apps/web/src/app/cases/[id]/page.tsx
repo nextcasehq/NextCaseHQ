@@ -3,27 +3,89 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { LitigationDb, Case, Matter } from '@/lib/db/litigation-db';
+
+interface LegalCase {
+  id: string;
+  title: string;
+  status: 'PENDING' | 'HEARING' | 'DISPOSED' | 'APPEAL';
+  court: string | null;
+  judge: string | null;
+  stage: string | null;
+  hearing_date: string | null;
+  notes: string | null;
+}
 
 export default function CaseWorkspaceDetailsPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const [cCase, setCase] = useState<Case | undefined>(undefined);
-  const [matter, setMatter] = useState<Matter | undefined>(undefined);
+  const [cCase, setCase] = useState<LegalCase | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [needsAuth, setNeedsAuth] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    const fetchedCase = LitigationDb.getCase(id);
-    if (fetchedCase) {
-      setCase(fetchedCase);
-      setNotes(fetchedCase.notes);
-
-      const parentMatter = LitigationDb.getMatter(fetchedCase.matterId);
-      setMatter(parentMatter);
-    }
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/cases/${id}`);
+        if (cancelled) return;
+        if (res.status === 401) {
+          setNeedsAuth(true);
+          return;
+        }
+        if (!res.ok) {
+          setCase(null);
+          return;
+        }
+        const data = await res.json();
+        setCase(data.case);
+        setNotes(data.case.notes || '');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  const handleSaveNotes = async () => {
+    const res = await fetch(`/api/cases/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+    if (res.ok) {
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex justify-center items-center">
+        <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+      </div>
+    );
+  }
+
+  if (needsAuth) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
+        <main className="flex-1 flex flex-col justify-center items-center py-20">
+          <span className="text-3xl">🔒</span>
+          <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
+          <p className="text-xs text-neutral-400 mt-1">Sign in to view this case workspace.</p>
+          <Link href="/login" className="mt-4 text-xs font-bold uppercase tracking-wider text-indigo-600 hover:underline">
+            Go to Login →
+          </Link>
+        </main>
+      </div>
+    );
+  }
 
   if (!cCase) {
     return (
@@ -39,14 +101,6 @@ export default function CaseWorkspaceDetailsPage() {
       </div>
     );
   }
-
-  const handleSaveNotes = () => {
-    const updated = LitigationDb.updateCase(id, { notes });
-    if (updated) {
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 2000);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
@@ -64,7 +118,7 @@ export default function CaseWorkspaceDetailsPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-wider">
-                {cCase.id}
+                {cCase.id.slice(0, 8)}...
               </span>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                 cCase.status === 'HEARING' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
@@ -78,15 +132,6 @@ export default function CaseWorkspaceDetailsPage() {
             <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">
               {cCase.title}
             </h1>
-
-            {matter && (
-              <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider">
-                Bound Parent Matter:{' '}
-                <Link href={`/matters/${matter.id}`} className="text-indigo-600 hover:underline">
-                  {matter.id} // {matter.title} ({matter.clientName})
-                </Link>
-              </p>
-            )}
           </div>
         </div>
 
@@ -100,19 +145,19 @@ export default function CaseWorkspaceDetailsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">COURT / FORUM</span>
-                  <span className="text-sm font-bold text-neutral-800">{cCase.court}</span>
+                  <span className="text-sm font-bold text-neutral-800">{cCase.court || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">JUDGE / CORAM</span>
-                  <span className="text-sm font-bold text-neutral-800">{cCase.judge}</span>
+                  <span className="text-sm font-bold text-neutral-800">{cCase.judge || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">PROCEDURAL STAGE</span>
-                  <span className="text-sm font-bold text-indigo-600 font-mono uppercase">{cCase.stage}</span>
+                  <span className="text-sm font-bold text-indigo-600 font-mono uppercase">{cCase.stage || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest">NEXT HEARING DATE</span>
-                  <span className="text-sm font-mono font-bold text-neutral-800">{cCase.hearingDate || 'N/A'}</span>
+                  <span className="text-sm font-mono font-bold text-neutral-800">{cCase.hearing_date || 'N/A'}</span>
                 </div>
               </div>
             </div>
@@ -140,9 +185,9 @@ export default function CaseWorkspaceDetailsPage() {
 
                 <div className="relative opacity-60">
                   <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-neutral-300 rounded-full border-4 border-white shadow-sm" />
-                  <span className="text-[9px] font-mono font-bold text-neutral-400 block">{cCase.hearingDate || 'TBD'}</span>
+                  <span className="text-[9px] font-mono font-bold text-neutral-400 block">{cCase.hearing_date || 'TBD'}</span>
                   <h4 className="font-bold text-sm text-neutral-700">Admission Hearing Scheduled</h4>
-                  <p className="text-xs text-neutral-400 mt-1">Awaiting argument presentation before {cCase.judge}.</p>
+                  <p className="text-xs text-neutral-400 mt-1">Awaiting argument presentation before {cCase.judge || 'the assigned judge'}.</p>
                 </div>
               </div>
             </div>

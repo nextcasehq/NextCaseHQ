@@ -1,25 +1,34 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { LitigationDb, Case, Matter } from '@/lib/db/litigation-db';
+
+interface LegalCase {
+  id: string;
+  title: string;
+  case_number: string | null;
+  country_code: string;
+  status: 'PENDING' | 'HEARING' | 'DISPOSED' | 'APPEAL';
+  court: string | null;
+  judge: string | null;
+  stage: string | null;
+  hearing_date: string | null;
+  notes: string | null;
+}
 
 function CasesChamberContent() {
-  const searchParams = useSearchParams();
-  const preMatterId = searchParams.get('preMatterId');
-
-  const [cases, setCases] = useState<Case[]>([]);
-  const [matters, setMatters] = useState<Matter[]>([]);
-  const [tenantId, setTenantId] = useState('');
+  const [cases, setCases] = useState<LegalCase[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
   // Form State
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [matterId, setMatterId] = useState('');
   const [title, setTitle] = useState('');
+  const [countryCode, setCountryCode] = useState('IN');
   const [court, setCourt] = useState('');
   const [judge, setJudge] = useState('');
   const [stage, setStage] = useState('Filing Stage');
@@ -27,39 +36,54 @@ function CasesChamberContent() {
   const [caseStatus, setCaseStatus] = useState<'PENDING' | 'HEARING' | 'DISPOSED' | 'APPEAL'>('PENDING');
   const [notes, setNotes] = useState('');
 
-  useEffect(() => {
-    setTenantId(LitigationDb.getTenantId());
-    setCases(LitigationDb.getCases());
-
-    const activeMatters = LitigationDb.getMatters();
-    setMatters(activeMatters);
-
-    if (preMatterId) {
-      setMatterId(preMatterId);
-      setShowCreateForm(true);
-    } else if (activeMatters.length > 0) {
-      setMatterId(activeMatters[0].id);
+  const fetchCases = useCallback(async (status: string) => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const query = status === 'ALL' ? '' : `?status=${status}`;
+      const res = await fetch(`/api/cases${query}`);
+      if (res.status === 401) {
+        setNeedsAuth(true);
+        setCases([]);
+        return;
+      }
+      if (!res.ok) {
+        setLoadError('Unable to load cases right now.');
+        return;
+      }
+      const data = await res.json();
+      setNeedsAuth(false);
+      setCases(data.cases);
+    } catch {
+      setLoadError('Unable to reach the case management service.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [preMatterId]);
+  }, []);
 
-  const handleRefresh = () => {
-    setCases(LitigationDb.getCases());
-  };
+  useEffect(() => {
+    fetchCases(selectedStatus);
+  }, [selectedStatus, fetchCases]);
 
-  const handleCreateCase = (e: React.FormEvent) => {
+  const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!matterId || !title) return;
+    if (!title) return;
 
-    LitigationDb.createCase({
-      matterId,
-      title,
-      court,
-      judge,
-      stage,
-      hearingDate,
-      status: caseStatus,
-      notes
+    const res = await fetch('/api/cases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        country_code: countryCode,
+        court,
+        judge,
+        stage,
+        hearing_date: hearingDate || undefined,
+        status: caseStatus,
+        notes,
+      }),
     });
+    if (!res.ok) return;
 
     // Reset Form
     setTitle('');
@@ -67,12 +91,23 @@ function CasesChamberContent() {
     setJudge('');
     setNotes('');
     setShowCreateForm(false);
-    handleRefresh();
+    fetchCases(selectedStatus);
   };
 
-  const filteredCases = cases.filter(c => {
-    return selectedStatus === 'ALL' || c.status === selectedStatus;
-  });
+  if (needsAuth) {
+    return (
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
+        <span className="text-3xl">🔒</span>
+        <h3 className="text-base font-bold text-neutral-700 mt-3">Authentication Required</h3>
+        <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
+          Sign in to view and manage litigation cases under your tenant.
+        </p>
+        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-indigo-600 hover:underline">
+          Go to Login →
+        </Link>
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
@@ -82,9 +117,6 @@ function CasesChamberContent() {
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
             Case Workspace Chamber
           </h1>
-          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-1">
-            Active Tenant Context: <span className="font-mono text-indigo-600">{tenantId.slice(0, 8)}...</span>
-          </p>
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
@@ -101,139 +133,133 @@ function CasesChamberContent() {
             Spawn New Case Workspace
           </h3>
 
-          {matters.length === 0 ? (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs rounded-lg font-semibold text-center">
-              ⚠️ No Active Matters exist in this tenant. You must create at least one Matter before spawning a litigation case workspace.
+          <form onSubmit={handleCreateCase} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Case Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Delhi High Court Writ Suit No. 132/2026"
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+              />
             </div>
-          ) : (
-            <form onSubmit={handleCreateCase} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Linked Parent Matter *
-                </label>
-                <select
-                  required
-                  value={matterId}
-                  onChange={(e) => setMatterId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium text-neutral-800"
-                >
-                  {matters.map(m => (
-                    <option key={m.id} value={m.id}>{m.id} // {m.title} ({m.clientName})</option>
-                  ))}
-                </select>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Case Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Delhi High Court Writ Suit No. 132/2026"
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Jurisdiction Pack *
+              </label>
+              <select
+                required
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium text-neutral-800"
+              >
+                <option value="IN">IN (BNSS Compliant)</option>
+                <option value="US">US (FRCP Compliant)</option>
+                <option value="UK">UK (CPR Compliant)</option>
+              </select>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Court / Forum
-                </label>
-                <input
-                  type="text"
-                  value={court}
-                  onChange={(e) => setCourt(e.target.value)}
-                  placeholder="e.g. Delhi High Court (Bench III)"
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Court / Forum
+              </label>
+              <input
+                type="text"
+                value={court}
+                onChange={(e) => setCourt(e.target.value)}
+                placeholder="e.g. Delhi High Court (Bench III)"
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Judge / Coram
-                </label>
-                <input
-                  type="text"
-                  value={judge}
-                  onChange={(e) => setJudge(e.target.value)}
-                  placeholder="e.g. Honble Justice"
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Judge / Coram
+              </label>
+              <input
+                type="text"
+                value={judge}
+                onChange={(e) => setJudge(e.target.value)}
+                placeholder="e.g. Honble Justice"
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Current Procedural Stage
-                </label>
-                <input
-                  type="text"
-                  value={stage}
-                  onChange={(e) => setStage(e.target.value)}
-                  placeholder="e.g. Admission / Notice Stage"
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Current Procedural Stage
+              </label>
+              <input
+                type="text"
+                value={stage}
+                onChange={(e) => setStage(e.target.value)}
+                placeholder="e.g. Admission / Notice Stage"
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Next Hearing Date
-                </label>
-                <input
-                  type="date"
-                  value={hearingDate}
-                  onChange={(e) => setHearingDate(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Next Hearing Date
+              </label>
+              <input
+                type="date"
+                value={hearingDate}
+                onChange={(e) => setHearingDate(e.target.value)}
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 transition-all text-sm font-medium text-neutral-800"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Initial Case Status
-                </label>
-                <select
-                  value={caseStatus}
-                  onChange={(e) => setCaseStatus(e.target.value as any)}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium text-neutral-800"
-                >
-                  <option value="PENDING">PENDING</option>
-                  <option value="HEARING">HEARING</option>
-                  <option value="DISPOSED">DISPOSED</option>
-                  <option value="APPEAL">APPEAL</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Initial Case Status
+              </label>
+              <select
+                value={caseStatus}
+                onChange={(e) => setCaseStatus(e.target.value as typeof caseStatus)}
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium text-neutral-800"
+              >
+                <option value="PENDING">PENDING</option>
+                <option value="HEARING">HEARING</option>
+                <option value="DISPOSED">DISPOSED</option>
+                <option value="APPEAL">APPEAL</option>
+              </select>
+            </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                  Procedural Notes
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Enter immediate notes, courtroom tasks or next actions..."
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium font-sans"
-                />
-              </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Procedural Notes
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Enter immediate notes, courtroom tasks or next actions..."
+                rows={3}
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg outline-none focus:border-indigo-600 text-sm font-medium font-sans"
+              />
+            </div>
 
-              <div className="md:col-span-2 flex justify-end gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 border border-neutral-200 text-neutral-500 text-xs font-bold uppercase rounded-lg hover:bg-neutral-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase rounded-lg shadow"
-                >
-                  Spawn Case
-                </button>
-              </div>
-            </form>
-          )}
+            <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="px-4 py-2 border border-neutral-200 text-neutral-500 text-xs font-bold uppercase rounded-lg hover:bg-neutral-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase rounded-lg shadow"
+              >
+                Spawn Case
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -260,73 +286,75 @@ function CasesChamberContent() {
         </div>
       </div>
 
+      {loadError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-semibold text-center">
+          {loadError}
+        </div>
+      )}
+
       {/* Cases Grid */}
-      {filteredCases.length > 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+        </div>
+      ) : cases.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-          {filteredCases.map((c) => {
-            const pMatter = matters.find(m => m.id === c.matterId);
-            return (
-              <div
-                key={c.id}
-                className="bg-white border border-neutral-200/80 rounded-xl p-5 shadow-sm hover:border-indigo-200 hover:shadow transition-all group flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-wider">
-                      {c.id}
-                    </span>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                      c.status === 'HEARING' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
-                      c.status === 'DISPOSED' ? 'bg-green-50 text-green-700 border border-green-200' :
-                      c.status === 'APPEAL' ? 'bg-red-50 text-red-700 border border-red-200' :
-                      'bg-yellow-50 text-yellow-700 border border-yellow-200'
-                    }`}>
-                      {c.status}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h3 className="font-bold text-sm text-[#111111] group-hover:text-indigo-600 transition-colors line-clamp-2">
-                      {c.title}
-                    </h3>
-                    {pMatter && (
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mt-1">
-                        Parent Matter: {pMatter.id} // {pMatter.clientName}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-neutral-500 font-medium">
-                    <div className="flex justify-between">
-                      <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Forum:</span>
-                      <span className="text-neutral-700 text-right truncate max-w-[70%] font-semibold">{c.court}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Judge:</span>
-                      <span className="text-neutral-700 text-right truncate max-w-[70%] font-semibold">{c.judge}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Stage:</span>
-                      <span className="text-neutral-700 text-right font-semibold">{c.stage}</span>
-                    </div>
-                  </div>
+          {cases.map((c) => (
+            <div
+              key={c.id}
+              className="bg-white border border-neutral-200/80 rounded-xl p-5 shadow-sm hover:border-indigo-200 hover:shadow transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-wider">
+                    {c.id.slice(0, 8)}...
+                  </span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                    c.status === 'HEARING' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                    c.status === 'DISPOSED' ? 'bg-green-50 text-green-700 border border-green-200' :
+                    c.status === 'APPEAL' ? 'bg-red-50 text-red-700 border border-red-200' :
+                    'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                  }`}>
+                    {c.status}
+                  </span>
                 </div>
 
-                <div className="border-t border-neutral-100 pt-4 mt-5 flex items-center justify-between">
-                  <div>
-                    <span className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">NEXT HEARING</span>
-                    <span className="text-xs font-mono font-bold text-indigo-600">{c.hearingDate || 'N/A'}</span>
+                <div>
+                  <h3 className="font-bold text-sm text-[#111111] group-hover:text-indigo-600 transition-colors line-clamp-2">
+                    {c.title}
+                  </h3>
+                </div>
+
+                <div className="space-y-1.5 text-xs text-neutral-500 font-medium">
+                  <div className="flex justify-between">
+                    <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Forum:</span>
+                    <span className="text-neutral-700 text-right truncate max-w-[70%] font-semibold">{c.court || 'N/A'}</span>
                   </div>
-                  <Link
-                    href={`/cases/${c.id}`}
-                    className="text-xs font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700"
-                  >
-                    Open Workspace →
-                  </Link>
+                  <div className="flex justify-between">
+                    <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Judge:</span>
+                    <span className="text-neutral-700 text-right truncate max-w-[70%] font-semibold">{c.judge || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">Stage:</span>
+                    <span className="text-neutral-700 text-right font-semibold">{c.stage || 'N/A'}</span>
+                  </div>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="border-t border-neutral-100 pt-4 mt-5 flex items-center justify-between">
+                <div>
+                  <span className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest">NEXT HEARING</span>
+                  <span className="text-xs font-mono font-bold text-indigo-600">{c.hearing_date || 'N/A'}</span>
+                </div>
+                <Link
+                  href={`/cases/${c.id}`}
+                  className="text-xs font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700"
+                >
+                  Open Workspace →
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="text-center py-20 bg-white border border-neutral-200/80 rounded-xl">

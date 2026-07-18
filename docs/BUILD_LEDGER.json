@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T12:00:00Z",
+  "last_updated": "2026-07-18T13:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -113,6 +113,21 @@
       "verification": "Verified against a real running server and real Postgres: created 5 cases for one tenant, fetched limit=2/offset=0 and limit=2/offset=2 pages and confirmed no ID overlap between them plus a correct total=5 on both pages; confirmed out-of-range limit and negative offset both return 400; confirmed the no-query-params default returns limit=50/offset=0 with all 5 rows.",
       "scope_note": "No new endpoints, no schema changes, no UI changes. Response shape addition (total/limit/offset alongside the existing cases array) is additive, not breaking.",
       "out_of_scope_next": ["wire_cases_ui_to_real_api", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "legalcase_schema_alignment": {
+      "status": "COMPLETE",
+      "status_note": "Product Owner-approved architectural decision (Option 1 of 3 presented): additive LegalCase columns, Matter explicitly deferred to its own future milestone.",
+      "description": "Added real, structural columns to the existing LegalCase table — status (TEXT, CHECK constrained to PENDING/HEARING/DISPOSED/APPEAL, NOT NULL DEFAULT 'PENDING'), court, judge, stage, hearing_date (TEXT, YYYY-MM-DD — deliberately not DATE, to avoid a UTC/timezone conversion footgun for a field nothing yet does date arithmetic on), and notes. All additive (ADD COLUMN IF NOT EXISTS with a DEFAULT for the NOT NULL one), so existing rows were preserved with zero rewrite and the migration is safe to re-run. Verified idempotent by re-running db/schema.sql twice against the same database with no errors. RLS (tenant_isolation_policy, FORCE ROW LEVEL SECURITY) was not touched and continues to cover the whole table including the new columns. /api/cases and /api/cases/[id] now validate, persist, return, and (list endpoint) filter by these fields.",
+      "scope_decision": "Matter is explicitly OUT of scope — no Matter table was created, no matter_id column was added to LegalCase. This was a genuine architectural fork presented to the Product Owner (schema-less state_metadata blob vs. additive real columns vs. a full Matter table+FK); Product Owner chose additive real columns with Matter deferred, matching how the /cases UI actually uses these fields (the list page filters by status, which needs to be a real indexable value, not JSON).",
+      "out_of_scope_next": ["matter_table_and_matter_id_linkage", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "cases_ui_wired_to_real_api": {
+      "status": "COMPLETE",
+      "description": "apps/web/src/app/cases/page.tsx and apps/web/src/app/cases/[id]/page.tsx no longer use lib/db/litigation-db.ts (client-side localStorage/globalThis mock store) for Case data — they now fetch/create/update against the real /api/cases and /api/cases/[id] endpoints, with real loading and 401-unauthenticated states (a link to /login) instead of silently rendering empty. The 'Linked Parent Matter' selector was removed from the create-case form and the case-detail page's 'Bound Parent Matter' section was removed entirely, rather than faked against a table that doesn't exist. A required Jurisdiction Pack (country_code) selector was added to the create form — the one field the real schema requires that the mock form never had to model — reusing the same IN/US/UK options and visual style already used elsewhere in the app (e.g. the admin console). lib/db/litigation-db.ts itself is untouched and still used by /matters and /matters/[id] (out of scope, not modified) — only Case-related mock calls were removed from the two pages actually being migrated.",
+      "verification": "Verified with a real running server and a real headless-browser session (not just unit tests): unauthenticated /cases shows the auth-required state rather than crashing; a freshly-seeded tenant shows the real empty state; a case created through the real UI form appears in the real list with its real HEARING status rendered; filtering to PENDING correctly hides it; opening the case detail page shows the real title/court fields; saving notes through the UI persists via a real PATCH request and survives a full page reload (proving it's server-backed, not local component state); the parent-Matter section is confirmed absent. Zero console errors observed.",
+      "scope_note": "Only apps/web/src/app/cases/page.tsx and apps/web/src/app/cases/[id]/page.tsx were touched. apps/web/src/app/cases/new/page.tsx (an already-static placeholder with no mock-data dependency) and every /matters page are untouched.",
+      "not_yet_true": "No Matter persistence or case-to-matter linkage — recorded as its own separate future domain milestone, not silently dropped.",
+      "out_of_scope_next": ["matter_table_and_matter_id_linkage", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
     }
   }
 }
