@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T04:00:00Z",
+  "last_updated": "2026-07-18T05:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "milestones": {
     "database_foundation": {
@@ -38,6 +38,13 @@
       "description": "POST /api/auth/session validates bcrypt-hashed credentials against a real User row and mints a signed httpOnly JWT session cookie. /dashboard/* is now actually enforced by middleware (previously matched in the config but not actually gated — a real pre-existing bug, not a regression). Logout invalidates the session. User.email is now globally unique and User.password_hash was added. Verified against real PostgreSQL, bcryptjs, and a running server end-to-end.",
       "not_yet_true": "Authentication is real; tenant AUTHORIZATION is not. A valid session proves who the user is, not that their tenant matches what they are accessing — that is the next milestone, not this one. General LegalCase/Tenant domain CRUD was explicitly out of scope and was not touched.",
       "out_of_scope_next": ["server_enforced_tenant_authorization", "search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "server_enforced_tenant_authorization": {
+      "status": "COMPLETE",
+      "description": "POST /api/documents/upload now derives tenant identity exclusively from the verified session cookie (lib/auth/session.ts requireSession()); client-supplied x-nextcase-tenant-id/x-tenant-id headers are ignored entirely, closing a real cross-tenant spoofing gap the route previously had. Verified end-to-end against a running server: an authenticated Tenant A request with forged headers claiming Tenant B still resolves to Tenant A.",
+      "scope_note": "Deliberately limited to this one existing route per Product Owner decision. /api/webhooks was not modified. No general domain CRUD or advocate-facing features were added.",
+      "not_yet_true": "Only /api/documents/upload has server-enforced tenant authorization. Other routes (e.g. /api/webhooks, the disconnected /api/* Bearer-token gate) are unchanged. There is still no real domain CRUD (LegalCase/DocumentEnvelope) to authorize against beyond this one mock ingestion endpoint.",
+      "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
     }
   }
 }
