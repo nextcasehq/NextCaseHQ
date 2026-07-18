@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T13:00:00Z",
+  "last_updated": "2026-07-18T14:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -128,6 +128,16 @@
       "scope_note": "Only apps/web/src/app/cases/page.tsx and apps/web/src/app/cases/[id]/page.tsx were touched. apps/web/src/app/cases/new/page.tsx (an already-static placeholder with no mock-data dependency) and every /matters page are untouched.",
       "not_yet_true": "No Matter persistence or case-to-matter linkage — recorded as its own separate future domain milestone, not silently dropped.",
       "out_of_scope_next": ["matter_table_and_matter_id_linkage", "document_envelope_persistence", "search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "document_envelope_persistence": {
+      "status": "COMPLETE — metadata only, object storage still pending",
+      "status_note": "POST /api/documents/upload was already tenant-authorized (server_enforced_tenant_authorization milestone) but explicitly documented as a mock with no real persistence — this milestone closes exactly that gap, at the metadata layer. Real object storage for the file bytes themselves is out of scope, per Product Owner priority ordering (item 4, a separate future milestone) — storage_structure honestly documents this as pending rather than pretending bytes are stored anywhere.",
+      "description": "POST /api/documents/upload now persists a real DocumentEnvelope row (id, tenant_id, case_id, title, storage_structure, created_at) instead of returning a fake crypto.randomUUID(). Added GET /api/documents (paginated list, optional ?case_id= filter) and GET/DELETE /api/documents/[id], all tenant-scoped via the same requireSession()+DatabaseClient.execute(tenantId,...) pattern as /api/cases. Upload now accepts an optional x-case-id header to link a document to a real LegalCase.",
+      "security_finding_and_fix": "Real end-to-end testing (not just unit tests) surfaced a genuine bug during this milestone: PostgreSQL foreign key constraint checks always bypass row-level security by design ('Referential integrity checks ... always bypass row security' — documented Postgres behavior) — so relying on the DocumentEnvelope.case_id -> LegalCase(id) FK alone silently accepted a case_id belonging to a DIFFERENT tenant (confirmed with a live cross-tenant request returning 202 before the fix). Fixed by adding an explicit, RLS-scoped SELECT ownership check on case_id before the insert is allowed to proceed — the FK remains for referential integrity, but is no longer relied on for tenant isolation. Verified fixed both in the test suite and against a real running server (a cross-tenant case_id now correctly returns 400).",
+      "verification": "Verified against a real running server and real Postgres: uploaded a document, confirmed it round-trips through the real list/get endpoints, confirmed a different tenant's list/get correctly excludes/404s it, confirmed case_id linkage works for the caller's own case and is correctly rejected (400) for another tenant's case, confirmed case_id filtering on the list endpoint, confirmed DELETE removes it and a subsequent GET 404s.",
+      "scope_note": "No object storage integration. No changes to /api/cases or the Cases UI. middleware.ts's self-authorized-route exemption was broadened from /api/documents/upload specifically to all of /api/documents, since the new list/detail routes authorize themselves the same way.",
+      "not_yet_true": "storage_structure only records byte count and a 'pending' storage_provider marker — no file bytes are durably stored anywhere yet. That is the next approved milestone (object storage integration).",
+      "out_of_scope_next": ["object_storage_integration", "matter_table_and_matter_id_linkage", "search", "ai", "billing", "messaging"]
     }
   }
 }

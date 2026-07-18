@@ -3,13 +3,20 @@ import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
+import { DatabaseClient } from '@/lib/db/db-client';
 
 /**
  * NCHQ Module 17: Advanced File Ingestion Controller
  * Sprint B: Runtime Input Schema & Data Locking
+ *
+ * Persists a real DocumentEnvelope row (metadata only). Object storage
+ * integration — actually storing the file bytes somewhere durable — is a
+ * separate, not-yet-started milestone; storage_structure documents that
+ * honestly rather than pretending the bytes are stored anywhere.
  */
 
 const MAX_DOCUMENT_SIZE = 128 * 1024 * 1024; // 128MB
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const IngestHeadersSchema = z.object({
   'x-tenant-key-version': z.string().min(1),
@@ -55,6 +62,11 @@ export async function POST(request: NextRequest) {
 
     if (performance.now() - start > 5) console.warn('[INGEST] Header extraction exceeded 5ms budget');
 
+    const rawCaseId = request.headers.get('x-case-id');
+    if (rawCaseId && !UUID_PATTERN.test(rawCaseId)) {
+      return NextResponse.json({ error: 'BAD_REQUEST', message: 'Invalid x-case-id.' }, { status: 400 });
+    }
+
     if (!request.body) return NextResponse.json({ error: 'BAD_REQUEST', message: 'Empty request body.' }, { status: 400 });
 
     const reader = request.body.getReader();
@@ -95,15 +107,53 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Sprint C: Bypassing real DB for now, but simulating RLS session variable binding
-    console.log(`[DB_CONTEXT] SET LOCAL nextcase.current_tenant_id = '${tenantId}'`);
-    // In a production context, this would be:
-    // await db.execute(tenantId, `INSERT INTO "DocumentEnvelope" ...`, [...]);
+    const db = new DatabaseClient();
+
+    // PostgreSQL foreign key checks always bypass row security by design
+    // ("Referential integrity checks ... always bypass row security" —
+    // this is documented Postgres behavior, not a bug) — so the
+    // DocumentEnvenvelope.case_id -> LegalCase(id) FK alone would silently
+    // accept a case_id belonging to a DIFFERENT tenant. Confirmed with a
+    // real cross-tenant case_id in testing: the FK let it through. This
+    // explicit, RLS-scoped SELECT is what actually enforces tenant
+    // ownership of case_id before the insert is allowed to proceed.
+    if (rawCaseId) {
+      const caseRows = await db.execute<{ id: string }>(
+        tenantId,
+        `SELECT id FROM "LegalCase" WHERE id = $1`,
+        [rawCaseId]
+      );
+      if (caseRows.length === 0) {
+        return NextResponse.json(
+          { error: 'BAD_REQUEST', message: 'x-case-id does not reference an accessible case.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const rows = await db.execute<{ id: string; tenant_id: string; case_id: string | null; created_at: string }>(
+      tenantId,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, case_id, title, storage_structure)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, tenant_id, case_id, created_at`,
+      [
+        tenantId,
+        rawCaseId ?? null,
+        scrubbedFileName || 'Untitled Document',
+        {
+          bytes_received: totalBytesReceived,
+          storage_provider: 'pending',
+          note: 'Object storage integration pending — metadata persisted, file bytes not yet durably stored.',
+        },
+      ]
+    );
+    const envelope = rows[0];
 
     return NextResponse.json({
       status: 'ACCEPTED',
-      id: crypto.randomUUID(),
-      tenant_id: tenantId,
+      id: envelope.id,
+      tenant_id: envelope.tenant_id,
+      case_id: envelope.case_id,
       bytes_received: totalBytesReceived,
       scrubbed_metadata: {
         file_name: scrubbedFileName,
