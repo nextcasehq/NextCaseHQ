@@ -77,6 +77,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/wallet') ||
     pathname.startsWith('/api/notifications') ||
     pathname.startsWith('/api/ai') ||
+    pathname.startsWith('/api/billing') ||
     pathname.startsWith('/api/webhooks');
   if (!pathname.startsWith('/api/all') && (!pathname.startsWith('/api/') || isSelfAuthorizedApiRoute)) {
     return NextResponse.next();
