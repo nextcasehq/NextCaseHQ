@@ -157,6 +157,130 @@ BEGIN
 END
 $$;
 
+-- 3b. Matter Workspace Foundation (Milestone 1 of the Advocate Workspace)
+--
+-- Product Owner-approved architecture: Matter is the parent client
+-- engagement (the "digital case room"); LegalCase becomes a child
+-- Proceeding linked via the nullable matter_id column below. A Matter may
+-- exist with zero Proceedings (pre-litigation, advisory, transactional,
+-- compliance work); a Proceeding has at most one parent Matter (a single
+-- nullable FK column, not a join table, makes "zero or one" the only
+-- representable state). Everything future (Documents, Evidence, Tasks,
+-- Hearings, AI conversations, Research, Drafts, Billing) attaches the same
+-- way in its own future milestone: a matter_id FK + tenant_id + its own
+-- RLS policy, exactly as this table does.
+CREATE TABLE IF NOT EXISTS "Client" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "name" TEXT NOT NULL,
+    "email" TEXT,
+    "phone" TEXT,
+    "notes" TEXT,
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "Matter" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "title" TEXT NOT NULL,
+    "matter_number" TEXT,
+    -- Deliberately not litigation-only: a Matter may never become a formal
+    -- Proceeding at all (advisory, contractual, transactional work).
+    "engagement_type" TEXT NOT NULL DEFAULT 'LITIGATION',
+    "practice_area" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "client_id" UUID REFERENCES "Client"("id"),
+    "opposing_party_name" TEXT,
+    "opposing_counsel" TEXT,
+    "court" TEXT,
+    "bench" TEXT,
+    "judge" TEXT,
+    "description" TEXT,
+    "opened_at" TIMESTAMPTZ DEFAULT now(),
+    "closed_at" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matter_status_check'
+    ) THEN
+        ALTER TABLE "Matter" ADD CONSTRAINT matter_status_check
+            CHECK ("status" IN ('ACTIVE', 'ON_HOLD', 'CLOSED', 'ARCHIVED'));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matter_engagement_type_check'
+    ) THEN
+        ALTER TABLE "Matter" ADD CONSTRAINT matter_engagement_type_check
+            CHECK ("engagement_type" IN (
+                'LITIGATION', 'PRE_LITIGATION', 'ADVISORY', 'CONTRACTUAL',
+                'TRANSACTIONAL', 'ARBITRATION', 'MEDIATION', 'COMPLIANCE',
+                'INVESTIGATION', 'OTHER'
+            ));
+    END IF;
+END
+$$;
+
+-- Team assignment record only — no access-control enforcement in this
+-- milestone. The role enum exists so a future granular-permissions
+-- milestone can enforce against it without a schema change; until then,
+-- tenant-wide RLS (same as every other table) is the only real boundary.
+CREATE TABLE IF NOT EXISTS "MatterParticipant" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "user_id" UUID NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+    "role" TEXT NOT NULL DEFAULT 'ASSOCIATE',
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    UNIQUE("matter_id", "user_id")
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterparticipant_role_check'
+    ) THEN
+        ALTER TABLE "MatterParticipant" ADD CONSTRAINT matterparticipant_role_check
+            CHECK ("role" IN ('LEAD', 'ASSOCIATE', 'CLERK', 'VIEWER'));
+    END IF;
+END
+$$;
+
+-- Chronology: the ordered, human-entered timeline of what happened in a
+-- Matter — the raw material Matter Memory reads from. source_type is
+-- deliberately restricted to what this milestone actually produces
+-- (MANUAL entries); the other values are reserved for future milestones
+-- that generate events automatically (a hearing being scheduled, an order
+-- being uploaded) rather than added speculatively now.
+CREATE TABLE IF NOT EXISTS "MatterEvent" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "event_date" DATE NOT NULL,
+    "description" TEXT NOT NULL,
+    "source_type" TEXT NOT NULL DEFAULT 'MANUAL',
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterevent_source_type_check'
+    ) THEN
+        ALTER TABLE "MatterEvent" ADD CONSTRAINT matterevent_source_type_check
+            CHECK ("source_type" IN ('MANUAL', 'HEARING', 'ORDER', 'DOCUMENT'));
+    END IF;
+END
+$$;
+
+-- Backward compatibility: nullable, additive. Every existing LegalCase row
+-- and every existing query against this table keeps working unchanged —
+-- a Proceeding not yet linked to a Matter is a fully valid, ordinary state,
+-- not a migration-pending one.
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "matter_id" UUID REFERENCES "Matter"("id");
+
 -- 4. DocumentEnvelope
 CREATE TABLE IF NOT EXISTS "DocumentEnvelope" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -297,6 +421,14 @@ ALTER TABLE "WalletTransactionRecord" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "WalletTransactionRecord" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "Client" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Client" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "Matter" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Matter" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterParticipant" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterParticipant" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterEvent" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterEvent" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -325,9 +457,26 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "Notification";
 CREATE POLICY tenant_isolation_policy ON "Notification"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "Client";
+CREATE POLICY tenant_isolation_policy ON "Client"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "Matter";
+CREATE POLICY tenant_isolation_policy ON "Matter"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterParticipant";
+CREATE POLICY tenant_isolation_policy ON "MatterParticipant"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterEvent";
+CREATE POLICY tenant_isolation_policy ON "MatterEvent"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
+CREATE INDEX IF NOT EXISTS idx_legalcase_matter ON "LegalCase"("matter_id");
 CREATE INDEX IF NOT EXISTS idx_documentenvelope_case ON "DocumentEnvelope"("case_id");
 CREATE INDEX IF NOT EXISTS idx_documentchunkvector_envelope ON "DocumentChunkVector"("envelope_id");
 CREATE INDEX IF NOT EXISTS idx_documentchunkvector_tenant ON "DocumentChunkVector"("tenant_id");
@@ -342,6 +491,12 @@ CREATE INDEX IF NOT EXISTS idx_wallettransaction_wallet ON "WalletTransactionRec
 CREATE INDEX IF NOT EXISTS idx_wallettransaction_tenant_time ON "WalletTransactionRecord"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_securityaudit_tenant_time ON "SecurityAuditTrail"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_notification_tenant_user_created ON "Notification"("tenant_id", "user_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_client_tenant ON "Client"("tenant_id");
+CREATE INDEX IF NOT EXISTS idx_matter_tenant_status ON "Matter"("tenant_id", "status");
+CREATE INDEX IF NOT EXISTS idx_matter_client ON "Matter"("client_id");
+CREATE INDEX IF NOT EXISTS idx_matterparticipant_matter ON "MatterParticipant"("matter_id");
+CREATE INDEX IF NOT EXISTS idx_matterparticipant_user ON "MatterParticipant"("user_id");
+CREATE INDEX IF NOT EXISTS idx_matterevent_matter_date ON "MatterEvent"("matter_id", "event_date");
 
 -- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
 GRANT USAGE ON SCHEMA public TO nextcase_app;
