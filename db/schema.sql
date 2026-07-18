@@ -82,10 +82,29 @@ CREATE TABLE IF NOT EXISTS "User" (
     "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
     "email" TEXT NOT NULL,
     "name" TEXT,
+    "password_hash" TEXT,
     "created_at" TIMESTAMPTZ DEFAULT now(),
     "updated_at" TIMESTAMPTZ DEFAULT now(),
     UNIQUE("tenant_id", "email")
 );
+
+-- Idempotent additive migration for databases created before password_hash
+-- existed (safe no-op once already applied).
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "password_hash" TEXT;
+
+-- Login looks a user up by email alone — the tenant isn't known yet, since
+-- discovering it from the matched user IS the point of the lookup — so
+-- email must be globally unique, not just unique per tenant, or the lookup
+-- would be ambiguous across tenants.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'user_email_unique'
+    ) THEN
+        ALTER TABLE "User" ADD CONSTRAINT user_email_unique UNIQUE ("email");
+    END IF;
+END
+$$;
 
 -- 3. LegalCase
 CREATE TABLE IF NOT EXISTS "LegalCase" (

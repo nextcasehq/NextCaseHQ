@@ -65,4 +65,25 @@ export class DatabaseClient {
       client.release();
     }
   }
+
+  /**
+   * Runs a query with no tenant context bound — for the small set of
+   * legitimately tenant-agnostic operations, e.g. looking a user up by
+   * email during login, where the tenant isn't known yet (discovering it
+   * from the matched row is the point of the query). Only safe against
+   * tables without RLS enabled ("Tenant", "User"); every RLS-protected
+   * table still requires `execute(tenantId, ...)`.
+   */
+  public async executeSystem<T extends QueryResultRow = any>(
+    sql: string,
+    params: any[] = []
+  ): Promise<T[]> {
+    const client = await getPool().connect();
+    try {
+      const result = await client.query<T>(sql, params);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
 }

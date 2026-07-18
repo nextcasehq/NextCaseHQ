@@ -125,6 +125,7 @@ jobs:
       - name: Run Web Unit & Integration Tests
         env:
           DATABASE_URL: postgres://nextcase_app:nextcase_app_ci_pw@localhost:5432/nextcase_test
+          JWT_SECRET: ci-test-only-jwt-secret-not-for-production
         run: pnpm --filter web test
 
       - name: Run Crypto Unit Tests
