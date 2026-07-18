@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T18:00:00Z",
+  "last_updated": "2026-07-18T18:30:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -256,6 +256,13 @@
         "billing",
         "messaging"
       ]
+    },
+    "brand_color_uniformity_and_landing_fixes": {
+      "status": "COMPLETE",
+      "description": "Product Owner-reported visual bugs, fixed: (1) a literal blank 'white patch' on the landing page caused by the root layout adding a redundant 64px top padding on <main> on top of the navbar's own height (navbar is `sticky`/in-flow, not `fixed`, so it already reserved that space) — removed the redundant padding; (2) the hero's bookshelf background image was nearly invisible under an 85-95%-opaque dark overlay — reduced to 25-80% so it reads as an actual background while keeping hero text readable; (3) the hero's 'product preview' panel was a static AI-generated screenshot with a large blank canvas, a stray monitor-stand graphic cut off at the bottom, and off-brand blue/indigo 'LexCase AI' branding — replaced with a real JSX mockup rendered in the site's own gold/brown/cream palette (no external image dependency for this element). Internal (authenticated) pages — dashboard shell (apps/web/src/app/dashboard/layout.tsx), the TriPaneChamber AI workspace, the admin console (apps/web/src/app/admin/page.tsx + all 9 admin/components/*.tsx files), cases, matters, and login — previously used indigo/blue/gray/slate/neutral Tailwind color tokens throughout, visually disconnected from the landing page's gold/maroon/brown/cream palette. Every such token was remapped to the brand palette (warm neutrals for gray/slate/neutral shades, gold/brown for indigo/blue shades), and the login page's primary button was changed from plain black to the same gold/brown treatment used for CTAs elsewhere. Also fixed a latent bug: tailwind.config.ts's `bg-bg-base`/`bg-bg-surface`/`text-text-primary`/`text-brand` utilities referenced CSS custom properties (--color-bg-base, --color-brand-accent, etc.) that were never actually declared anywhere in the codebase — those classes were silently resolving to no color at all wherever used (found on the /audit and /search stub pages). Defined the properties for real in globals.css, and extended tailwind.config.ts with named brand.gold/brand.brown/brand.maroon/brand.ink tokens so future work has real semantic classes instead of ad hoc hex.",
+      "verification": "Full pre-existing 191-test suite, typecheck, and production build all pass with zero regressions (styling-only diff, no behavioral/API changes). Visually verified via a real `next start` production server plus headless Chromium screenshots, before and after, across: landing page (hero image visibility + white-patch gap), /login, /cases, /matters, /dashboard (TriPaneChamber), and /admin — confirmed the gap is gone, the bookshelf image is clearly visible, the hero preview panel shows real NextCaseHQ branding in brand colors, and every internal page renders in gold/brown/cream/black rather than blue/gray.",
+      "scope_note": "Visual/branding consistency pass only, applied to already-existing pages — no workflow changes, no new features, no page redesigns. Public marketing subpages (about, contact, docs, features, pricing, privacy, resources, solutions, terms) were not touched in this pass since the Product Owner's complaint was specifically about the landing-vs-internal-page mismatch; a few of those pages still use indigo/blue tokens and are visible next as tech debt if a further consistency pass is wanted.",
+      "standing_uiux_directive": "Product Owner has established a standing UI/UX directive: maintain the gold/maroon/brown/black/light-cream palette as the single design language across the whole platform going forward, applied incrementally as pages are touched during implementation (not a dedicated redesign effort) — navigation, sidebars, buttons, cards, tables, forms, badges, and typography should all read as one unified system rather than independently styled modules."
     }
   }
 }
