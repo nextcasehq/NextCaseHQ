@@ -160,11 +160,67 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const db = new DatabaseClient();
-    const rows = await db.execute<{ id: string }>(
+
+    // RLS scopes this to the caller's own tenant — a client belonging to
+    // another tenant is indistinguishable from a nonexistent one, so a
+    // cross-tenant id returns 404 here without ever running the dependent
+    // check below.
+    const clientRows = await db.execute<{ id: string }>(
       session.tenantId,
-      `DELETE FROM "Client" WHERE id = $1 RETURNING id`,
+      `SELECT id FROM "Client" WHERE id = $1`,
       [id]
     );
+    if (clientRows.length === 0) {
+      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+
+    // Matter.client_id has no ON DELETE action (RESTRICT), but this
+    // endpoint checks explicitly up front rather than relying on the
+    // resulting FK violation, so the caller gets a clear, actionable
+    // response instead of a raw 500.
+    const matterRows = await db.execute<{ count: number }>(
+      session.tenantId,
+      `SELECT COUNT(*)::int AS count FROM "Matter" WHERE client_id = $1`,
+      [id]
+    );
+    const linkedMatters = matterRows[0].count;
+
+    if (linkedMatters > 0) {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'CLIENT_HAS_LINKED_MATTERS',
+          message: 'This client still has linked matters. Remove or reassign those matters before deleting this client.',
+          linked: { matters: linkedMatters },
+        },
+        { status: 409 }
+      );
+    }
+
+    let rows: { id: string }[];
+    try {
+      rows = await db.execute<{ id: string }>(
+        session.tenantId,
+        `DELETE FROM "Client" WHERE id = $1 RETURNING id`,
+        [id]
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('foreign key constraint')) {
+        // Defense in depth against a matter linked in the narrow window
+        // between the check above and this delete — still a deterministic
+        // 409, never a raw 500 leaking a Postgres error.
+        return NextResponse.json(
+          {
+            error: 'CONFLICT',
+            code: 'CLIENT_HAS_LINKED_MATTERS',
+            message: 'This client still has linked matters. Remove or reassign those matters before deleting this client.',
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });

@@ -36,15 +36,23 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
   });
 
   beforeEach(async () => {
+    await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "MatterParticipant" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "MatterEvent" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "Client" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "User" WHERE tenant_id = $1`, [TENANT_A]);
   });
 
   afterAll(async () => {
+    await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "MatterParticipant" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "MatterEvent" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "Client" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "User" WHERE tenant_id = $1`, [TENANT_A]);
     await closePool();
   });
 
@@ -143,5 +151,84 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
     });
     const secondRes = await DELETE(secondReq, { params: Promise.resolve({ id }) });
     expect(secondRes.status).toBe(404);
+  });
+
+  test('DELETE returns 404 for a matter belonging to another tenant, never a conflict or a leak', async () => {
+    const id = await createMatter(TENANT_B, 'Tenant B Matter');
+    const req = new NextRequest(`http://localhost/api/matters/${id}`, {
+      method: 'DELETE',
+      headers: { origin: 'http://localhost:3000', cookie: await sessionCookieHeader(TENANT_A) },
+    });
+    const res = await DELETE(req, { params: Promise.resolve({ id }) });
+    expect(res.status).toBe(404);
+  });
+
+  test('DELETE returns a deterministic 409 (never a generic 500) when a Proceeding is linked', async () => {
+    const id = await createMatter(TENANT_A, 'Matter With Proceeding');
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "LegalCase" (tenant_id, title, country_code, matter_id) VALUES ($1, $2, $3, $4)`,
+      [TENANT_A, 'Linked Proceeding', 'IN', id]
+    );
+
+    const req = new NextRequest(`http://localhost/api/matters/${id}`, {
+      method: 'DELETE',
+      headers: { origin: 'http://localhost:3000', cookie: await sessionCookieHeader(TENANT_A) },
+    });
+    const res = await DELETE(req, { params: Promise.resolve({ id }) });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_HAS_LINKED_RECORDS');
+    expect(body.linked.proceedings).toBe(1);
+
+    // The matter must still exist — the delete was correctly refused, not
+    // silently partially applied.
+    const stillThere = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "Matter" WHERE id = $1`, [id]);
+    expect(stillThere).toHaveLength(1);
+  });
+
+  test('DELETE returns 409 when a participant or chronology entry is linked, even with zero Proceedings', async () => {
+    const userRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "User" (tenant_id, email) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'delete-safety-participant@nextcase.local']
+    );
+    const matterWithParticipant = await createMatter(TENANT_A, 'Matter With Participant');
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "MatterParticipant" (tenant_id, matter_id, user_id, role) VALUES ($1, $2, $3, $4)`,
+      [TENANT_A, matterWithParticipant, userRows[0].id, 'LEAD']
+    );
+
+    const participantRes = await DELETE(
+      new NextRequest(`http://localhost/api/matters/${matterWithParticipant}`, {
+        method: 'DELETE',
+        headers: { origin: 'http://localhost:3000', cookie: await sessionCookieHeader(TENANT_A) },
+      }),
+      { params: Promise.resolve({ id: matterWithParticipant }) }
+    );
+    expect(participantRes.status).toBe(409);
+    const participantBody = await participantRes.json();
+    expect(participantBody.code).toBe('MATTER_HAS_LINKED_RECORDS');
+    expect(participantBody.linked.participants).toBe(1);
+
+    const matterWithEvent = await createMatter(TENANT_A, 'Matter With Event');
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "MatterEvent" (tenant_id, matter_id, event_date, description) VALUES ($1, $2, $3, $4)`,
+      [TENANT_A, matterWithEvent, '2026-01-15', 'Filed notice']
+    );
+
+    const eventRes = await DELETE(
+      new NextRequest(`http://localhost/api/matters/${matterWithEvent}`, {
+        method: 'DELETE',
+        headers: { origin: 'http://localhost:3000', cookie: await sessionCookieHeader(TENANT_A) },
+      }),
+      { params: Promise.resolve({ id: matterWithEvent }) }
+    );
+    expect(eventRes.status).toBe(409);
+    const eventBody = await eventRes.json();
+    expect(eventBody.code).toBe('MATTER_HAS_LINKED_RECORDS');
+    expect(eventBody.linked.events).toBe(1);
   });
 });
