@@ -24,7 +24,7 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T09:00:00Z",
+  "last_updated": "2026-07-18T10:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -34,8 +34,10 @@
       "description": "Content-Security-Policy (lib/security/security-headers.ts) uses script-src 'self' 'unsafe-inline' rather than a nonce-based policy. A nonce+'strict-dynamic' CSP was built first and reverted after real headless-browser testing showed it breaks every statically-prerendered page in this app (most routes) — a per-request nonce can never match script tags baked into HTML built once at compile time. The current CSP still blocks loading scripts from external/attacker-controlled origins, but cannot block inline-script injection the way a nonce-based policy would. Full protection would require moving affected pages to dynamic rendering — an architecture/performance change, not undertaken here."
     },
     {
-      "id": "in_memory_rate_limiting_and_replay_protection",
-      "description": "lib/security/rate-limit.ts (login/webhook rate limits) and lib/security/replay-guard.ts (webhook replay protection, PR #62) are both per-process, in-memory state. Correct for a single running instance; a horizontally-scaled multi-instance deployment needs a shared store (Redis, or a DB table) for these to hold across instances. Explicitly out of scope per Product Owner decision (\"no Redis/distributed replay protection\") for the milestones that introduced them."
+      "id": "webhook_rate_limit_and_replay_still_in_memory_edge_runtime",
+      "severity": "NEEDS_PRODUCT_OWNER_DECISION",
+      "description": "distributed_rate_limiting closed this gap for login/admin-login (both Node.js runtime routes), but POST /api/webhooks runs on the Edge runtime (export const runtime = 'edge' in apps/web/src/app/api/webhooks/route.ts) and its rate limit + replay guard (lib/security/rate-limit.ts, lib/security/replay-guard.ts) remain in-memory/per-instance. ioredis (a raw-TCP client) needs Node's net/tls modules, which the Edge runtime doesn't have — attempting to share it there is not a matter of more code, it's a real architectural fork.",
+      "decision_needed": "Two real options, not yet chosen: (A) adopt an Edge-compatible REST-based Redis client (e.g. Upstash Redis / Vercel KV) for the webhook route specifically — a concrete vendor choice with its own account/provisioning; (B) move POST /api/webhooks off the Edge runtime to the Node.js runtime so the same ioredis-backed limiter used for login/admin-login can cover it too — an architecture change to a route explicitly built as 'Module 13: Edge Webhook Byte Handling'. Neither was chosen unilaterally; flagged for Product Owner decision rather than silently picked."
     },
     {
       "id": "admin_auth_shared_secret_no_individual_accountability",
@@ -86,6 +88,14 @@
       "not_yet_true": "See known_limitations.admin_auth_shared_secret_no_individual_accountability. Everything else recorded under production_security_status/known_limitations (static CSP, in-memory rate-limit/replay) is unchanged by this milestone.",
       "merged": "PR #65, commit 4b41b98",
       "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
+    },
+    "distributed_rate_limiting": {
+      "status": "PARTIAL — Node.js-runtime routes only",
+      "status_note": "Closes the in-memory-rate-limiting gap for POST /api/auth/session and POST /api/admin/session, the two routes where a standard TCP Redis client can run. Does NOT cover POST /api/webhooks (Edge runtime) — see known_limitations.webhook_rate_limit_and_replay_still_in_memory_edge_runtime for why, and the two real options awaiting a Product Owner decision.",
+      "description": "lib/security/redis-client.ts (lazy ioredis singleton, returns null when REDIS_URL is unset) and lib/security/redis-rate-limit.ts (checkDistributedRateLimit: Redis INCR+PEXPIRE fixed-window counter, same semantics as the existing in-memory limiter, falls back to it automatically when REDIS_URL is unset or Redis is unreachable). POST /api/auth/session and POST /api/admin/session now call checkDistributedRateLimit instead of the in-memory checkRateLimit. env-validation.ts now refuses to boot NODE_ENV=production without REDIS_URL set. CI's test job gained a real redis:7 service container so the Redis-backed code path is exercised in CI, not just the fallback.",
+      "verification": "Verified against a real local Redis instance (not mocked): unit tests prove atomic counting and a shared-across-instances property; runtime verification started two fully independent `next start` OS processes on different ports pointed at the same Redis and confirmed the second process immediately inherited the first process's exhausted rate-limit state for the same client IP — the actual property this milestone exists to provide, not just unit-tested in isolation. Also verified the REDIS_URL-unset fallback path still passes the full test suite unchanged.",
+      "scope_note": "Did not touch /api/webhooks, replay-guard.ts, or rate-limit.ts (both remain exactly as they were, still used by the webhook route). No UI changes, no new features.",
+      "out_of_scope_next": ["webhook_rate_limit_and_replay_still_in_memory_edge_runtime (awaiting Product Owner decision)", "search", "ai", "file_storage", "billing", "messaging"]
     }
   }
 }

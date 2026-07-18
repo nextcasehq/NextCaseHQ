@@ -4,7 +4,8 @@ import { verifyPassword } from '@/lib/auth/password';
 import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_SECONDS } from '@/lib/auth/session-cookie';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
-import { checkRateLimit, getClientIdentifier } from '@/lib/security/rate-limit';
+import { getClientIdentifier } from '@/lib/security/rate-limit';
+import { checkDistributedRateLimit } from '@/lib/security/redis-rate-limit';
 
 interface UserRow {
   id: string;
@@ -24,7 +25,7 @@ const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
  */
 export async function POST(request: Request) {
   try {
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkDistributedRateLimit(
       `login:${getClientIdentifier(request)}`,
       LOGIN_RATE_LIMIT_MAX,
       LOGIN_RATE_LIMIT_WINDOW_MS

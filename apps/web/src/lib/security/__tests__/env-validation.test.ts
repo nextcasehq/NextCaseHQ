@@ -8,6 +8,7 @@ function baseProdEnv(): NodeJS.ProcessEnv {
     WEBHOOK_SIGNING_SECRET: 'another-real-random-secret',
     ADMIN_ACCESS_TOKEN: 'yet-another-real-random-secret',
     ADMIN_SESSION_SECRET: 'still-another-real-random-secret',
+    REDIS_URL: 'redis://prod-redis.example.com:6379',
   } as NodeJS.ProcessEnv;
 }
 
@@ -52,6 +53,12 @@ describe('collectStartupEnvIssues', () => {
   test('flags the known insecure ADMIN_SESSION_SECRET placeholder', () => {
     const env = { ...baseProdEnv(), ADMIN_SESSION_SECRET: 'nchq-admin-session-secret-placeholder' };
     expect(collectStartupEnvIssues(env).some((i) => i.variable === 'ADMIN_SESSION_SECRET')).toBe(true);
+  });
+
+  test('flags a missing REDIS_URL in production', () => {
+    const env = baseProdEnv();
+    delete env.REDIS_URL;
+    expect(collectStartupEnvIssues(env).some((i) => i.variable === 'REDIS_URL')).toBe(true);
   });
 });
 

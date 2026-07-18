@@ -108,6 +108,9 @@ vite.config.ts.timestamp-*
 # Turborepo
 .turbo/
 
+# Redis RDB snapshot (created by a local redis-server run from this directory)
+*.rdb
+
 # Sentinel Framework execution artifacts
 /reports/
 /artifacts/

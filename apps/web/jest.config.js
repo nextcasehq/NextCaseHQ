@@ -5,6 +5,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   // `jose` ships ESM-only (no CJS build), which Jest's CommonJS module
   // system can't load by default. Transform it with ts-jest (already a
   // dependency — TypeScript's compiler handles plain ESM->CJS syntax fine)

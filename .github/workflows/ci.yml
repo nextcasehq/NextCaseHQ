@@ -87,6 +87,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -122,11 +131,15 @@ jobs:
           PGPASSWORD=nextcase_ci_pw psql -h localhost -U nextcase -d nextcase_test
           -c "ALTER ROLE nextcase_app WITH PASSWORD 'nextcase_app_ci_pw';"
 
+      # REDIS_URL is set so the distributed rate-limit tests
+      # (lib/security/__tests__/redis-*.test.ts) exercise a real Redis
+      # connection in CI, not just the in-memory fallback path.
       - name: Run Web Unit & Integration Tests
         env:
           DATABASE_URL: postgres://nextcase_app:nextcase_app_ci_pw@localhost:5432/nextcase_test
           JWT_SECRET: ci-test-only-jwt-secret-not-for-production
           WEBHOOK_SIGNING_SECRET: ci-test-only-webhook-secret-not-for-production
+          REDIS_URL: redis://localhost:6379
         run: pnpm --filter web test
 
       - name: Run Crypto Unit Tests

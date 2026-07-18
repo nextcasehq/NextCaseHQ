@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { INSECURE_ADMIN_TOKEN_PLACEHOLDER } from '@/lib/security/env-validation';
 import { constantTimeEqual } from '@/lib/security/constant-time';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
-import { checkRateLimit, getClientIdentifier } from '@/lib/security/rate-limit';
+import { getClientIdentifier } from '@/lib/security/rate-limit';
+import { checkDistributedRateLimit } from '@/lib/security/redis-rate-limit';
 import {
   ADMIN_SESSION_COOKIE_NAME,
   ADMIN_SESSION_COOKIE_MAX_AGE_SECONDS,
@@ -27,7 +28,7 @@ const ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
  * that signed token instead of comparing a raw shared secret.
  */
 export async function POST(request: Request) {
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkDistributedRateLimit(
     `admin-login:${getClientIdentifier(request)}`,
     ADMIN_LOGIN_RATE_LIMIT_MAX,
     ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS
