@@ -58,6 +58,14 @@ export function collectStartupEnvIssues(env: NodeJS.ProcessEnv = process.env): E
     });
   }
 
+  if (!env.REDIS_URL) {
+    issues.push({
+      variable: 'REDIS_URL',
+      message:
+        'REDIS_URL must be set in production so login/admin-login rate limiting is shared across instances — without it, each instance enforces its own separate limit, which is not a real limit at all behind a load balancer.',
+    });
+  }
+
   return issues;
 }
 
