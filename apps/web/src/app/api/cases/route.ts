@@ -39,6 +39,14 @@ const CreateCaseSchema = z.object({
   state_metadata: z.record(z.string(), z.any()).optional(),
 });
 
+const DEFAULT_PAGE_LIMIT = 50;
+const MAX_PAGE_LIMIT = 100;
+
+const ListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(MAX_PAGE_LIMIT).optional().default(DEFAULT_PAGE_LIMIT),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
 async function resolveSession(request: NextRequest) {
   try {
     return await requireSession(request);
@@ -51,76 +59,104 @@ async function resolveSession(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await resolveSession(request);
-  if (!session) {
+  try {
+    const session = await resolveSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { error: 'SECURE_ACCESS_DENIED', message: 'Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    const queryResult = ListQuerySchema.safeParse({
+      limit: request.nextUrl.searchParams.get('limit') ?? undefined,
+      offset: request.nextUrl.searchParams.get('offset') ?? undefined,
+    });
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'Invalid pagination parameters.', details: queryResult.error.format() },
+        { status: 400 }
+      );
+    }
+    const { limit, offset } = queryResult.data;
+
+    const db = new DatabaseClient();
+    const [rows, countRows] = await Promise.all([
+      db.execute<LegalCaseRow>(
+        session.tenantId,
+        `SELECT id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
+                procedure_pack_id, state_metadata, created_at, updated_at
+         FROM "LegalCase"
+         ORDER BY created_at DESC
+         LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      ),
+      db.execute<{ count: number }>(session.tenantId, `SELECT COUNT(*)::int AS count FROM "LegalCase"`, []),
+    ]);
+
     return NextResponse.json(
-      { error: 'SECURE_ACCESS_DENIED', message: 'Authentication required.' },
-      { status: 401 }
+      { cases: rows, total: countRows[0].count, limit, offset },
+      { status: 200 }
     );
+  } catch (error) {
+    console.error('[CASES_API] GET /api/cases failed:', error);
+    return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
   }
-
-  const db = new DatabaseClient();
-  const rows = await db.execute<LegalCaseRow>(
-    session.tenantId,
-    `SELECT id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
-            procedure_pack_id, state_metadata, created_at, updated_at
-     FROM "LegalCase"
-     ORDER BY created_at DESC
-     LIMIT 100`,
-    []
-  );
-
-  return NextResponse.json({ cases: rows }, { status: 200 });
 }
 
 export async function POST(request: NextRequest) {
-  if (!isTrustedOrigin(request)) {
-    return NextResponse.json({ error: 'INVALID_ORIGIN' }, { status: 403 });
-  }
-
-  const session = await resolveSession(request);
-  if (!session) {
-    return NextResponse.json(
-      { error: 'SECURE_ACCESS_DENIED', message: 'Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'BAD_REQUEST', message: 'Malformed JSON body.' }, { status: 400 });
-  }
+    if (!isTrustedOrigin(request)) {
+      return NextResponse.json({ error: 'INVALID_ORIGIN' }, { status: 403 });
+    }
 
-  const result = CreateCaseSchema.safeParse(body);
-  if (!result.success) {
-    return NextResponse.json(
-      { error: 'BAD_REQUEST', message: 'Invalid case payload.', details: result.error.format() },
-      { status: 400 }
-    );
-  }
+    const session = await resolveSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { error: 'SECURE_ACCESS_DENIED', message: 'Authentication required.' },
+        { status: 401 }
+      );
+    }
 
-  const input = result.data;
-  const db = new DatabaseClient();
-  const rows = await db.execute<LegalCaseRow>(
-    session.tenantId,
-    `INSERT INTO "LegalCase"
-       (tenant_id, title, case_number, country_code, court_pack_id, law_pack_id, procedure_pack_id, state_metadata)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
-               procedure_pack_id, state_metadata, created_at, updated_at`,
-    [
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'BAD_REQUEST', message: 'Malformed JSON body.' }, { status: 400 });
+    }
+
+    const result = CreateCaseSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: 'Invalid case payload.', details: result.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const input = result.data;
+    const db = new DatabaseClient();
+    const rows = await db.execute<LegalCaseRow>(
       session.tenantId,
-      input.title,
-      input.case_number ?? null,
-      input.country_code,
-      input.court_pack_id ?? null,
-      input.law_pack_id ?? null,
-      input.procedure_pack_id ?? null,
-      input.state_metadata ?? {},
-    ]
-  );
+      `INSERT INTO "LegalCase"
+         (tenant_id, title, case_number, country_code, court_pack_id, law_pack_id, procedure_pack_id, state_metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
+                 procedure_pack_id, state_metadata, created_at, updated_at`,
+      [
+        session.tenantId,
+        input.title,
+        input.case_number ?? null,
+        input.country_code,
+        input.court_pack_id ?? null,
+        input.law_pack_id ?? null,
+        input.procedure_pack_id ?? null,
+        input.state_metadata ?? {},
+      ]
+    );
 
-  return NextResponse.json({ case: rows[0] }, { status: 201 });
+    return NextResponse.json({ case: rows[0] }, { status: 201 });
+  } catch (error) {
+    console.error('[CASES_API] POST /api/cases failed:', error);
+    return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
+  }
 }
