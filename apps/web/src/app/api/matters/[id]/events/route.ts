@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
+import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 /**
  * Matter chronology — the ordered, human-entered timeline a Matter's future
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       [session.tenantId, id, input.event_date, input.description]
     );
 
+    await invalidateMatterContext(session.tenantId, id);
     return NextResponse.json({ event: rows[0] }, { status: 201 });
   } catch (error) {
     console.error('[MATTERS_API] POST /api/matters/[id]/events failed:', error);

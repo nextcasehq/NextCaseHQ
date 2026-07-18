@@ -24,10 +24,10 @@
     "20": "COMPLETE",
     "21": "COMPLETE",
     "22": "COMPLETE",
-    "23": "IN_PROGRESS — Milestone 2 (Matter Intelligence Layer): PR 2A landed, 2B/2C pending"
+    "23": "IN_PROGRESS — Milestone 2 (Matter Intelligence Layer): PR 2A + 2B landed, 2C pending"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T20:35:00Z",
+  "last_updated": "2026-07-18T21:15:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -381,6 +381,25 @@
         "scalability_and_maintainability_impact": "Positive — a new context source (Documents, Evidence, Drafts, AI Notes, all reserved) is a new file implementing one interface plus one line in sources/index.ts, with zero change to the Builder or Ranking algorithm.",
         "technical_debt": "Introduced: none. Eliminated: the unwired, untested lib/ai/matter-context.ts module is fully removed rather than left to drift alongside its now-real replacement.",
         "assumptions_or_divergence_requiring_approval": "None for this PR specifically — implemented exactly to the approved blueprint and PR 2A's own acceptance criteria. Decisions 1, 2, 3, 5 (partial), 6, 8 remain correctly deferred to PR 2C, as approved."
+      }
+    },
+    "matter_intelligence_layer_2b_context_cache_invalidation": {
+      "status": "COMPLETE — PR 2B of the approved 3-PR sequence (2A/2B/2C); 2C (AI Context Gateway, Prompt Builder, Usage Metering, /api/ai/ask integration) is not yet started",
+      "description": "Second slice of Milestone 2. Adds a Redis-backed cache in front of PR 2A's deterministic Context Builder + Ranking pipeline, behind a small ContextCacheProvider interface (apps/web/src/lib/ai/context/cache-provider.ts) so a future backend swap touches one file — reuses the existing lib/security/redis-client.ts lazy singleton rather than introducing a new cache dependency, matching the same soft-dependency posture already established for distributed rate limiting. getCachedMatterContext(tenantId, matterId) (apps/web/src/lib/ai/context/cache.ts) is keyed nchq:ctx:{tenantId}:{matterId} — since a ContextItem carries a render() closure that can't round-trip through JSON, the cache stores a plain serializable shape ({sourceType, weight, recency, text}) and reconstructs a ContextItem (render() simply returning the stored text) on a hit, which rankContextItems() from PR 2A treats identically to a freshly-built item (verified by test, per condition 12 below). invalidateMatterContext(tenantId, matterId) is the single shared invalidation hook — wired into every route that can change what a Matter's context looks like today (PATCH/DELETE /api/matters/[id], POST /api/matters/[id]/events, POST /api/matters/[id]/participants, POST/PATCH/DELETE /api/cases whenever matter_id is involved) and is the exact same function any future Documents/Evidence/Drafts/AI-Notes/Hearings/Tasks milestone calls with no change to this module. PATCH /api/cases/[id] invalidates both the Proceeding's matter_id *before* the update and after it, since any field change (not just matter_id) alters what the proceedingsSource renders for its parent Matter. A 5-minute TTL is a backstop only, not the correctness mechanism — deterministic invalidation is. Every cache operation (get/set/del) is wrapped so a Redis outage, an unconfigured REDIS_URL, or a corrupted cache entry all degrade to a live rebuild from buildMatterContext() rather than ever throwing or breaking the triggering request.",
+      "verification": "14 new tests: a dedicated cache module suite (cache miss builds and stores; a cache hit proven by staleness — the underlying row is mutated directly, bypassing invalidation, and the stale cached value is confirmed still served; invalidateMatterContext proven to force a rebuild; tenant-qualified keys with no cross-tenant leakage even when RLS is bypassed at the cache layer; two independent outage simulations — REDIS_URL unset, and a live client whose get/set are monkey-patched to throw — both fall back to a correct rebuild without throwing; a forced 1-second TTL expiry proven to rebuild rather than serve stale data indefinitely; a ranking-parity test proving a cache-round-tripped item list ranks and truncates identically to a freshly-built one) plus a route-level integration suite proving the invalidation hook is actually wired into all five real mutation routes, not just present in the cache module (each test primes the cache, performs the real mutation through the real route handler, and confirms the next read reflects the new state). Full suite: 363 tests total (349 from PR 2A + these 14), zero regressions. pnpm typecheck (all 15 workspace projects) and a real production `pnpm build` both pass.",
+      "scope_note": "No AI Context Gateway, no enforceEntitlement() checkpoint, no AiUsageEvent table, no Prompt Builder, no change to /api/ai/ask, no schema change, no new API route, no UI — all correctly deferred to PR 2C. Ranking behavior from PR 2A is unchanged (condition 12) — the only ranking.ts-adjacent test added is the cache-round-trip parity check, not a change to the algorithm itself.",
+      "not_yet_true": "getCachedMatterContext() is not yet called from any API route or AI feature — nothing outside its own tests exercises the read path yet; that begins in PR 2C when the AI Context Gateway becomes its first real caller. The import-boundary ESLint rule (Decision 5) remains deferred to PR 2C, as previously scoped.",
+      "out_of_scope_next": [
+        "ai_context_gateway_prompt_builder_usage_metering_ai_ask_integration (PR 2C)",
+        "document_workspace_context_source_and_its_own_invalidation_hook",
+        "evidence_drafts_ai_notes_hearings_tasks_context_sources"
+      ],
+      "governance_alignment_check": {
+        "security_and_tenant_isolation_impact": "Neutral-to-positive: cache keys are tenant-qualified and every cached value originates from buildMatterContext()'s own RLS-scoped queries, so the cache can only ever memoize what a tenant was already allowed to see — independently verified by a cross-tenant test at the cache layer itself, not just relied upon from PR 2A.",
+        "architectural_compatibility": "Additive layer in front of PR 2A's builder/ranking, not a replacement — buildMatterContext() and rankContextItems() are untouched and remain directly usable uncached. Reuses the established Redis lazy-singleton and fail-open conventions from lib/security/redis-rate-limit.ts rather than inventing a new pattern.",
+        "scalability_and_maintainability_impact": "Positive — invalidateMatterContext() is the one function every future Matter-context-affecting milestone calls; no per-domain invalidation logic needs to be reinvented as Documents/Evidence/Drafts/Hearings/Tasks land.",
+        "technical_debt": "Introduced: none. The ContextCacheProvider interface exists specifically so this isn't hard-coded to Redis at every call site.",
+        "assumptions_or_divergence_requiring_approval": "None — implemented exactly to the Product Owner's 12 stated scope requirements (Redis reuse, stable tenant-qualified keys, deterministic invalidation over TTL-only, safe degradation on outage, no Gateway/entitlement/metering/prompt-builder/provider work, no ranking change)."
       }
     }
   }
