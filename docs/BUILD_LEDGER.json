@@ -23,10 +23,11 @@
     "19": "COMPLETE",
     "20": "COMPLETE",
     "21": "COMPLETE",
-    "22": "COMPLETE"
+    "22": "COMPLETE",
+    "23": "IN_PROGRESS — Milestone 2 (Matter Intelligence Layer): PR 2A landed, 2B/2C pending"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T19:55:00Z",
+  "last_updated": "2026-07-18T20:35:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -360,6 +361,26 @@
         "scalability_and_maintainability_impact": "Positive — the pattern (check dependents up front, translate any FK violation as a fallback, never let a constraint error reach the client as a raw 500) is now demonstrated for two resources and is directly reusable by any future DELETE endpoint added to a table with restrict-by-default foreign keys.",
         "technical_debt": "Introduced: none. Eliminated: the undocumented DELETE-safety gap flagged in the post-merge architectural verification of PR #87 is fully closed and now covered by tests.",
         "assumptions_or_divergence_requiring_approval": "None — implemented exactly to the Product Owner's stated requirements (no cascading deletion, no schema change, no UI, no archive functionality, 409 with a stable code, tenant isolation preserved)."
+      }
+    },
+    "matter_intelligence_layer_2a_context_builder_ranking": {
+      "status": "COMPLETE — PR 2A of a Product Owner-approved 3-PR sequence (2A/2B/2C); 2B (Context Cache) and 2C (AI Context Gateway, Prompt Builder, Usage Metering, /api/ai/ask integration) are not yet started",
+      "description": "First slice of Milestone 2 (the Matter Intelligence Layer), built from a written blueprint reviewed and approved by the Product Owner before any code (published as an architecture artifact) with 8 explicit implementation decisions confirmed in advance — the same blueprint-first process used for Milestone 1. This PR delivers only the deterministic core: a ContextSource interface (apps/web/src/lib/ai/context/types.ts) and four concrete sources built from real Milestone 1 data — matterSummarySource, proceedingsSource, participantsSource, chronologySource (apps/web/src/lib/ai/context/sources/*.ts) — a buildMatterContext(tenantId, matterId) function that runs every registered source in parallel and returns a flat, unranked item list (builder.ts), and rankContextItems(items, budget) (ranking.ts), which sorts by each item's own weight (chronology entries decay by position — the most recent keeps the full base weight, older ones decay toward a floor rather than crowding out the rest of a long matter's context, satisfying the Product Owner's example priority ordering with only the data that actually exists today), breaks ties by recency, and fills a caller-supplied budget (maxItems/maxChars) greedily, never splitting an item. No LLM call anywhere in this PR — verified by the absence of any vendor SDK import in the diff. The orphaned, unwired lib/ai/matter-context.ts from Milestone 1 (confirmed zero importers) is deleted outright; its query logic and text rendering became the reference implementation for the four new sources rather than being duplicated alongside them.",
+      "verification": "26 new tests: per-source tests covering correct item production against seeded Postgres data, cross-tenant isolation (a matter belonging to another tenant produces zero items, matching the RLS-indistinguishable-from-nonexistent convention established in Milestone 1), and honest-empty-state cases (a matter with no Proceedings/Participants/Events produces zero items from that source, not an error); a dedicated chronology-source test proving the recency-decay weighting is monotonically non-increasing with age and never drops below the documented floor; a builder integration test proving all four sources aggregate correctly for a fully-populated matter and that a pure-advisory matter with zero Proceedings still produces a valid one-item (summary-only) context; a pure-unit ranking test suite (no database) covering weight ordering, recency tie-breaking, maxItems/maxChars truncation without splitting an item, and input-array non-mutation. Full suite: 349 tests total (323 pre-existing + 26 new), zero regressions. pnpm typecheck (all 15 workspace TypeScript projects) passes. A real bug was found and fixed during this work: the pg driver parses Postgres DATE columns into JS Date objects by default (not strings), which silently broke the recency contract and would have rendered chronology entries with a full JS Date's toString() rather than a clean YYYY-MM-DD string; fixed by selecting event_date via to_char(event_date, 'YYYY-MM-DD') in the source's own query, avoiding both the type mismatch and the well-known Postgres DATE/JS-Date timezone-shift footgun (the same class of issue LegalCase.hearing_date was deliberately typed TEXT to avoid in Milestone 1) rather than reaching for a client-side Date-formatting workaround.",
+      "scope_note": "Strictly the deterministic core, per the approved PR 2A acceptance criteria: no Context Cache, no AI Context Gateway, no enforceEntitlement() checkpoint, no AiUsageEvent table, no Prompt Builder, no change to /api/ai/ask, no schema change, no new API route, no UI. The frozen operation_type enum (Decision 3) and the entitlement/metering/gateway work (Decisions 1, 2, 8) are deliberately deferred to PR 2C where they actually have a caller — introducing them now would have been inert, unconsumed code, which this codebase has consistently avoided elsewhere.",
+      "not_yet_true": "This context pipeline is not yet reachable from any API route or AI feature — /api/ai/ask is completely unchanged by this PR. The import-boundary enforcement approved in Decision 5 is honored structurally in this PR (only the four source files touch DatabaseClient; builder.ts and ranking.ts are pure) but not yet enforced by an ESLint rule, which is scheduled for PR 2C once there is an actual Prompt Builder/Gateway boundary worth protecting.",
+      "out_of_scope_next": [
+        "context_cache_and_invalidation_hooks (PR 2B)",
+        "ai_context_gateway_prompt_builder_usage_metering_ai_ask_integration (PR 2C)",
+        "document_workspace_context_source",
+        "matter_memory_persisted_ai_summaries"
+      ],
+      "governance_alignment_check": {
+        "security_and_tenant_isolation_impact": "Neutral-to-positive: no new tables, no new API surface. Every source query runs through the existing session.tenantId-scoped DatabaseClient.execute(...) pattern, so cross-tenant isolation is inherited, not reimplemented, and was independently re-verified by test for all four sources.",
+        "architectural_compatibility": "Additive, isolated new module (lib/ai/context/) that supersedes and removes the one orphaned module it replaces rather than leaving two parallel ways to get Matter context. Matches the Product Owner-approved blueprint's Context Source interface exactly.",
+        "scalability_and_maintainability_impact": "Positive — a new context source (Documents, Evidence, Drafts, AI Notes, all reserved) is a new file implementing one interface plus one line in sources/index.ts, with zero change to the Builder or Ranking algorithm.",
+        "technical_debt": "Introduced: none. Eliminated: the unwired, untested lib/ai/matter-context.ts module is fully removed rather than left to drift alongside its now-real replacement.",
+        "assumptions_or_divergence_requiring_approval": "None for this PR specifically — implemented exactly to the approved blueprint and PR 2A's own acceptance criteria. Decisions 1, 2, 3, 5 (partial), 6, 8 remain correctly deferred to PR 2C, as approved."
       }
     }
   }
