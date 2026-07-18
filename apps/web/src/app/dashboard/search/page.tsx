@@ -209,7 +209,7 @@ function SearchPageContent() {
                   </div>
                   <span className="text-[10px] font-mono text-[#111111]/40">{item.id}</span>
                 </div>
-                <h3 className="font-bold text-lg text-[#111111] group-hover:text-indigo-600 transition-colors">
+                <h3 className="font-bold text-lg text-[#111111] group-hover:text-[#8A6D2F] transition-colors">
                   {item.title}
                 </h3>
                 <p className="mt-3 text-sm font-serif text-[#111111]/70 leading-relaxed bg-[#FDFBF7] p-4 rounded border border-[#111111]/5">
@@ -291,7 +291,7 @@ export default function SearchPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 flex justify-center items-center py-20">
-        <span className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+        <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
       </div>
     }>
       <SearchPageContent />

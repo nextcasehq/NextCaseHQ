@@ -134,19 +134,19 @@ export default function DraftBuilderPage() {
             </div>
             <button
               onClick={() => alert('Legal Draft generated successfully and committed to compliance audit log.')}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] uppercase tracking-widest rounded transition-colors"
+              className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-bold text-[10px] uppercase tracking-widest rounded transition-colors"
             >
               💾 Save Draft
             </button>
           </div>
 
-          <div className="bg-white border border-neutral-100 rounded-2xl p-8 md:p-12 shadow-xl shadow-neutral-100/50 min-h-[600px] flex flex-col space-y-6">
+          <div className="bg-white border border-[#F4EEE0] rounded-2xl p-8 md:p-12 shadow-xl shadow-[#F4EEE0]/50 min-h-[600px] flex flex-col space-y-6">
             {/* Header Editor Area */}
             <input
               type="text"
               value={editorHeader}
               onChange={(e) => setEditorHeader(e.target.value)}
-              className="w-full font-bold text-sm tracking-widest text-neutral-800 font-sans uppercase text-center border-b border-neutral-100 pb-4 outline-none focus:border-[#111111]"
+              className="w-full font-bold text-sm tracking-widest text-[#3A3222] font-sans uppercase text-center border-b border-[#F4EEE0] pb-4 outline-none focus:border-[#111111]"
             />
 
             {/* Main Pleading Body Editor Area */}
@@ -154,7 +154,7 @@ export default function DraftBuilderPage() {
               value={editorText}
               onChange={(e) => setEditorText(e.target.value)}
               rows={22}
-              className="w-full font-serif text-sm text-neutral-700 leading-relaxed outline-none border-none resize-none focus:ring-0 select-text"
+              className="w-full font-serif text-sm text-[#4A4130] leading-relaxed outline-none border-none resize-none focus:ring-0 select-text"
             />
           </div>
         </div>

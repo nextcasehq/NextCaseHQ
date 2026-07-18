@@ -55,7 +55,7 @@ export default function LoginPage() {
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md bg-[#FDFBF7] border border-[#111111]/10 rounded shadow-sm p-8">
+      <div className="w-full max-w-md bg-[#FDFBF7] border border-[#C6A253]/30 rounded shadow-sm p-8">
         <h2 className="text-xl font-bold uppercase tracking-wider text-center mb-6">
           Enterprise Sign In
         </h2>
@@ -78,7 +78,7 @@ export default function LoginPage() {
               placeholder="name@firm.com"
               required
               disabled={isLoading}
-              className="w-full px-4 py-3 bg-[#111111]/5 border border-[#111111]/10 rounded outline-none focus:border-[#111111] disabled:opacity-50 transition-all font-sans text-sm"
+              className="w-full px-4 py-3 bg-[#111111]/5 border border-[#111111]/10 rounded outline-none focus:border-[#C6A253] disabled:opacity-50 transition-all font-sans text-sm"
             />
           </div>
 
@@ -93,18 +93,18 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
               disabled={isLoading}
-              className="w-full px-4 py-3 bg-[#111111]/5 border border-[#111111]/10 rounded outline-none focus:border-[#111111] disabled:opacity-50 transition-all font-sans text-sm"
+              className="w-full px-4 py-3 bg-[#111111]/5 border border-[#111111]/10 rounded outline-none focus:border-[#C6A253] disabled:opacity-50 transition-all font-sans text-sm"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 bg-[#111111] text-[#FDFBF7] font-semibold tracking-wider uppercase text-sm rounded shadow hover:bg-[#111111]/90 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            className="w-full py-4 bg-[#8A6D2F] text-[#F6F1E7] font-semibold tracking-wider uppercase text-sm rounded shadow hover:bg-[#6F5624] disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-[#FDFBF7] border-t-transparent rounded-full animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-[#F6F1E7] border-t-transparent rounded-full animate-spin"></span>
                 Authenticating...
               </span>
             ) : (

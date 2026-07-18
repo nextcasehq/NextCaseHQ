@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Brand palette — gold / cream / brown / maroon / near-black, matching the
+ * landing page. tailwind.config.ts's `bg-bg-base`, `bg-bg-surface`,
+ * `text-text-primary`, and `text-brand`/`bg-brand` utilities resolve to
+ * these; previously these custom properties were never defined anywhere,
+ * so those classes silently fell back to the browser default (transparent/
+ * black) instead of the intended brand colors.
+ */
+:root {
+  --color-bg-base: #FDFBF7;
+  --color-bg-surface: #FFFFFF;
+  --color-text-primary: #241E17;
+  --color-brand-accent: #C6A253;
+  --color-brand-brown: #8A6D2F;
+  --color-brand-brown-dark: #6F5624;
+  --color-brand-maroon: #7A2331;
+  --color-brand-maroon-dark: #5E1B26;
+  --color-brand-ink: #111111;
+  --border-radius-md: 0.5rem;
+}
+
 html, body {
   margin: 0 !important;
   padding: 0 !important;

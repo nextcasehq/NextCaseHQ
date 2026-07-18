@@ -321,7 +321,7 @@ export default function AdminConsolePage() {
       {/* Top Banner (Platform Owner Authority Gate) */}
       <div className="bg-[#111111] text-[#FDFBF7] border-b border-[#FDFBF7]/15 py-3 px-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="px-2 py-0.5 bg-indigo-600 text-[10px] tracking-wider uppercase font-extrabold rounded text-white animate-pulse">
+          <div className="px-2 py-0.5 bg-[#8A6D2F] text-[10px] tracking-wider uppercase font-extrabold rounded text-white animate-pulse">
             ADMINSEC_V1.0
           </div>
           <span className="text-xs font-mono tracking-widest uppercase">
@@ -329,7 +329,7 @@ export default function AdminConsolePage() {
           </span>
         </div>
         <div className="flex items-center gap-4 text-xs">
-          <span className="font-semibold text-neutral-400">
+          <span className="font-semibold text-[#B0A588]">
             Current Operator: <span className="text-[#FDFBF7] font-mono">owner@nextcasehq.com</span>
           </span>
           {isAdminAuthorized && (
@@ -355,7 +355,7 @@ export default function AdminConsolePage() {
         <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 py-12 font-sans">
           <div className="w-full max-w-md bg-white dark:bg-[#111111] border border-[#111111]/10 dark:border-[#FDFBF7]/10 rounded shadow-sm p-8 space-y-6">
             <div className="text-center">
-              <div className="w-12 h-12 bg-indigo-600/10 border border-indigo-600 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-[#8A6D2F]/10 border border-[#8A6D2F] text-[#8A6D2F] rounded-full flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
@@ -363,7 +363,7 @@ export default function AdminConsolePage() {
               <h2 className="text-xl font-bold uppercase tracking-wider text-[#111111] dark:text-[#FDFBF7]">
                 Admin Console Gate
               </h2>
-              <p className="mt-1 text-xs text-neutral-500 font-serif italic">
+              <p className="mt-1 text-xs text-[#8A7A56] font-serif italic">
                 Input Platform Master Access Secret Key to verify authorization.
               </p>
             </div>
@@ -376,7 +376,7 @@ export default function AdminConsolePage() {
 
             <form onSubmit={handleAdminSignIn} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-2">
                   Platform Operator Secret Key
                 </label>
                 <input
@@ -385,7 +385,7 @@ export default function AdminConsolePage() {
                   onChange={(e) => setAccessKeyInput(e.target.value)}
                   placeholder="e.g. nchq-admin-ops-2026"
                   required
-                  className="w-full px-4 py-3 bg-[#111111]/5 dark:bg-[#FDFBF7]/5 border border-[#111111]/10 dark:border-[#FDFBF7]/10 rounded outline-none focus:border-indigo-600 dark:focus:border-indigo-600 font-mono text-sm"
+                  className="w-full px-4 py-3 bg-[#111111]/5 dark:bg-[#FDFBF7]/5 border border-[#111111]/10 dark:border-[#FDFBF7]/10 rounded outline-none focus:border-[#8A6D2F] dark:focus:border-[#8A6D2F] font-mono text-sm"
                 />
               </div>
 
@@ -407,14 +407,14 @@ export default function AdminConsolePage() {
             {/* Admin Header Info */}
             <div className="p-6 border-b border-inherit">
               <Link href="/" className="flex items-center gap-2 group">
-                <svg className="w-5 h-5 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <svg className="w-5 h-5 text-[#8A6D2F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M6 4v16M18 4v16M6 4l12 16" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="font-bold text-base tracking-tight">
-                  NextCase<span className="text-indigo-600 font-black">OPS</span>
+                  NextCase<span className="text-[#8A6D2F] font-black">OPS</span>
                 </span>
               </Link>
-              <div className="mt-2 text-[10px] font-mono uppercase tracking-wider text-neutral-400">
+              <div className="mt-2 text-[10px] font-mono uppercase tracking-wider text-[#B0A588]">
                 Litigation OS Operator
               </div>
             </div>
@@ -435,7 +435,7 @@ export default function AdminConsolePage() {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider rounded flex items-center gap-3 transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white' : 'hover:bg-indigo-600/10 text-neutral-500'}`}
+                  className={`w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wider rounded flex items-center gap-3 transition-all ${activeTab === item.id ? 'bg-[#8A6D2F] text-white' : 'hover:bg-[#8A6D2F]/10 text-[#8A7A56]'}`}
                 >
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
@@ -464,7 +464,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">Operational Dashboard</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Real-time operational health, telemetry tracking, and resource saturation across NextCaseHQ Litigation OS.
                   </p>
                 </div>
@@ -473,7 +473,7 @@ export default function AdminConsolePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className={`p-5 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'} flex items-center justify-between`}>
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">Platform Health</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-[#B0A588]">Platform Health</div>
                       <div className="text-lg font-extrabold text-green-600 mt-1 flex items-center gap-2 truncate">
                         <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span>
                         STABLE // ACTIVE
@@ -484,18 +484,18 @@ export default function AdminConsolePage() {
 
                   <div className={`p-5 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'} flex items-center justify-between`}>
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">Inference Gateway Status</div>
-                      <div className="text-lg font-extrabold text-indigo-600 mt-1 flex items-center gap-2 truncate">
-                        <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-[#B0A588]">Inference Gateway Status</div>
+                      <div className="text-lg font-extrabold text-[#8A6D2F] mt-1 flex items-center gap-2 truncate">
+                        <span className="w-2 h-2 rounded-full bg-[#8A6D2F] animate-pulse"></span>
                         ONLINE ({selectedAiModel})
                       </div>
                     </div>
-                    <div className="px-3 py-1 bg-indigo-600/10 text-indigo-600 text-[10px] font-mono font-bold rounded ml-2">&lt;14ms</div>
+                    <div className="px-3 py-1 bg-[#8A6D2F]/10 text-[#8A6D2F] text-[10px] font-mono font-bold rounded ml-2">&lt;14ms</div>
                   </div>
 
                   <div className={`p-5 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'} flex items-center justify-between`}>
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">GitHub Actions Status</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-[#B0A588]">GitHub Actions Status</div>
                       <div className="text-lg font-extrabold text-green-600 mt-1 flex items-center gap-2 truncate">
                         <span className="w-2 h-2 rounded-full bg-green-600"></span>
                         WORKFLOW_PASS
@@ -518,7 +518,7 @@ export default function AdminConsolePage() {
                     { label: 'Storage Used', value: `${storageAllocated} GB / 5.0 TB` },
                   ].map((metric, i) => (
                     <div key={i} className={`p-5 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'}`}>
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 mb-2">{metric.label}</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-[#B0A588] mb-2">{metric.label}</div>
                       <div className="text-2xl font-black">{metric.value}</div>
                     </div>
                   ))}
@@ -530,7 +530,7 @@ export default function AdminConsolePage() {
                   <div className={`p-6 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'} space-y-4`}>
                     <h3 className="text-sm font-black uppercase tracking-wider border-b border-inherit pb-3 flex justify-between">
                       <span>API Router Health & Latency</span>
-                      <span className="text-[10px] font-mono text-indigo-600">Active Monitoring</span>
+                      <span className="text-[10px] font-mono text-[#8A6D2F]">Active Monitoring</span>
                     </h3>
                     <div className="space-y-3 text-xs font-mono">
                       {[
@@ -541,8 +541,8 @@ export default function AdminConsolePage() {
                       ].map((r, i) => (
                         <div key={i} className="flex justify-between items-center py-1 border-b border-inherit last:border-0">
                           <div>
-                            <span className="font-extrabold text-indigo-600 mr-2">{r.method}</span>
-                            <span className="text-neutral-500">{r.route}</span>
+                            <span className="font-extrabold text-[#8A6D2F] mr-2">{r.method}</span>
+                            <span className="text-[#8A7A56]">{r.route}</span>
                           </div>
                           <div className="flex gap-4">
                             <span className="text-green-600 font-bold">{r.status}</span>
@@ -567,7 +567,7 @@ export default function AdminConsolePage() {
                         { name: 'BEVS Validation Status', status: sentinelState.bevs.status, color: 'text-green-600' },
                       ].map((item, i) => (
                         <div key={i} className="p-3 border border-inherit rounded flex justify-between items-center">
-                          <span className="text-xs font-bold tracking-wider uppercase text-neutral-400">{item.name}</span>
+                          <span className="text-xs font-bold tracking-wider uppercase text-[#B0A588]">{item.name}</span>
                           <span className={`text-xs font-mono font-black ${item.color}`}>{item.status}</span>
                         </div>
                       ))}
@@ -588,7 +588,7 @@ export default function AdminConsolePage() {
                           <span className="text-red-600 font-extrabold uppercase mr-3">[{err.type}]</span>
                           <span>{err.message}</span>
                         </div>
-                        <div className="text-right text-neutral-400 text-[10px]">
+                        <div className="text-right text-[#B0A588] text-[10px]">
                           {err.timestamp} // IP: {err.ip}
                         </div>
                       </div>
@@ -603,7 +603,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">Tenant Management Console</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Register, configure, allocate resources, and oversee the subscription status of Litigation Groups.
                   </p>
                 </div>
@@ -613,7 +613,7 @@ export default function AdminConsolePage() {
                   <h3 className="text-sm font-black uppercase tracking-wider">Provision New Organization Tenant</h3>
                   <form onSubmit={handleCreateOrg} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">Org Name</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-1.5">Org Name</label>
                       <input
                         type="text"
                         value={newOrgName}
@@ -624,7 +624,7 @@ export default function AdminConsolePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">Jurisdiction Pack</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-1.5">Jurisdiction Pack</label>
                       <select
                         value={newOrgJurisdiction}
                         onChange={(e) => setNewOrgJurisdiction(e.target.value)}
@@ -636,7 +636,7 @@ export default function AdminConsolePage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">Storage Allocation (GB)</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-1.5">Storage Allocation (GB)</label>
                       <input
                         type="number"
                         value={newOrgStorage}
@@ -647,7 +647,7 @@ export default function AdminConsolePage() {
                     </div>
                     <button
                       type="submit"
-                      className="py-2 px-4 bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold uppercase tracking-wider rounded transition-all h-[34px]"
+                      className="py-2 px-4 bg-[#8A6D2F] text-white hover:bg-[#6F5624] text-xs font-bold uppercase tracking-wider rounded transition-all h-[34px]"
                     >
                       Provision Tenant
                     </button>
@@ -659,7 +659,7 @@ export default function AdminConsolePage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className={`text-[10px] font-mono uppercase tracking-wider border-b ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10 text-neutral-400' : 'bg-neutral-50 border-[#111111]/10 text-neutral-500'}`}>
+                        <tr className={`text-[10px] font-mono uppercase tracking-wider border-b ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10 text-[#B0A588]' : 'bg-[#FBF8F1] border-[#111111]/10 text-[#8A7A56]'}`}>
                           <th className="p-4">Organization Detail</th>
                           <th className="p-4">Jurisdiction</th>
                           <th className="p-4">Subscription Plan</th>
@@ -670,13 +670,13 @@ export default function AdminConsolePage() {
                       </thead>
                       <tbody className="divide-y divide-inherit text-xs">
                         {organizations.map((org) => (
-                          <tr key={org.id} className="hover:bg-indigo-600/5">
+                          <tr key={org.id} className="hover:bg-[#8A6D2F]/5">
                             <td className="p-4">
                               <div className="font-bold">{org.name}</div>
-                              <div className="text-[10px] font-mono text-neutral-400 mt-0.5">ID: {org.id}</div>
+                              <div className="text-[10px] font-mono text-[#B0A588] mt-0.5">ID: {org.id}</div>
                             </td>
                             <td className="p-4">
-                              <span className="px-2 py-0.5 bg-neutral-200 dark:bg-neutral-800 rounded font-mono font-bold">{org.jurisdiction}</span>
+                              <span className="px-2 py-0.5 bg-[#E7DFC9] dark:bg-[#3A3222] rounded font-mono font-bold">{org.jurisdiction}</span>
                             </td>
                             <td className="p-4">
                               <span className="font-bold">{org.subscription}</span>
@@ -698,7 +698,7 @@ export default function AdminConsolePage() {
                               </button>
                               <button
                                 onClick={() => handleDeleteOrg(org.id)}
-                                className="px-2 py-1 border border-neutral-600/30 hover:bg-red-600 hover:text-white hover:border-red-600 rounded text-[10px] font-mono uppercase font-bold transition-all"
+                                className="px-2 py-1 border border-[#5C5340]/30 hover:bg-red-600 hover:text-white hover:border-red-600 rounded text-[10px] font-mono uppercase font-bold transition-all"
                               >
                                 Delete
                               </button>
@@ -717,7 +717,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">User & Access Security</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Oversee administrative permissions, invite advocates, reset RSA security context envelopes, or disable access.
                   </p>
                 </div>
@@ -727,7 +727,7 @@ export default function AdminConsolePage() {
                   <h3 className="text-sm font-black uppercase tracking-wider">Invite/Provision Secure User</h3>
                   <form onSubmit={handleInviteUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">User Email</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-1.5">User Email</label>
                       <input
                         type="email"
                         value={newUserEmail}
@@ -738,7 +738,7 @@ export default function AdminConsolePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">User Full Name</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-1.5">User Full Name</label>
                       <input
                         type="text"
                         value={newUserName}
@@ -749,7 +749,7 @@ export default function AdminConsolePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">User Role</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-1.5">User Role</label>
                       <select
                         value={newUserRole}
                         onChange={(e) => setNewUserRole(e.target.value)}
@@ -762,7 +762,7 @@ export default function AdminConsolePage() {
                     </div>
                     <button
                       type="submit"
-                      className="py-2 px-4 bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold uppercase tracking-wider rounded transition-all h-[34px]"
+                      className="py-2 px-4 bg-[#8A6D2F] text-white hover:bg-[#6F5624] text-xs font-bold uppercase tracking-wider rounded transition-all h-[34px]"
                     >
                       Invite User
                     </button>
@@ -774,7 +774,7 @@ export default function AdminConsolePage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className={`text-[10px] font-mono uppercase tracking-wider border-b ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10 text-neutral-400' : 'bg-neutral-50 border-[#111111]/10 text-neutral-500'}`}>
+                        <tr className={`text-[10px] font-mono uppercase tracking-wider border-b ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10 text-[#B0A588]' : 'bg-[#FBF8F1] border-[#111111]/10 text-[#8A7A56]'}`}>
                           <th className="p-4">User Detail</th>
                           <th className="p-4">Platform / Tenant Role</th>
                           <th className="p-4">Organization Context</th>
@@ -784,17 +784,17 @@ export default function AdminConsolePage() {
                       </thead>
                       <tbody className="divide-y divide-inherit text-xs">
                         {users.map((user) => (
-                          <tr key={user.id} className="hover:bg-indigo-600/5">
+                          <tr key={user.id} className="hover:bg-[#8A6D2F]/5">
                             <td className="p-4">
                               <div className="font-bold">{user.name}</div>
-                              <div className="text-[10px] font-mono text-neutral-400 mt-0.5">{user.email} // ID: {user.id}</div>
+                              <div className="text-[10px] font-mono text-[#B0A588] mt-0.5">{user.email} // ID: {user.id}</div>
                             </td>
                             <td className="p-4">
-                              <span className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] ${user.role === 'PLATFORM_ADMIN' ? 'bg-indigo-600 text-white' : 'bg-neutral-200 dark:bg-neutral-800'}`}>
+                              <span className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] ${user.role === 'PLATFORM_ADMIN' ? 'bg-[#8A6D2F] text-white' : 'bg-[#E7DFC9] dark:bg-[#3A3222]'}`}>
                                 {user.role}
                               </span>
                             </td>
-                            <td className="p-4 font-semibold text-neutral-500">
+                            <td className="p-4 font-semibold text-[#8A7A56]">
                               {user.organization}
                             </td>
                             <td className="p-4">
@@ -811,7 +811,7 @@ export default function AdminConsolePage() {
                               </button>
                               <button
                                 onClick={() => handleResetUserAccess(user.id)}
-                                className="px-2 py-1 border border-neutral-600/30 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 rounded text-[10px] font-mono uppercase font-bold transition-all"
+                                className="px-2 py-1 border border-[#5C5340]/30 hover:bg-[#8A6D2F] hover:text-white hover:border-[#8A6D2F] rounded text-[10px] font-mono uppercase font-bold transition-all"
                               >
                                 Reset Access
                               </button>
@@ -830,10 +830,10 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">AI Engines & Prompt Registry</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Configure inference models, monitor provider status, track cost analytics, and inspect logs.
                   </p>
-                  <div className="mt-2 p-3 bg-indigo-600/5 border border-indigo-600/10 rounded text-xs text-indigo-600 font-mono font-bold">
+                  <div className="mt-2 p-3 bg-[#8A6D2F]/5 border border-[#8A6D2F]/10 rounded text-xs text-[#8A6D2F] font-mono font-bold">
                     🛡️ SECURITY MANDATE: Plain API keys are never exposed. Telemetry displays health and configuration status only.
                   </div>
                 </div>
@@ -847,7 +847,7 @@ export default function AdminConsolePage() {
 
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">Default Legal Model</label>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-2">Default Legal Model</label>
                         <select
                           value={selectedAiModel}
                           onChange={(e) => {
@@ -869,10 +869,10 @@ export default function AdminConsolePage() {
                       </div>
 
                       <div className="space-y-3">
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400">AI Gateway Feature Toggles</label>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588]">AI Gateway Feature Toggles</label>
                         {Object.entries(aiToggles).map(([key, val]) => (
                           <div key={key} className="flex justify-between items-center py-1.5 border-b border-inherit last:border-0 text-xs">
-                            <span className="font-bold uppercase tracking-wider font-mono text-neutral-400">{key.replace(/([A-Z])/g, ' $1')}</span>
+                            <span className="font-bold uppercase tracking-wider font-mono text-[#B0A588]">{key.replace(/([A-Z])/g, ' $1')}</span>
                             <button
                               onClick={() => {
                                 const nextToggles = { ...aiToggles, [key]: !val };
@@ -885,7 +885,7 @@ export default function AdminConsolePage() {
                                 };
                                 setLogs([newLog, ...logs]);
                               }}
-                              className={`px-3 py-1 text-[10px] font-mono font-black rounded uppercase ${val ? 'bg-indigo-600 text-white' : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500'}`}
+                              className={`px-3 py-1 text-[10px] font-mono font-black rounded uppercase ${val ? 'bg-[#8A6D2F] text-white' : 'bg-[#E7DFC9] dark:bg-[#3A3222] text-[#8A7A56]'}`}
                             >
                               {val ? 'ENABLED' : 'DISABLED'}
                             </button>
@@ -909,7 +909,7 @@ export default function AdminConsolePage() {
                             <span>{prov.provider}</span>
                             <span className="text-green-600">{prov.apiStatus}</span>
                           </div>
-                          <div className="flex justify-between text-[11px] text-neutral-400">
+                          <div className="flex justify-between text-[11px] text-[#B0A588]">
                             <span>Rates: {prov.costMetric}</span>
                             <span>Latency: {prov.p95Latency}</span>
                           </div>
@@ -917,10 +917,10 @@ export default function AdminConsolePage() {
                       ))}
                     </div>
 
-                    <div className="p-3 bg-indigo-600/5 rounded text-xs space-y-1 font-mono">
+                    <div className="p-3 bg-[#8A6D2F]/5 rounded text-xs space-y-1 font-mono">
                       <div className="font-bold uppercase tracking-wider">Prompt Version Registry</div>
-                      <div className="text-[11px] text-neutral-400">Active Registry: <span className="font-bold text-indigo-600">v1.2.4-stable (Indian Law compliant)</span></div>
-                      <div className="text-[11px] text-neutral-400">Total Preloaded Templates: <span className="font-bold">42 regional writs / plaints</span></div>
+                      <div className="text-[11px] text-[#B0A588]">Active Registry: <span className="font-bold text-[#8A6D2F]">v1.2.4-stable (Indian Law compliant)</span></div>
+                      <div className="text-[11px] text-[#B0A588]">Total Preloaded Templates: <span className="font-bold">42 regional writs / plaints</span></div>
                     </div>
                   </div>
                 </div>
@@ -932,13 +932,13 @@ export default function AdminConsolePage() {
                     {aiLogs.map((logItem, i) => (
                       <div key={i} className="p-3 border border-inherit rounded flex flex-col md:flex-row justify-between text-xs font-mono">
                         <div>
-                          <span className="font-bold text-indigo-600 uppercase mr-3">[{logItem.model}]</span>
+                          <span className="font-bold text-[#8A6D2F] uppercase mr-3">[{logItem.model}]</span>
                           <span>Inference computed for active drafting session. Tokens: {logItem.tokens}</span>
                         </div>
                         <div className="text-right space-x-4">
                           <span className="text-green-600 font-bold">{logItem.status}</span>
-                          <span className="font-semibold text-neutral-400">Est. Cost: {logItem.cost}</span>
-                          <span className="text-neutral-500 text-[10px]">{logItem.timestamp}</span>
+                          <span className="font-semibold text-[#B0A588]">Est. Cost: {logItem.cost}</span>
+                          <span className="text-[#8A7A56] text-[10px]">{logItem.timestamp}</span>
                         </div>
                       </div>
                     ))}
@@ -952,7 +952,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">System Operations & Flags</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Interact directly with hot-reload Feature Flags, clear memory cache, simulate disaster backup recovery, or monitor queue workers.
                   </p>
                 </div>
@@ -964,7 +964,7 @@ export default function AdminConsolePage() {
                     <div className="space-y-3">
                       {Object.entries(systemFlags).map(([key, value]) => (
                         <div key={key} className="flex justify-between items-center py-2 border-b border-inherit last:border-0 text-xs">
-                          <span className="font-bold uppercase tracking-wider font-mono text-neutral-400">{key.replace(/([A-Z])/g, ' $1')}</span>
+                          <span className="font-bold uppercase tracking-wider font-mono text-[#B0A588]">{key.replace(/([A-Z])/g, ' $1')}</span>
                           <button
                             onClick={() => {
                               const nextFlags = { ...systemFlags, [key]: !value };
@@ -977,7 +977,7 @@ export default function AdminConsolePage() {
                               };
                               setLogs([newLog, ...logs]);
                             }}
-                            className={`px-3 py-1 text-[10px] font-mono font-black rounded uppercase ${value ? 'bg-green-600 text-white' : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500'}`}
+                            className={`px-3 py-1 text-[10px] font-mono font-black rounded uppercase ${value ? 'bg-green-600 text-white' : 'bg-[#E7DFC9] dark:bg-[#3A3222] text-[#8A7A56]'}`}
                           >
                             {value ? 'ACTIVE' : 'INACTIVE'}
                           </button>
@@ -993,10 +993,10 @@ export default function AdminConsolePage() {
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         onClick={triggerSystemBackup}
-                        className="p-4 border border-[#111111]/10 dark:border-[#FDFBF7]/10 hover:border-indigo-600 rounded text-left transition-all active:scale-95 space-y-1"
+                        className="p-4 border border-[#111111]/10 dark:border-[#FDFBF7]/10 hover:border-[#8A6D2F] rounded text-left transition-all active:scale-95 space-y-1"
                       >
                         <div className="text-xs font-black uppercase tracking-wider">Trigger DB Backup</div>
-                        <div className="text-[10px] text-neutral-400">Perform instant system-wide snapshot.</div>
+                        <div className="text-[10px] text-[#B0A588]">Perform instant system-wide snapshot.</div>
                       </button>
 
                       <button
@@ -1004,7 +1004,7 @@ export default function AdminConsolePage() {
                         className="p-4 border border-[#111111]/10 dark:border-[#FDFBF7]/10 hover:border-red-600 rounded text-left transition-all active:scale-95 space-y-1"
                       >
                         <div className="text-xs font-black uppercase tracking-wider text-red-500">Purge Redis Cache</div>
-                        <div className="text-[10px] text-neutral-400">Clears compiled Turborepo targets.</div>
+                        <div className="text-[10px] text-[#B0A588]">Clears compiled Turborepo targets.</div>
                       </button>
                     </div>
 
@@ -1013,7 +1013,7 @@ export default function AdminConsolePage() {
                         <span>Database Health Status</span>
                         <span className="text-green-600">100% HEALTHY</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-400">
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-[#B0A588]">
                         <div>Active Conn Pool: 14 / 100</div>
                         <div>Disk Utilization: 8.44%</div>
                         <div>Replication lag: 0.12ms</div>
@@ -1031,11 +1031,11 @@ export default function AdminConsolePage() {
                       <div key={i} className="p-3 border border-inherit rounded flex flex-col md:flex-row justify-between items-center text-xs font-mono">
                         <div>
                           <span className="font-extrabold uppercase mr-3">{job.name}</span>
-                          <span className="text-neutral-400">Schedule: {job.schedule}</span>
+                          <span className="text-[#B0A588]">Schedule: {job.schedule}</span>
                         </div>
                         <div className="flex gap-6 items-center">
-                          <span className="text-neutral-400">Last Executed: {job.lastRun}</span>
-                          <span className={`px-2.5 py-1 rounded text-[10px] font-bold tracking-wider font-mono ${job.status === 'RUNNING' ? 'bg-indigo-600/10 text-indigo-600 animate-pulse' : job.status === 'SUCCESS' ? 'bg-green-600/10 text-green-600' : 'bg-red-600/10 text-red-600'}`}>
+                          <span className="text-[#B0A588]">Last Executed: {job.lastRun}</span>
+                          <span className={`px-2.5 py-1 rounded text-[10px] font-bold tracking-wider font-mono ${job.status === 'RUNNING' ? 'bg-[#8A6D2F]/10 text-[#8A6D2F] animate-pulse' : job.status === 'SUCCESS' ? 'bg-green-600/10 text-green-600' : 'bg-red-600/10 text-red-600'}`}>
                             {job.status}
                           </span>
                         </div>
@@ -1051,7 +1051,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">Streaming Observability Logs</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Audit security logs, application events, slow requests, failed background jobs, and JWT validation records.
                   </p>
                 </div>
@@ -1059,7 +1059,7 @@ export default function AdminConsolePage() {
                 {/* Filter and Stream Controls */}
                 <div className={`p-4 border ${isDarkMode ? 'border-[#FDFBF7]/10' : 'border-[#111111]/10'} rounded flex justify-between items-center text-xs font-mono`}>
                   <div className="flex gap-4">
-                    <span className="font-bold uppercase text-neutral-400">Streaming:</span>
+                    <span className="font-bold uppercase text-[#B0A588]">Streaming:</span>
                     <span className="text-green-600 flex items-center gap-1.5 font-bold">
                       <span className="w-2 h-2 rounded-full bg-green-600 animate-ping"></span>
                       LIVE CONNECTION ACTIVE
@@ -1075,7 +1075,7 @@ export default function AdminConsolePage() {
                       };
                       setLogs([demoLog, ...logs]);
                     }}
-                    className="px-3 py-1 border border-inherit rounded hover:bg-indigo-600 hover:text-white transition-all font-bold font-mono"
+                    className="px-3 py-1 border border-inherit rounded hover:bg-[#8A6D2F] hover:text-white transition-all font-bold font-mono"
                   >
                     Inject Test Log Event
                   </button>
@@ -1086,12 +1086,12 @@ export default function AdminConsolePage() {
                   {logs.map((log, i) => (
                     <div key={i} className="py-2.5 border-b border-inherit last:border-0 flex flex-col md:flex-row justify-between gap-2">
                       <div className="flex items-start gap-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.type === 'SECURITY' ? 'bg-purple-600 text-white' : log.type === 'AUDIT' ? 'bg-blue-600 text-white' : log.type === 'ERROR' ? 'bg-red-600 text-white' : log.type === 'AUTH' ? 'bg-yellow-600 text-black' : 'bg-neutral-600 text-white'}`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.type === 'SECURITY' ? 'bg-purple-600 text-white' : log.type === 'AUDIT' ? 'bg-[#8A6D2F] text-white' : log.type === 'ERROR' ? 'bg-red-600 text-white' : log.type === 'AUTH' ? 'bg-yellow-600 text-black' : 'bg-[#5C5340] text-white'}`}>
                           {log.type}
                         </span>
                         <span>{log.message}</span>
                       </div>
-                      <div className="text-right text-neutral-400 text-[10px] flex-shrink-0">
+                      <div className="text-right text-[#B0A588] text-[10px] flex-shrink-0">
                         {log.timestamp} // {log.ip}
                       </div>
                     </div>
@@ -1105,7 +1105,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">Sentinel Governance Dashboard</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Certify release conditions, verify test suites, audit design tokens, and inspect independent validation outputs.
                   </p>
                 </div>
@@ -1116,10 +1116,10 @@ export default function AdminConsolePage() {
                   <div className="flex items-center gap-4">
                     <div className="text-4xl font-black text-green-600">100%</div>
                     <div className="flex-1 space-y-1">
-                      <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                      <div className="h-3 bg-[#E7DFC9] dark:bg-[#3A3222] rounded-full overflow-hidden">
                         <div className="h-full bg-green-600 rounded-full" style={{ width: '100%' }}></div>
                       </div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
+                      <div className="text-[10px] font-mono text-[#B0A588] uppercase tracking-wider">
                         All 5 core Sentinel gatekeepers verified as PASS // Zero active defects
                       </div>
                     </div>
@@ -1136,12 +1136,12 @@ export default function AdminConsolePage() {
                           {val.status}
                         </span>
                       </div>
-                      <div className="space-y-1 text-xs font-mono text-neutral-400">
+                      <div className="space-y-1 text-xs font-mono text-[#B0A588]">
                         <div>Last Execution: <span className="text-[#111111] dark:text-[#FDFBF7] font-bold">{val.lastRun}</span></div>
                         <div>Duration: <span className="text-[#111111] dark:text-[#FDFBF7] font-bold">{val.duration}</span></div>
-                        <div>Linked Git Commit: <span className="text-indigo-600 font-bold">SHA {val.commit}</span></div>
+                        <div>Linked Git Commit: <span className="text-[#8A6D2F] font-bold">SHA {val.commit}</span></div>
                         <div className="pt-2">
-                          <span className="text-[11px] underline cursor-pointer text-indigo-600 font-bold hover:text-indigo-800">
+                          <span className="text-[11px] underline cursor-pointer text-[#8A6D2F] font-bold hover:text-[#3A3222]">
                             View GitHub Actions Asset Link
                           </span>
                         </div>
@@ -1157,7 +1157,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">Deployment & CI/CD</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Oversee version states, active release branches, and compile metrics across the Litigation OS repository.
                   </p>
                 </div>
@@ -1165,16 +1165,16 @@ export default function AdminConsolePage() {
                 {/* Live Code Metadata */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className={`p-5 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'}`}>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 mb-2">Litigation OS Version</div>
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-[#B0A588] mb-2">Litigation OS Version</div>
                     <div className="text-2xl font-black">v1.0.0-rc1</div>
                   </div>
                   <div className={`p-5 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'}`}>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 mb-2">Active Git Branch</div>
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-[#B0A588] mb-2">Active Git Branch</div>
                     <div className="text-xl font-bold font-mono">feat/admin-ops-console</div>
                   </div>
                   <div className={`p-5 rounded border ${isDarkMode ? 'bg-[#1a1a1a] border-[#FDFBF7]/10' : 'bg-white border-[#111111]/10'}`}>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 mb-2">Commit SHA</div>
-                    <div className="text-xl font-bold font-mono text-indigo-600">e28f3214da9</div>
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-[#B0A588] mb-2">Commit SHA</div>
+                    <div className="text-xl font-bold font-mono text-[#8A6D2F]">e28f3214da9</div>
                   </div>
                 </div>
 
@@ -1193,9 +1193,9 @@ export default function AdminConsolePage() {
                             <span>Release {dep.version}</span>
                             <span className="px-2 py-0.5 bg-green-600/10 text-green-600 text-[9px] rounded font-mono">DEPLOYED</span>
                           </div>
-                          <div className="text-neutral-400 text-[11px]">{dep.trigger}</div>
+                          <div className="text-[#B0A588] text-[11px]">{dep.trigger}</div>
                         </div>
-                        <div className="text-right text-neutral-400 text-[11px]">
+                        <div className="text-right text-[#B0A588] text-[11px]">
                           {dep.date}
                         </div>
                       </div>
@@ -1210,7 +1210,7 @@ export default function AdminConsolePage() {
               <div className="space-y-8 animate-fade-in">
                 <div>
                   <h1 className="text-3xl font-black uppercase tracking-wider mb-2">Growth & Usage Analytics</h1>
-                  <p className="text-sm font-serif italic text-neutral-500">
+                  <p className="text-sm font-serif italic text-[#8A7A56]">
                     Examine system usage patterns, daily active advocates, search index query rates, and multi-tenant resource growth.
                   </p>
                 </div>
@@ -1224,12 +1224,12 @@ export default function AdminConsolePage() {
                     <div className="h-44 flex items-end gap-2 border-b border-inherit pb-2">
                       {[12, 18, 25, 45, 62, 89, 112].map((height, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center">
-                          <div className="w-full bg-indigo-600 hover:opacity-80 transition-all rounded-t" style={{ height: `${height}%` }}></div>
-                          <span className="text-[10px] font-mono text-neutral-400 mt-2">Day {i+1}</span>
+                          <div className="w-full bg-[#8A6D2F] hover:opacity-80 transition-all rounded-t" style={{ height: `${height}%` }}></div>
+                          <span className="text-[10px] font-mono text-[#B0A588] mt-2">Day {i+1}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="text-xs text-neutral-400 font-mono">
+                    <div className="text-xs text-[#B0A588] font-mono">
                       Metric summary: <span className="text-[#111111] dark:text-[#FDFBF7] font-bold">112 Daily Active Advocates</span> across all registered firm networks.
                     </div>
                   </div>
@@ -1249,8 +1249,8 @@ export default function AdminConsolePage() {
                             <span className="font-bold">{feat.name}</span>
                             <span>{feat.percentage}%</span>
                           </div>
-                          <div className="h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${feat.percentage}%` }}></div>
+                          <div className="h-2 bg-[#E7DFC9] dark:bg-[#3A3222] rounded-full overflow-hidden">
+                            <div className="h-full bg-[#8A6D2F] rounded-full" style={{ width: `${feat.percentage}%` }}></div>
                           </div>
                         </div>
                       ))}

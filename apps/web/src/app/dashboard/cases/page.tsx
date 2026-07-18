@@ -70,8 +70,8 @@ export default function CasesPage() {
       <div className="flex justify-between items-center border-b border-[#111111]/10 pb-4">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">Active Litigation Portfolios</h1>
-          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-1">
-            Active Tenant Context: <span className="font-mono text-indigo-600">{tenantId.slice(0, 8)}...</span>
+          <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-widest mt-1">
+            Active Tenant Context: <span className="font-mono text-[#8A6D2F]">{tenantId.slice(0, 8)}...</span>
           </p>
         </div>
         <button
@@ -97,7 +97,7 @@ export default function CasesPage() {
               <span className="text-xs font-bold text-[#111111]/40 uppercase tracking-widest">
                 {c.court} // {c.jurisdiction}
               </span>
-              <h3 className="font-bold text-lg text-[#111111] mt-2 group-hover:text-indigo-600 transition-colors">
+              <h3 className="font-bold text-lg text-[#111111] mt-2 group-hover:text-[#8A6D2F] transition-colors">
                 {c.title}
               </h3>
             </div>

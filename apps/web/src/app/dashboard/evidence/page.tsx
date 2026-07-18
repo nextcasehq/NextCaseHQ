@@ -173,7 +173,7 @@ export default function EvidencePage() {
               >
                 <div className="flex justify-between items-start gap-4 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                    <span className="font-mono text-[10px] font-extrabold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded">
                       {item.id}
                     </span>
                     <span className="text-[10px] bg-[#111111]/5 text-[#111111]/60 px-2 py-0.5 rounded font-mono uppercase font-bold">

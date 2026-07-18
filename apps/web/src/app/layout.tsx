@@ -38,7 +38,11 @@ export default function RootLayout({
     <html lang="en" className={`${lora.variable} ${sourceSans.variable} bg-[#F4EEE0]`}>
       <body className="bg-[#F4EEE0] font-sans text-[#241E17]">
         <NavbarWrapper />
-        <main className="pt-16">{children}</main>
+        {/* Navbar is `sticky` (in-flow), not `fixed`, so it already reserves
+            its own height — extra top padding here just left a blank gap
+            below it (the reported "white patch"). No padding needed on
+            internal routes either, where NavbarWrapper renders nothing. */}
+        <main>{children}</main>
       </body>
     </html>
   );

@@ -22,6 +22,12 @@ const config: Config = {
         },
         brand: {
           DEFAULT: "var(--color-brand-accent)",
+          gold: "var(--color-brand-accent)",
+          brown: "var(--color-brand-brown)",
+          "brown-dark": "var(--color-brand-brown-dark)",
+          maroon: "var(--color-brand-maroon)",
+          "maroon-dark": "var(--color-brand-maroon-dark)",
+          ink: "var(--color-brand-ink)",
         },
       },
       borderRadius: {
