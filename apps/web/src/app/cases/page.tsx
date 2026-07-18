@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import BrandBackground from '@/components/BrandBackground';
+import EmptyState from '@/components/EmptyState';
 
 interface LegalCase {
   id: string;
@@ -359,13 +360,32 @@ function CasesChamberContent() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 bg-white border border-[#E7DFC9]/80 rounded-xl">
-          <span className="text-3xl">⚖️</span>
-          <h3 className="text-base font-bold text-[#4A4130] mt-3">No Active Cases</h3>
-          <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
-            No litigation cases exist under the active tenant context. Spawn a new case to initiate the workspace.
-          </p>
-        </div>
+        <EmptyState
+          icon={
+            <svg viewBox="0 0 40 40" className="h-8 w-8" fill="none">
+              <g stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 9v22" />
+                <path d="M14.5 31h11" />
+                <path d="M11 13h18" />
+                <path d="M13 13l-2.5 6h5L13 13z" />
+                <path d="M9.5 19a3.5 3.5 0 0 0 7 0" />
+                <path d="M27 13l-2.5 6h5L27 13z" />
+                <path d="M23.5 19a3.5 3.5 0 0 0 7 0" />
+              </g>
+              <circle cx="20" cy="9" r="1.8" fill="#8A6D2F" />
+            </svg>
+          }
+          title="No Active Cases"
+          description="No litigation cases exist under the active tenant context. Spawn a new case to initiate the workspace."
+          action={
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
+            >
+              Initiate New Case
+            </button>
+          }
+        />
       )}
     </main>
   );
