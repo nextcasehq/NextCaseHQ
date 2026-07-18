@@ -242,6 +242,31 @@ CREATE TABLE IF NOT EXISTS "WalletTransactionRecord" (
     "created_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- Additive migration: this table previously had no tenant_id/RLS at all —
+-- only the wallet_id FK to TenantWallet, which (like every FK) bypasses
+-- row-level security for its own referential-integrity check, per the
+-- lesson from DocumentEnvelope.case_id/DocumentChunkVector. A direct
+-- SELECT/UPDATE/DELETE against this table without going through
+-- TenantWallet first would not have been tenant-scoped at all.
+ALTER TABLE "WalletTransactionRecord" ADD COLUMN IF NOT EXISTS "tenant_id" UUID REFERENCES "Tenant"("id") ON DELETE CASCADE;
+UPDATE "WalletTransactionRecord" SET "tenant_id" = (SELECT "tenant_id" FROM "TenantWallet" WHERE "TenantWallet"."id" = "WalletTransactionRecord"."wallet_id") WHERE "tenant_id" IS NULL;
+ALTER TABLE "WalletTransactionRecord" ALTER COLUMN "tenant_id" SET NOT NULL;
+
+-- 7b. Notification — real in-app notifications, replacing the dashboard
+-- bell's previously hardcoded mock list. user_id is nullable: some
+-- notifications are tenant-wide (e.g. billing events) rather than
+-- addressed to one person.
+CREATE TABLE IF NOT EXISTS "Notification" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "user_id" UUID REFERENCES "User"("id") ON DELETE CASCADE,
+    "type" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "message" TEXT,
+    "read_at" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
 -- 8. SecurityAuditTrail
 CREATE TABLE IF NOT EXISTS "SecurityAuditTrail" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -268,6 +293,10 @@ ALTER TABLE "TenantWallet" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "TenantWallet" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentChunkVector" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentChunkVector" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "WalletTransactionRecord" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "WalletTransactionRecord" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Notification" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -288,6 +317,14 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentChunkVector";
 CREATE POLICY tenant_isolation_policy ON "DocumentChunkVector"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "WalletTransactionRecord";
+CREATE POLICY tenant_isolation_policy ON "WalletTransactionRecord"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "Notification";
+CREATE POLICY tenant_isolation_policy ON "Notification"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -302,7 +339,9 @@ CREATE INDEX IF NOT EXISTS idx_documentchunkvector_content_tsv ON "DocumentChunk
 CREATE INDEX IF NOT EXISTS idx_documentchunkvector_embedding_hnsw ON "DocumentChunkVector"
     USING hnsw ("embedding" vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_wallettransaction_wallet ON "WalletTransactionRecord"("wallet_id");
+CREATE INDEX IF NOT EXISTS idx_wallettransaction_tenant_time ON "WalletTransactionRecord"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_securityaudit_tenant_time ON "SecurityAuditTrail"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_notification_tenant_user_created ON "Notification"("tenant_id", "user_id", "created_at");
 
 -- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
 GRANT USAGE ON SCHEMA public TO nextcase_app;
