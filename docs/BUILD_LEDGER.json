@@ -24,8 +24,28 @@
     "20": "COMPLETE"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-18T07:00:00Z",
+  "last_updated": "2026-07-18T08:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
+  "production_security_status": "PARTIAL — the scoped hardening milestone (PR #63) is complete and merged, but production security as a whole is NOT complete. See critical_production_blockers and known_limitations below before treating this system as production-ready.",
+  "critical_production_blockers": [
+    {
+      "id": "admin_panel_client_side_login",
+      "severity": "CRITICAL",
+      "description": "apps/web/src/app/admin/page.tsx implements admin authentication entirely client-side: the password check (one accepted bypass phrase is literally the word \"admin\") and the exact token value it writes to the NEXTCASE_ADMIN_TOKEN cookie are both hardcoded in code shipped to every browser. Anyone who opens dev tools, or simply types \"admin\", reaches the admin console and everything behind /api/admin/*.",
+      "what_pr_63_did_and_did_not_fix": "PR #63 made the SERVER-side comparison configurable (ADMIN_ACCESS_TOKEN env var, constant-time compared) and made startup validation refuse to boot production on the old hardcoded default. That closes the 'read the public GitHub source, get the real production token' path. It does NOT fix the client-side UI, which still has no real authentication of any kind.",
+      "fix_requires": "A real server-verified admin login endpoint and session mechanism — a new feature, explicitly out of scope for every milestone through PR #63. This is the next approved milestone (Server-Verified Admin Authentication)."
+    }
+  ],
+  "known_limitations": [
+    {
+      "id": "static_csp_no_inline_script_protection",
+      "description": "Content-Security-Policy (lib/security/security-headers.ts) uses script-src 'self' 'unsafe-inline' rather than a nonce-based policy. A nonce+'strict-dynamic' CSP was built first and reverted after real headless-browser testing showed it breaks every statically-prerendered page in this app (most routes) — a per-request nonce can never match script tags baked into HTML built once at compile time. The current CSP still blocks loading scripts from external/attacker-controlled origins, but cannot block inline-script injection the way a nonce-based policy would. Full protection would require moving affected pages to dynamic rendering — an architecture/performance change, not undertaken here."
+    },
+    {
+      "id": "in_memory_rate_limiting_and_replay_protection",
+      "description": "lib/security/rate-limit.ts (login/webhook rate limits) and lib/security/replay-guard.ts (webhook replay protection, PR #62) are both per-process, in-memory state. Correct for a single running instance; a horizontally-scaled multi-instance deployment needs a shared store (Redis, or a DB table) for these to hold across instances. Explicitly out of scope per Product Owner decision (\"no Redis/distributed replay protection\") for the milestones that introduced them."
+    }
+  ],
   "milestones": {
     "database_foundation": {
       "status": "COMPLETE",
@@ -54,11 +74,12 @@
       "out_of_scope_next": ["search", "ai", "file_storage", "billing", "messaging"]
     },
     "production_security_hardening": {
-      "status": "COMPLETE_PENDING_REVIEW",
+      "status": "SCOPED_WORK_COMPLETE",
+      "status_note": "The six approved items for this milestone are complete and merged (PR #63, commit 05b4588). This status covers ONLY that scoped work — it is NOT a claim that production security overall is complete. See top-level critical_production_blockers and known_limitations.",
       "description": "Security headers (CSP/HSTS/X-Frame-Options/X-Content-Type-Options/Referrer-Policy/Permissions-Policy) applied globally via next.config.ts headers(). In-memory rate limiting (lib/security/rate-limit.ts) on login (10/5min) and webhooks (60/min) per client IP. Origin/Referer CSRF checks (lib/security/origin-check.ts) on login, logout, and upload. Tenant-context cookie now sets Secure over HTTPS. instrumentation.ts + lib/security/env-validation.ts refuse to boot in NODE_ENV=production if JWT_SECRET, WEBHOOK_SIGNING_SECRET, or ADMIN_ACCESS_TOKEN are missing or equal their known-insecure placeholder values. The admin gate's token moved from a hardcoded literal in middleware.ts to ADMIN_ACCESS_TOKEN, compared in constant time.",
-      "design_correction": "CSP was first implemented with a per-request nonce + 'strict-dynamic' (Next.js's documented pattern), then reverted after real headless-browser testing showed it breaks every statically-prerendered page (the majority of routes in this app): a nonce generated per-request can never match anything baked into HTML built once at compile time, so every script gets blocked. Replaced with a static script-src 'self' 'unsafe-inline' CSP, verified with zero console/CSP errors and a real UI-driven login flow (form fill -> submit -> fetch -> cookie -> client-side navigation) via headless Chromium.",
-      "scope_note": "No UI changes, no performance work, no database redesign, no Redis/distributed replay protection, no new features, per Product Owner scope. Not yet merged — opened for review per explicit instruction.",
-      "not_yet_true": "The admin panel (apps/web/src/app/admin/page.tsx) has an entirely client-side pseudo-login: the 'password' check and the token value it sets are both hardcoded in code shipped to every browser (one accepted bypass phrase is literally the word 'admin'). This milestone makes the SERVER-side gate configurable and fails startup on the insecure default in production, which closes the 'anyone can read the source and get in' path for any real deployment — but the admin UI itself remains fundamentally insecure by design and needs a real server-verified admin login endpoint as separate, explicit follow-up (a new feature, correctly out of scope here). Rate limiting and CSRF checks are also per-process/in-memory, same class of limitation as the webhook replay guard.",
+      "design_correction": "CSP was first implemented with a per-request nonce + 'strict-dynamic' (Next.js's documented pattern), then reverted after real headless-browser testing showed it breaks every statically-prerendered page (the majority of routes in this app): a nonce generated per-request can never match anything baked into HTML built once at compile time, so every script gets blocked. Replaced with a static script-src 'self' 'unsafe-inline' CSP — see known_limitations.static_csp_no_inline_script_protection for what this does and does not protect against. Verified with zero console/CSP errors and a real UI-driven login flow (form fill -> submit -> fetch -> cookie -> client-side navigation) via headless Chromium.",
+      "scope_note": "No UI changes, no performance work, no database redesign, no Redis/distributed replay protection, no new features, per Product Owner scope.",
+      "not_yet_true": "See top-level critical_production_blockers (admin_panel_client_side_login) and known_limitations (static_csp_no_inline_script_protection, in_memory_rate_limiting_and_replay_protection) for what this milestone explicitly does not resolve.",
       "out_of_scope_next": ["real_admin_authentication", "search", "ai", "file_storage", "billing", "messaging"]
     }
   }
