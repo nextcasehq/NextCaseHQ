@@ -183,7 +183,12 @@ export default function DashboardLayout({
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {notifications.length === 0 && (
-                  <p className="text-xs text-[#B0A588] text-center py-8">No notifications yet.</p>
+                  <div className="text-center py-10">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
+                      <span className="text-sm">🔔</span>
+                    </div>
+                    <p className="text-xs text-[#B0A588]">No notifications yet.</p>
+                  </div>
                 )}
                 {notifications.map((notif) => (
                   <button

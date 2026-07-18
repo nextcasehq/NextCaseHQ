@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { LitigationDb, Matter } from '@/lib/db/litigation-db';
 import BrandBackground from '@/components/BrandBackground';
+import EmptyState from '@/components/EmptyState';
 
 export default function MattersChamberPage() {
   const [matters, setMatters] = useState<Matter[]>([]);
@@ -319,13 +320,23 @@ export default function MattersChamberPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white border border-[#E7DFC9]/80 rounded-xl">
-            <span className="text-3xl">📂</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">No Matters Found</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
-              No matters matching current query/filters exist inside your secure multi-tenant partition.
-            </p>
-          </div>
+          <EmptyState
+            icon={
+              <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#8A6D2F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+              </svg>
+            }
+            title="No Matters Found"
+            description="No matters matching current query/filters exist inside your secure multi-tenant partition."
+            action={
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
+              >
+                Initiate New Matter
+              </button>
+            }
+          />
         )}
       </main>
     </div>
