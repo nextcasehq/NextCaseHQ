@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Navbar from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -9,7 +8,6 @@ import { Card } from '@/components/ui/Card';
 export default function ResourcesPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      <Navbar />
       <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <Badge variant="accent" className="mb-4">Compliance Resources</Badge>

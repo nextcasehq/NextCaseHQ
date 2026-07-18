@@ -50,7 +50,7 @@ export default function LoginPage() {
       {/* Brand Header */}
       <div className="relative mb-8 text-center">
         <Link href="/" className="text-3xl font-black tracking-tight text-[#111111]">
-          NextCase<span className="text-[#111111]/60">HQ</span>
+          NextCase<span className="text-[#8A6D2F]">HQ</span>
         </Link>
         <p className="mt-2 text-sm text-[#111111]/50 font-serif italic">
           AI-First Operating System for Litigation
