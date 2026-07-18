@@ -7,6 +7,7 @@ function baseProdEnv(): NodeJS.ProcessEnv {
     JWT_SECRET: 'a-real-random-secret',
     WEBHOOK_SIGNING_SECRET: 'another-real-random-secret',
     ADMIN_ACCESS_TOKEN: 'yet-another-real-random-secret',
+    ADMIN_SESSION_SECRET: 'still-another-real-random-secret',
   } as NodeJS.ProcessEnv;
 }
 
@@ -46,6 +47,11 @@ describe('collectStartupEnvIssues', () => {
   test('flags the known insecure ADMIN_ACCESS_TOKEN placeholder', () => {
     const env = { ...baseProdEnv(), ADMIN_ACCESS_TOKEN: 'nchq-admin-secret-key-2026' };
     expect(collectStartupEnvIssues(env).some((i) => i.variable === 'ADMIN_ACCESS_TOKEN')).toBe(true);
+  });
+
+  test('flags the known insecure ADMIN_SESSION_SECRET placeholder', () => {
+    const env = { ...baseProdEnv(), ADMIN_SESSION_SECRET: 'nchq-admin-session-secret-placeholder' };
+    expect(collectStartupEnvIssues(env).some((i) => i.variable === 'ADMIN_SESSION_SECRET')).toBe(true);
   });
 });
 

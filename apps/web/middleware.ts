@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
-import { constantTimeEqual } from '@/lib/security/constant-time';
-import { INSECURE_ADMIN_TOKEN_PLACEHOLDER } from '@/lib/security/env-validation';
+import { ADMIN_SESSION_COOKIE_NAME, verifyAdminSessionToken } from '@/lib/security/admin-session';
 
 /**
  * NCHQ Module 9: Secure Multi-Tenant API Gateway (Edge Middleware)
@@ -16,16 +15,26 @@ import { INSECURE_ADMIN_TOKEN_PLACEHOLDER } from '@/lib/security/env-validation'
  */
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');
-const ADMIN_ACCESS_TOKEN = process.env.ADMIN_ACCESS_TOKEN || INSECURE_ADMIN_TOKEN_PLACEHOLDER;
 
 export async function middleware(request: NextRequest) {
   const start = performance.now();
   const pathname = request.nextUrl.pathname;
 
-  // 0. Enforce zero-trust admin API gate
+  // 0. Enforce zero-trust admin API gate. /api/admin/session (mints/checks
+  // the session) and /api/admin/logout (clears it) authorize themselves —
+  // see apps/web/src/app/api/admin/session/route.ts — so they're reachable
+  // without an existing admin session cookie, same pattern as the
+  // self-authorized routes in section 2 below. Every other /api/admin/*
+  // route requires a signed session token minted by that login endpoint.
   if (pathname.startsWith('/api/admin')) {
-    const adminToken = request.cookies.get('NEXTCASE_ADMIN_TOKEN')?.value;
-    if (!adminToken || !constantTimeEqual(adminToken, ADMIN_ACCESS_TOKEN)) {
+    const isSelfAuthorizedAdminRoute =
+      pathname.startsWith('/api/admin/session') || pathname.startsWith('/api/admin/logout');
+    if (isSelfAuthorizedAdminRoute) {
+      return NextResponse.next();
+    }
+
+    const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value;
+    if (!adminToken || !(await verifyAdminSessionToken(adminToken))) {
       return new NextResponse(
         JSON.stringify({ error: 'SECURE_ACCESS_DENIED', message: 'Unauthorized administrative session.' }),
         { status: 401, headers: { 'content-type': 'application/json' } }
