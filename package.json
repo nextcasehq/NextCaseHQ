@@ -7,11 +7,14 @@
     "lint": "turbo lint",
     "typecheck": "node scripts/typescript_validation.js",
     "db:migrate": "node scripts/db/migrate.js",
-    "db:seed:dev-user": "node scripts/db/seed-dev-user.js"
+    "db:seed:dev-user": "node scripts/db/seed-dev-user.js",
+    "test:start-s3rver": "node scripts/test/start-s3rver.js"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1090.0",
     "bcryptjs": "^3.0.3",
     "pg": "^8.22.0",
+    "s3rver": "^3.7.1",
     "turbo": "latest",
     "typescript": "^5.0.0"
   },

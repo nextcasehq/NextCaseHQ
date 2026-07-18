@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1090.0",
     "@nextcase/ai-kernel": "workspace:*",
     "@nextcase/country-packs": "workspace:*",
     "@nextcase/design-system-ndl": "workspace:*",
@@ -38,6 +39,7 @@
     "jest": "^29.0.0",
     "jest-environment-jsdom": "^29.0.0",
     "postcss": "^8.0.0",
+    "s3rver": "3.7.1",
     "tailwindcss": "^3.0.0",
     "ts-jest": "^29.0.0",
     "typescript": "^5.0.0"

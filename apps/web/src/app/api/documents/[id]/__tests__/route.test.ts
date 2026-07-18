@@ -3,6 +3,7 @@ import { GET, DELETE } from '../route';
 import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { DatabaseClient, closePool } from '@/lib/db/db-client';
+import { putObject, getObject } from '@/lib/storage/object-storage';
 
 const TENANT_A = '00000000-0000-4000-8000-0000000000e3';
 const TENANT_B = '00000000-0000-4000-8000-0000000000e4';
@@ -117,5 +118,27 @@ describe('GET/DELETE /api/documents/[id]', () => {
 
     const verify = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
     expect(verify.status).toBe(200);
+  });
+
+  test('DELETE also removes the real underlying object from storage, not just the metadata row', async () => {
+    if (!process.env.S3_ENDPOINT) return; // requires `pnpm test:start-s3rver` running
+
+    const documentId = crypto.randomUUID();
+    const objectKey = `${TENANT_A}/${documentId}/delete-test.txt`;
+    await putObject(objectKey, Buffer.from('to be deleted'), 'text/plain');
+
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (id, tenant_id, title, storage_structure) VALUES ($1, $2, $3, $4)`,
+      [documentId, TENANT_A, 'delete-test.txt', { object_key: objectKey }]
+    );
+
+    const res = await DELETE(
+      buildRequest('DELETE', { cookie: await sessionCookieHeader(TENANT_A) }),
+      routeParams(documentId)
+    );
+    expect(res.status).toBe(200);
+
+    await expect(getObject(objectKey)).rejects.toThrow();
   });
 });

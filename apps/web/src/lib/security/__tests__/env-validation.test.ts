@@ -9,6 +9,10 @@ function baseProdEnv(): NodeJS.ProcessEnv {
     ADMIN_ACCESS_TOKEN: 'yet-another-real-random-secret',
     ADMIN_SESSION_SECRET: 'still-another-real-random-secret',
     REDIS_URL: 'redis://prod-redis.example.com:6379',
+    S3_ENDPOINT: 'https://s3.example-provider.com',
+    S3_BUCKET: 'nextcase-documents-prod',
+    S3_ACCESS_KEY_ID: 'a-real-access-key',
+    S3_SECRET_ACCESS_KEY: 'a-real-secret-key',
   } as NodeJS.ProcessEnv;
 }
 
@@ -59,6 +63,14 @@ describe('collectStartupEnvIssues', () => {
     const env = baseProdEnv();
     delete env.REDIS_URL;
     expect(collectStartupEnvIssues(env).some((i) => i.variable === 'REDIS_URL')).toBe(true);
+  });
+
+  test('flags missing S3_* object storage variables in production', () => {
+    const env = baseProdEnv();
+    delete env.S3_ENDPOINT;
+    delete env.S3_BUCKET;
+    const issues = collectStartupEnvIssues(env);
+    expect(issues.some((i) => i.variable.includes('S3_ENDPOINT') && i.variable.includes('S3_BUCKET'))).toBe(true);
   });
 });
 
