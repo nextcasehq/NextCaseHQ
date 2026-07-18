@@ -64,14 +64,15 @@ export async function middleware(request: NextRequest) {
   // that verify their own request authenticity — see
   // apps/web/src/lib/auth/session.ts and
   // apps/web/src/lib/security/webhook-signature.ts. /api/documents/upload
-  // authorizes itself via the real session cookie; /api/webhooks
-  // authorizes itself via HMAC request signatures. Gating either here too
-  // would require a second, disconnected Bearer-token credential that
-  // nothing in the app actually issues, effectively making the route
-  // unreachable.
+  // and /api/cases authorize themselves via the real session cookie;
+  // /api/webhooks authorizes itself via HMAC request signatures. Gating
+  // any of these here too would require a second, disconnected
+  // Bearer-token credential that nothing in the app actually issues,
+  // effectively making the route unreachable.
   const isSelfAuthorizedApiRoute =
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/documents/upload') ||
+    pathname.startsWith('/api/cases') ||
     pathname.startsWith('/api/webhooks');
   if (!pathname.startsWith('/api/all') && (!pathname.startsWith('/api/') || isSelfAuthorizedApiRoute)) {
     return NextResponse.next();
