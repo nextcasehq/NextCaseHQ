@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { verifyWebhookSignature, WEBHOOK_TOLERANCE_SECONDS } from '@/lib/security/webhook-signature';
+import { hasBeenSeen, remember } from '@/lib/security/replay-guard';
 
 /**
  * NCHQ Module 13: Core Webhook Entry Point (Edge Runtime)
  * Sprint B: Runtime Input Schema & Data Locking
+ *
+ * Every request must carry a valid x-nextcase-signature (HMAC-SHA256 over
+ * `${timestamp}.${rawBody}`) and a fresh x-nextcase-timestamp. Unsigned,
+ * mis-signed, expired, tampered, or replayed requests are rejected before
+ * the body is ever parsed as JSON.
  */
 
 const WebhookPayloadSchema = z.object({
@@ -15,8 +22,30 @@ const WebhookPayloadSchema = z.object({
 export async function POST(request: Request) {
   const start = performance.now();
 
+  // Signature covers the exact raw bytes — must read as text before any
+  // JSON parsing, since re-serializing would change the signed content.
+  const rawBody = await request.text();
+  const timestampHeader = request.headers.get('x-nextcase-timestamp');
+  const signatureHeader = request.headers.get('x-nextcase-signature');
+
+  const verification = await verifyWebhookSignature({ rawBody, timestampHeader, signatureHeader });
+  if (!verification.valid) {
+    return NextResponse.json(
+      { error: 'SECURE_ACCESS_DENIED', reason: verification.reason },
+      { status: 401 }
+    );
+  }
+
+  // Replay protection: the same signed envelope (timestamp+body, which the
+  // signature already binds together) may not be processed twice within
+  // its validity window.
+  if (hasBeenSeen(signatureHeader!)) {
+    return NextResponse.json({ error: 'REPLAYED_REQUEST' }, { status: 409 });
+  }
+  remember(signatureHeader!, WEBHOOK_TOLERANCE_SECONDS * 1000);
+
   try {
-    const rawPayload = await request.json();
+    const rawPayload = JSON.parse(rawBody);
 
     // Strict Zod validation
     const result = WebhookPayloadSchema.safeParse(rawPayload);

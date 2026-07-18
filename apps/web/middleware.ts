@@ -43,14 +43,18 @@ export async function middleware(request: NextRequest) {
   }
 
   // 2. Only intercept /api/* routes (excluding auth, and excluding routes
-  // that verify the real session cookie themselves — see
-  // apps/web/src/lib/auth/session.ts. /api/documents/upload does its own
-  // session-based authorization internally; gating it here too would
-  // require a second, disconnected Bearer-token credential that nothing
-  // in the app actually issues, effectively making the route unreachable.
+  // that verify their own request authenticity — see
+  // apps/web/src/lib/auth/session.ts and
+  // apps/web/src/lib/security/webhook-signature.ts. /api/documents/upload
+  // authorizes itself via the real session cookie; /api/webhooks
+  // authorizes itself via HMAC request signatures. Gating either here too
+  // would require a second, disconnected Bearer-token credential that
+  // nothing in the app actually issues, effectively making the route
+  // unreachable.
   const isSelfAuthorizedApiRoute =
     request.nextUrl.pathname.startsWith('/api/auth') ||
-    request.nextUrl.pathname.startsWith('/api/documents/upload');
+    request.nextUrl.pathname.startsWith('/api/documents/upload') ||
+    request.nextUrl.pathname.startsWith('/api/webhooks');
   if (!request.nextUrl.pathname.startsWith('/api/all') && (!request.nextUrl.pathname.startsWith('/api/') || isSelfAuthorizedApiRoute)) {
     return NextResponse.next();
   }
