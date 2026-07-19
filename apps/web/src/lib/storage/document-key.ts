@@ -18,6 +18,20 @@ export const ALLOWED_DOCUMENT_EXTENSIONS: Record<string, string> = {
   '.png': 'image/png',
 };
 
+/**
+ * Which of the 7 allowed upload content types (above) can be rendered
+ * inline by a browser with zero conversion (Sprint 3B, PR 3B-2). DOC/DOCX
+ * are deliberately excluded — no browser-native renderer exists for them
+ * and a conversion service is out of scope for this milestone — so those
+ * two remain download-only, with an explicit, testable "unsupported
+ * preview" response rather than a silent failure.
+ */
+const PREVIEW_ELIGIBLE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf', 'text/plain']);
+
+export function isPreviewEligible(contentType: string | null | undefined): boolean {
+  return !!contentType && PREVIEW_ELIGIBLE_CONTENT_TYPES.has(contentType);
+}
+
 export interface FileTypeValidationResult {
   valid: boolean;
   contentType?: string;
