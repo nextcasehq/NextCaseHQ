@@ -152,6 +152,40 @@ Claude maintains the SEO/GEO workbook's structure, taxonomy, relationships, dedu
 - `visibility_status` (`PRIVATE` | `PUBLIC`) — distinct from `verification_status`. A keyword can be `SME_REVIEWED` and still `PRIVATE` (used only for internal research/Knowledge Graph prep) until a Product Owner decision makes it `PUBLIC`.
 - `indexable` (boolean) — whether the keyword's target page is allowed to be indexed once public; defaults `FALSE` until every §7.4 publication gate is satisfied.
 
+#### 7.1.1 Entity Coverage Matrix
+
+Per Product Owner direction, the workbook tracks a second unit of record alongside `KeywordRecord`: **entity completeness**, not just keyword status. This is the concept that turns the programme from keyword management into knowledge management — the workbook's authoritative question stops being "do we have a keyword for this?" and becomes "is this entity's public page actually complete?"
+
+One `EntityCoverageRecord` per real-world entity (a specific Court, Act, Section, Practice Area, Procedure, Document Type, Jurisdiction, or Dictionary term), tracked as a new `EntityCoverage` workbook sheet:
+
+```
+EntityCoverageRecord
+  entity_id, entity_type (COURT | ACT | SECTION | PRACTICE_AREA | PROCEDURE |
+                          DOCUMENT_TYPE | JURISDICTION | DICTIONARY_TERM),
+  entity_name, entity_slug,
+
+  has_canonical_page (bool), canonical_url,
+  has_metadata (bool),
+  has_json_ld (bool), json_ld_schema_type,
+  has_internal_links (bool), internal_link_count,
+  has_faq (bool),
+  has_related_terms (bool),
+  has_related_procedures (bool),
+  has_related_acts (bool),
+  has_related_courts (bool),
+  has_citations (bool), citation_count,
+
+  human_reviewed (bool), reviewed_by, last_reviewed_at,
+  content_quality_score (0-100, rubric-scored, not self-reported),
+  publication_status (NOT_STARTED | DRAFT | IN_REVIEW | PUBLISHED | NEEDS_UPDATE),
+
+  completeness_score (computed: % of the above completeness fields satisfied)
+```
+
+`completeness_score` is a computed field, not authored — it lets the workbook answer "which entities are 80% complete but missing citations" or "which Courts have a canonical page but no JSON-LD" directly, rather than inferring gaps from keyword-level data. `KeywordRecord.primary_entity_id` (§6.2) is the join key back to this table — every keyword ultimately points at an entity, and every entity's readiness is now tracked independently of how many keywords target it. A Practice Area page can have zero remaining unmapped keywords and still be correctly flagged incomplete if it has no citations or hasn't had human review.
+
+This does not replace the publication gates in §7.5 — a keyword still can't go public without them. It adds a per-entity view on top, so completeness is measured at the level the Legal Knowledge Graph actually cares about (entities), not just at the level of individual search phrases.
+
 Both are additive to the `KeywordRecord` schema already proposed in §6.2 — no redesign of that model was needed.
 
 ### 7.2 Blank-Space Audit (read-only, current public pages)
@@ -182,7 +216,9 @@ All modules link only to real canonical URLs (`canonical_target`), never to a pl
 
 ### 7.4 Keyword-to-Page Clustering Model
 
-Consolidation targets (page groups, not one page per keyword) for the ~15,000-keyword set:
+**These figures are an early planning estimate, not a target to hit.** The actual page count should emerge from entity clustering and deduplication, not the reverse — if the correct outcome after real entity work is 2,800 pages or 6,200 pages, either is fine. The objective is comprehensive entity coverage (§7.1.1) with minimal duplication, never a specific page-count number. The table below exists to sanity-check that the model consolidates rather than producing one page per keyword, not to set a quota.
+
+Illustrative consolidation targets (page groups, not one page per keyword) for the ~15,000-keyword set:
 
 | Content group | Estimated real pages | Consolidation logic |
 |---|---|---|
@@ -197,7 +233,7 @@ Consolidation targets (page groups, not one page per keyword) for the ~15,000-ke
 | Legal Questions / FAQs | ~200–500 standalone + many more as FAQ sections on entity pages | A question only becomes a standalone page if it doesn't fit naturally as an FAQ block on an existing entity page — avoids duplicate near-identical pages |
 | Explanatory articles | ~100–300 | Evergreen topic-cluster and comparison content, each with one primary intent |
 
-**Total: roughly 3,500–5,000 real pages** absorbing ~15,000 keywords (avg. ~3–4 keywords per page via primary + related-term mapping) — never a 1:1 keyword-to-page ratio. Every page in every group still requires: one primary search intent, one primary entity/topic, a bounded secondary-term set, real original content, citations, internal links, canonical URL, appropriate structured data, and human/SME review before publication — no exceptions by content group.
+**Illustrative total: roughly 3,500–5,000 real pages**, an early sanity-check figure, not a target — absorbing ~15,000 keywords (avg. ~3–4 keywords per page via primary + related-term mapping) demonstrates the model consolidates rather than going 1:1; the real number is whatever entity clustering and dedup produce. Every page in every group still requires: one primary search intent, one primary entity/topic, a bounded secondary-term set, real original content, citations, internal links, canonical URL, appropriate structured data, and human/SME review before publication — no exceptions by content group.
 
 ### 7.5 Publication Gates (restated, binding)
 
