@@ -81,7 +81,7 @@ export default function Features() {
     <section id="features" className="bg-[#F4EEE0]">
       <div className="mx-auto w-full max-w-7xl px-6 py-16 md:px-12 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#6F5624]">
             Capabilities
           </span>
           <h2 className="mt-3 text-balance font-serif text-3xl font-black tracking-tight text-[#241E17] md:text-4xl">
@@ -99,7 +99,7 @@ export default function Features() {
               key={feature.title}
               className="group flex flex-col rounded-2xl border border-[#D9CDB2] bg-[#FBF8F1] p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C6A253] hover:shadow-lg hover:shadow-[#8A6D2F]/10"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFE6CE] text-[#8A6D2F] transition-colors group-hover:bg-[#8A6D2F] group-hover:text-[#F6F1E7]">
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFE6CE] text-[#8A6D2F] transition-colors group-hover:bg-[#8A6D2F] group-hover:text-white">
                 {feature.icon}
               </span>
               <h3 className="mt-5 font-serif text-lg font-bold tracking-tight text-[#241E17]">

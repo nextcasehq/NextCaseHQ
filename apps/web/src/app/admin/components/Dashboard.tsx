@@ -9,7 +9,7 @@ interface MetricCardProps {
 
 const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, isPositive }) => (
   <div className="bg-white border border-[#F4EEE0] p-6 rounded-2xl shadow-sm hover:shadow-md transition-all">
-    <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-wider mb-2">{title}</p>
+    <p className="text-xs font-semibold text-[#726B58] uppercase tracking-wider mb-2">{title}</p>
     <p className="text-3xl font-black text-[#111111] mb-1">{value}</p>
     <p className={`text-xs font-bold ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>{change}</p>
   </div>
@@ -27,7 +27,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-black text-[#111111]">Console Executive Summary</h2>
-        <p className="text-sm text-[#8A7A56] font-serif italic mt-1">Live metrics across multi-tenant clusters, cryptographic ledgers, and inference nodes.</p>
+        <p className="text-sm text-[#6F5624] font-serif italic mt-1">Live metrics across multi-tenant clusters, cryptographic ledgers, and inference nodes.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

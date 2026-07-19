@@ -166,7 +166,7 @@ export default function DocumentDetailPage() {
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <span className="text-3xl">🔒</span>
         <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to view this document.</p>
+        <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this document.</p>
         <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
           Go to Login →
         </Link>
@@ -179,7 +179,7 @@ export default function DocumentDetailPage() {
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <span className="text-3xl">⚠️</span>
         <h2 className="text-lg font-bold mt-2">Document Not Found</h2>
-        <p className="text-xs text-[#B0A588] mt-1">This document does not exist or you don&apos;t have access to it.</p>
+        <p className="text-xs text-[#726B58] mt-1">This document does not exist or you don&apos;t have access to it.</p>
       </div>
     );
   }
@@ -204,15 +204,15 @@ export default function DocumentDetailPage() {
           <span className="text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
             {typeDef?.label ?? 'Uploaded Document'}
           </span>
-          <span className="text-[10px] font-mono text-[#B0A588]">v{doc.version_count || 1}</span>
+          <span className="text-[10px] font-mono text-[#726B58]">v{doc.version_count || 1}</span>
         </div>
         <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">{doc.title}</h1>
         {doc.matter_id && (
-          <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mt-1">
+          <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider mt-1">
             MATTER: <Link href={`/matters/${doc.matter_id}`} className="text-[#8A6D2F] font-sans hover:underline">Open Matter →</Link>
           </p>
         )}
-        <p className="text-[10px] text-[#B0A588] mt-1">Updated {new Date(doc.updated_at).toLocaleDateString()}</p>
+        <p className="text-[10px] text-[#726B58] mt-1">Updated {new Date(doc.updated_at).toLocaleDateString()}</p>
 
         <div className="flex flex-wrap items-center gap-3 mt-4">
           <a
@@ -255,7 +255,7 @@ export default function DocumentDetailPage() {
       {isImproveEligible && (improving || improvedContent !== null) && (
         <section className="bg-white border border-[#8A6D2F]/40 rounded-xl p-6 shadow-sm mb-6">
           <h2 className="text-xs font-bold uppercase tracking-widest text-[#8A6D2F] mb-3">Improve Draft (AI)</h2>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#8A7A56] mb-1">Revision Instruction</label>
+          <label className="block text-xs font-bold uppercase tracking-wider text-[#6F5624] mb-1">Revision Instruction</label>
           <input
             type="text"
             value={improveInstruction}
@@ -273,7 +273,7 @@ export default function DocumentDetailPage() {
           {improveError && <p className="text-xs font-semibold text-red-700 mb-2">{improveError}</p>}
           {improvedContent !== null && (
             <>
-              <p className="text-[10px] text-[#B0A588] mb-2">AI-revised draft — review and edit before saving as a new version.</p>
+              <p className="text-[10px] text-[#726B58] mb-2">AI-revised draft — review and edit before saving as a new version.</p>
               <textarea
                 value={improvedContent}
                 onChange={(e) => setImprovedContent(e.target.value)}
@@ -293,7 +293,7 @@ export default function DocumentDetailPage() {
       )}
 
       <section className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Version History</h2>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Version History</h2>
         {versions.length > 0 ? (
           <ol className="space-y-2">
             {versions.map((v, i) => (
@@ -301,12 +301,12 @@ export default function DocumentDetailPage() {
                 <span className="text-sm font-bold text-[#3A3222]">
                   v{v.version_number} {i === 0 && <span className="text-[10px] font-bold text-[#8A6D2F] uppercase ml-1">current</span>}
                 </span>
-                <span className="text-[10px] font-mono text-[#B0A588]">{new Date(v.created_at).toLocaleDateString()}</span>
+                <span className="text-[10px] font-mono text-[#726B58]">{new Date(v.created_at).toLocaleDateString()}</span>
               </li>
             ))}
           </ol>
         ) : (
-          <p className="text-xs text-[#8A7A56] text-center py-4">No version history yet.</p>
+          <p className="text-xs text-[#6F5624] text-center py-4">No version history yet.</p>
         )}
       </section>
     </article>

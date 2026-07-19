@@ -147,7 +147,7 @@ function SearchPageContent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Query statutory codes, court transcripts, exhibits, or legal definitions..."
-          className="flex-1 px-6 py-4 bg-white border border-[#111111]/10 rounded shadow-sm outline-none focus:border-[#111111] font-sans text-base placeholder:text-[#111111]/40"
+          className="flex-1 px-6 py-4 bg-white border border-[#111111]/10 rounded shadow-sm outline-none focus:border-[#111111] font-sans text-base placeholder:text-[#111111]/70"
         />
         <button
           type="submit"
@@ -167,7 +167,7 @@ function SearchPageContent() {
               className={`px-4 py-2 text-xs uppercase tracking-wider font-bold border-b-2 transition-all ${
                 categoryFilter === cat
                   ? 'border-[#111111] text-[#111111]'
-                  : 'border-transparent text-[#111111]/40 hover:text-[#111111]'
+                  : 'border-transparent text-[#111111]/70 hover:text-[#111111]'
               }`}
             >
               {cat}
@@ -178,17 +178,17 @@ function SearchPageContent() {
 
       {/* Search Results Render */}
       {!hasSearched ? (
-        <div className="border border-dashed border-[#111111]/20 rounded p-16 text-center text-sm font-serif italic text-[#111111]/40">
+        <div className="border border-dashed border-[#111111]/20 rounded p-16 text-center text-sm font-serif italic text-[#111111]/70">
           Enter a search query above to explore indexed litigation documents, statutory packs, and local evidence exhibits.
         </div>
       ) : displayedResults.length === 0 ? (
         <div className="p-12 text-center border border-[#111111]/10 rounded bg-white space-y-2">
           <p className="font-serif italic text-base text-[#111111]/60">No matched entries found.</p>
-          <p className="text-xs font-mono text-[#111111]/40">Ensure correct spellings or expand jurisdictional pack settings.</p>
+          <p className="text-xs font-mono text-[#111111]/70">Ensure correct spellings or expand jurisdictional pack settings.</p>
         </div>
       ) : (
         <div className="space-y-6">
-          <p className="text-xs font-mono text-[#111111]/50 uppercase tracking-widest">
+          <p className="text-xs font-mono text-[#111111]/70 uppercase tracking-widest">
             Matched {displayedResults.length} index entries
           </p>
           <div className="space-y-4">
@@ -203,11 +203,11 @@ function SearchPageContent() {
                     <span className="text-[10px] font-mono border border-[#111111]/10 bg-[#111111]/5 text-[#111111]/70 px-2 py-0.5 rounded uppercase tracking-wider mr-2">
                       {item.category}
                     </span>
-                    <span className="text-xs font-bold text-[#111111]/40 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-[#111111]/70 uppercase tracking-widest">
                       {item.source} // {item.jurisdiction}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-[#111111]/40">{item.id}</span>
+                  <span className="text-[10px] font-mono text-[#111111]/70">{item.id}</span>
                 </div>
                 <h3 className="font-bold text-lg text-[#111111] group-hover:text-[#8A6D2F] transition-colors">
                   {item.title}
@@ -229,14 +229,14 @@ function SearchPageContent() {
                 <span className="text-[10px] font-mono border border-[#111111]/10 bg-[#111111]/5 text-[#111111]/70 px-2 py-0.5 rounded uppercase tracking-wider mr-2">
                   {selectedResult.category}
                 </span>
-                <span className="text-xs font-bold text-[#111111]/40 uppercase tracking-widest">
+                <span className="text-xs font-bold text-[#111111]/70 uppercase tracking-widest">
                   {selectedResult.source} // {selectedResult.jurisdiction}
                 </span>
                 <h2 className="text-xl font-black uppercase tracking-wider text-[#111111] mt-2">
                   {selectedResult.title}
                 </h2>
               </div>
-              <span className="text-xs font-mono text-[#111111]/40">{selectedResult.id}</span>
+              <span className="text-xs font-mono text-[#111111]/70">{selectedResult.id}</span>
             </div>
 
             <div className="space-y-6">
@@ -249,13 +249,13 @@ function SearchPageContent() {
 
               <div className="grid grid-cols-2 gap-4 bg-[#111111]/5 p-4 rounded border border-[#111111]/5">
                 <div>
-                  <h5 className="text-[10px] font-mono font-bold text-[#111111]/50 uppercase">Cryptographic SHA-256 Hash</h5>
+                  <h5 className="text-[10px] font-mono font-bold text-[#111111]/70 uppercase">Cryptographic SHA-256 Hash</h5>
                   <p className="text-[10px] font-mono text-[#111111]/70 overflow-hidden text-ellipsis">
                     {selectedResult.id === 'SEC-12-BNSS' ? 'c9a2f1b8c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8' : 'f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0'}
                   </p>
                 </div>
                 <div>
-                  <h5 className="text-[10px] font-mono font-bold text-[#111111]/50 uppercase">AES-GCM Security Envelope</h5>
+                  <h5 className="text-[10px] font-mono font-bold text-[#111111]/70 uppercase">AES-GCM Security Envelope</h5>
                   <p className="text-[10px] font-mono text-[#111111]/70">
                     ENVELOPE_ENCRYPTED_STABLE // KMS v1-active
                   </p>

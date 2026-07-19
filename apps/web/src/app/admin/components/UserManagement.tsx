@@ -11,13 +11,13 @@ export default function UserManagement() {
     <div className="space-y-6 bg-white border border-[#F4EEE0] p-6 rounded-2xl shadow-sm">
       <div>
         <h3 className="text-xl font-black text-[#111111]">Active Practitioner Directory</h3>
-        <p className="text-sm text-[#B0A588] font-serif italic mt-0.5">Manage session tokens, assign role access levels, and audit credential usage.</p>
+        <p className="text-sm text-[#726B58] font-serif italic mt-0.5">Manage session tokens, assign role access levels, and audit credential usage.</p>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b border-[#F4EEE0] text-[#B0A588] font-bold uppercase tracking-wider text-[11px]">
+            <tr className="border-b border-[#F4EEE0] text-[#726B58] font-bold uppercase tracking-wider text-[11px]">
               <th className="py-3 px-4">Email</th>
               <th className="py-3 px-4">Role</th>
               <th className="py-3 px-4">Workspace Context</th>
@@ -30,7 +30,7 @@ export default function UserManagement() {
                 <td className="py-4 px-4 text-[#111111]">{u.email}</td>
                 <td className="py-4 px-4 text-[#8A6D2F] font-bold">{u.role}</td>
                 <td className="py-4 px-4 text-[#5C5340]">{u.tenant}</td>
-                <td className="py-4 px-4 text-[#B0A588]">{u.joined}</td>
+                <td className="py-4 px-4 text-[#726B58]">{u.joined}</td>
               </tr>
             ))}
           </tbody>

@@ -52,16 +52,16 @@ export default function LoginPage() {
         <Link href="/" className="text-3xl font-black tracking-tight text-[#111111]">
           NextCase<span className="text-[#8A6D2F]">HQ</span>
         </Link>
-        <p className="mt-2 text-sm text-[#111111]/50 font-serif italic">
+        <p className="mt-2 text-sm text-[#111111]/70 font-serif italic">
           AI-First Operating System for Litigation
         </p>
       </div>
 
       {/* Main Login Card */}
       <div className="relative w-full max-w-md bg-white border border-[#C6A253]/30 rounded-xl shadow-lg shadow-black/5 p-8">
-        <h2 className="text-xl font-bold uppercase tracking-wider text-center mb-6">
+        <h1 className="text-xl font-bold uppercase tracking-wider text-center mb-6">
           Enterprise Sign In
-        </h2>
+        </h1>
 
         {error && (
           <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-700 text-xs rounded mb-4 font-semibold">
@@ -103,7 +103,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 bg-[#8A6D2F] text-[#F6F1E7] font-semibold tracking-wider uppercase text-sm rounded shadow hover:bg-[#6F5624] disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            className="w-full py-4 bg-[#8A6D2F] text-white font-semibold tracking-wider uppercase text-sm rounded shadow hover:bg-[#6F5624] disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
@@ -118,7 +118,7 @@ export default function LoginPage() {
       </div>
 
       <div className="relative mt-8 text-center">
-        <Link href="/" className="text-xs uppercase tracking-wider font-bold text-[#111111]/50 hover:text-[#111111] transition-colors">
+        <Link href="/" className="text-xs uppercase tracking-wider font-bold text-[#111111]/70 hover:text-[#111111] transition-colors">
           ← Back to Marketing Site
         </Link>
       </div>

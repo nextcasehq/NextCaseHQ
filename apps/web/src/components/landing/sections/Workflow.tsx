@@ -23,7 +23,7 @@ export default function Workflow() {
     <section className="bg-[#FBF8F1]">
       <div className="mx-auto w-full max-w-7xl px-6 py-16 md:px-12 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#6F5624]">
             Workflow
           </span>
           <h2 className="mt-3 text-balance font-serif text-3xl font-black tracking-tight text-[#241E17] md:text-4xl">
@@ -37,7 +37,7 @@ export default function Workflow() {
               key={item.step}
               className="relative rounded-2xl border border-[#D9CDB2] bg-[#F4EEE0] p-8"
             >
-              <span className="font-serif text-4xl font-black text-[#8A6D2F]/30">
+              <span className="font-serif text-4xl font-black text-[#8A6D2F]/90" aria-hidden="true">
                 {item.step}
               </span>
               <h3 className="mt-4 font-serif text-xl font-bold tracking-tight text-[#241E17]">

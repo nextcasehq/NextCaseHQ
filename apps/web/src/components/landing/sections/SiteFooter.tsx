@@ -31,18 +31,18 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
 
 export default function SiteFooter() {
   return (
-    <footer className="border-t border-[#0A1B14] bg-[#0E241B] text-[#F6F1E7]">
+    <footer className="border-t border-[#0A1B14] bg-[#0E241B] text-white">
       <div className="mx-auto w-full max-w-7xl px-6 py-14 md:px-12">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-4">
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <Logo size={30} className="transition-transform group-hover:scale-105" />
-              <span className="font-serif text-lg font-bold tracking-tight text-[#F6F1E7]">
+              <span className="font-serif text-lg font-bold tracking-tight text-white">
                 NextCase<span className="text-[#E4C77E]">HQ</span>
               </span>
             </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#B0A588]">
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#CFC3A8]">
               The zero-knowledge litigation operating system. Infinite context.
               Zero knowledge.
             </p>
@@ -60,7 +60,7 @@ export default function SiteFooter() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm font-medium text-[#CFC3A8] transition-colors hover:text-[#F6F1E7]"
+                        className="text-sm font-medium text-[#CFC3A8] transition-colors hover:text-white"
                       >
                         {link.label}
                       </Link>
@@ -73,10 +73,10 @@ export default function SiteFooter() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[#C6A253]/15 pt-6 text-center sm:flex-row sm:text-left">
-          <p className="text-xs font-medium text-[#B0A588]">
+          <p className="text-xs font-medium text-[#CFC3A8]">
             {"\u00A9"} {new Date().getFullYear()} NextCaseHQ Technologies Inc. All rights reserved.
           </p>
-          <p className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#8A7A56]">
+          <p className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#CFC3A8]">
             Infinite context · Zero knowledge
           </p>
         </div>

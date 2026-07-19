@@ -22,7 +22,7 @@ export default function Navbar() {
       <div className="flex items-center gap-3">
         <Link href={`${baseUrl}/`} className="flex items-center gap-2.5 hover:opacity-85 transition-opacity group">
           <Logo size={30} className="transition-transform group-hover:scale-105" />
-          <span className="font-serif font-bold text-lg text-[#F6F1E7] tracking-tight">
+          <span className="font-serif font-bold text-lg text-white tracking-tight">
             NextCase<span className="text-[#E4C77E]">HQ</span>
           </span>
         </Link>
@@ -34,7 +34,7 @@ export default function Navbar() {
           <Link 
             key={item.path} 
             href={`${baseUrl}${item.path}`}
-            className="text-sm font-medium text-[#CFC3A8] hover:text-[#F6F1E7] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] rounded px-2 py-1"
+            className="text-sm font-medium text-[#CFC3A8] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] rounded px-2 py-1"
           >
             {item.label}
           </Link>
@@ -45,7 +45,7 @@ export default function Navbar() {
       <div className="hidden md:flex items-center gap-4">
         <Link
           href={`${baseUrl}/dashboard`}
-          className="text-sm font-medium text-[#CFC3A8] hover:text-[#F6F1E7] transition-colors mr-2"
+          className="text-sm font-medium text-[#CFC3A8] hover:text-white transition-colors mr-2"
         >
           Dashboard
         </Link>
@@ -76,7 +76,7 @@ export default function Navbar() {
               key={item.path}
               href={`${baseUrl}${item.path}`}
               onClick={() => setMobileMenuOpen(false)}
-              className="text-base font-medium text-[#CFC3A8] hover:text-[#F6F1E7] transition-colors"
+              className="text-base font-medium text-[#CFC3A8] hover:text-white transition-colors"
             >
               {item.label}
             </Link>
@@ -85,7 +85,7 @@ export default function Navbar() {
           <Link
             href={`${baseUrl}/dashboard`}
             onClick={() => setMobileMenuOpen(false)}
-            className="text-base font-medium text-[#CFC3A8] hover:text-[#F6F1E7] transition-colors"
+            className="text-base font-medium text-[#CFC3A8] hover:text-white transition-colors"
           >
             Dashboard
           </Link>

@@ -21,7 +21,7 @@ export default function CtaBand() {
               <p className="font-serif text-4xl font-black tracking-tight text-[#241E17]">
                 {stat.value}
               </p>
-              <p className="mt-2 text-sm font-medium text-[#8A7A56]">
+              <p className="mt-2 text-sm font-medium text-[#6F5624]">
                 {stat.label}
               </p>
             </div>
@@ -30,7 +30,7 @@ export default function CtaBand() {
 
         {/* CTA */}
         <div className="mt-8 overflow-hidden rounded-3xl border border-[#C6A253]/30 bg-[#0E241B] px-8 py-14 text-center shadow-xl shadow-[#0E241B]/25 md:px-16">
-          <h2 className="mx-auto max-w-2xl text-balance font-serif text-3xl font-black tracking-tight text-[#F6F1E7] md:text-4xl">
+          <h2 className="mx-auto max-w-2xl text-balance font-serif text-3xl font-black tracking-tight text-white md:text-4xl">
             Bring your practice into a zero-knowledge future
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-pretty text-base leading-relaxed text-[#CFC3A8]">
@@ -49,7 +49,7 @@ export default function CtaBand() {
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#C6A253]/50 px-6 py-3 text-sm font-bold text-[#F6F1E7] transition-all duration-200 hover:bg-[#C6A253]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#C6A253]/50 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-[#C6A253]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
             >
               View pricing
             </Link>

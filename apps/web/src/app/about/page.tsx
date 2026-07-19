@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
             <svg viewBox="0 0 40 40" className="h-8 w-8" fill="none">
@@ -61,12 +61,12 @@ export default function AboutPage() {
         <div className="text-center">
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-3 text-sm font-bold text-[#F6F1E7] transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg hover:shadow-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 active:scale-[0.98]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg hover:shadow-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 active:scale-[0.98]"
           >
             Explore Careers &amp; Roles
           </Link>
         </div>
-      </main>
+      </div>
       <Footer />
     </div>
   );

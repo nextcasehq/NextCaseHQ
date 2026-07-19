@@ -71,7 +71,7 @@ export default function DraftBuilderPage() {
         {/* Left Side: Template Selector & AI Enhancer */}
         <div className="lg:col-span-1 space-y-6">
           <div className="p-5 border border-[#111111]/10 bg-white rounded space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#111111]/50 mb-2">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-[#111111]/70 mb-2">
               Select Jurisdictional Template
             </h2>
             <div className="space-y-2">
@@ -93,17 +93,18 @@ export default function DraftBuilderPage() {
           </div>
 
           <div className="p-5 border border-[#111111]/10 bg-white rounded space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#111111]/50 mb-2">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-[#111111]/70 mb-2">
               AI Canvas Refiner
             </h2>
             <form onSubmit={handleAiRefine} className="space-y-3">
               <textarea
+                aria-label="AI refinement command"
                 placeholder="e.g. Add paragraph pleading that limitation period was tolled during state of emergency"
                 value={aiCommand}
                 onChange={(e) => setAiCommand(e.target.value)}
                 rows={3}
                 disabled={isAiProcessing}
-                className="w-full p-3 bg-[#FDFBF7] border border-[#111111]/15 rounded outline-none focus:border-[#111111] text-xs font-sans placeholder:text-[#111111]/40"
+                className="w-full p-3 bg-[#FDFBF7] border border-[#111111]/15 rounded outline-none focus:border-[#111111] text-xs font-sans placeholder:text-[#111111]/70"
               />
               <button
                 type="submit"
@@ -144,6 +145,7 @@ export default function DraftBuilderPage() {
             {/* Header Editor Area */}
             <input
               type="text"
+              aria-label="Document header"
               value={editorHeader}
               onChange={(e) => setEditorHeader(e.target.value)}
               className="w-full font-bold text-sm tracking-widest text-[#3A3222] font-sans uppercase text-center border-b border-[#F4EEE0] pb-4 outline-none focus:border-[#111111]"
@@ -151,6 +153,7 @@ export default function DraftBuilderPage() {
 
             {/* Main Pleading Body Editor Area */}
             <textarea
+              aria-label="Document body"
               value={editorText}
               onChange={(e) => setEditorText(e.target.value)}
               rows={22}

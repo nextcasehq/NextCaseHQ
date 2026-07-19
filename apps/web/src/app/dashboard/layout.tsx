@@ -120,14 +120,14 @@ export default function DashboardLayout({
             <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </Link>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono border border-[#E7DFC9] text-[#8A7A56] rounded px-1.5 py-0.5 uppercase bg-[#FBF8F1]">
+            <span className="text-[10px] font-mono border border-[#E7DFC9] text-[#6F5624] rounded px-1.5 py-0.5 uppercase bg-[#FBF8F1]">
               HQ // PRO
             </span>
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(false)}
               aria-label="Close navigation menu"
-              className="md:hidden p-1 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
+              className="md:hidden p-1 text-[#726B58] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
             >
               ✕
             </button>
@@ -146,7 +146,7 @@ export default function DashboardLayout({
                   flex items-center gap-3 px-4 py-3 rounded text-sm font-semibold tracking-wide uppercase transition-all
                   ${isActive
                     ? 'bg-[#8A6D2F] text-white shadow-sm shadow-[#8A6D2F]/10'
-                    : 'text-[#8A7A56] hover:text-[#241E17] hover:bg-[#FBF8F1]'
+                    : 'text-[#6F5624] hover:text-[#241E17] hover:bg-[#FBF8F1]'
                   }
                 `}
               >
@@ -165,7 +165,7 @@ export default function DashboardLayout({
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[#3A3222]">Counsel Session</p>
-              <p className="text-[10px] text-[#B0A588] font-mono">Bound Context: ACTIVE</p>
+              <p className="text-[10px] text-[#726B58] font-mono">Bound Context: ACTIVE</p>
             </div>
           </div>
         </div>
@@ -182,14 +182,14 @@ export default function DashboardLayout({
               aria-label="Open navigation menu"
               aria-expanded={isMobileNavOpen}
               aria-controls="dashboard-mobile-nav"
-              className="md:hidden flex-none p-2 -ml-2 text-[#8A7A56] hover:text-[#241E17] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
+              className="md:hidden flex-none p-2 -ml-2 text-[#6F5624] hover:text-[#241E17] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-none"></span>
-            <span className="text-xs uppercase tracking-widest font-black text-[#B0A588] truncate">
+            <span className="text-xs uppercase tracking-widest font-black text-[#726B58] truncate">
               PostgreSQL Session RLS Active
             </span>
           </div>
@@ -198,7 +198,7 @@ export default function DashboardLayout({
             {/* Interactive Notification Bell */}
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="relative p-1.5 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
+              className="relative p-1.5 text-[#726B58] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
               aria-label="View notifications"
             >
               <span className="text-lg">🔔</span>
@@ -217,7 +217,7 @@ export default function DashboardLayout({
                   window.location.href = '/';
                 }
               }}
-              className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
+              className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
             >
               Log Out
             </button>
@@ -236,7 +236,7 @@ export default function DashboardLayout({
                 <h3 className="text-xs font-black uppercase tracking-widest text-[#3A3222]">Timeline & Notifications</h3>
                 <button
                   onClick={() => setIsNotificationsOpen(false)}
-                  className="text-xs font-bold text-[#B0A588] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
+                  className="text-xs font-bold text-[#726B58] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
                 >
                   ✕
                 </button>
@@ -247,7 +247,7 @@ export default function DashboardLayout({
                     <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
                       <span className="text-sm">🔔</span>
                     </div>
-                    <p className="text-xs text-[#B0A588]">No notifications yet.</p>
+                    <p className="text-xs text-[#726B58]">No notifications yet.</p>
                   </div>
                 )}
                 {notifications.map((notif) => (
@@ -262,7 +262,7 @@ export default function DashboardLayout({
                       <span className="text-[9px] font-mono font-bold text-[#8A6D2F] bg-[#FBF6EA] px-1.5 py-0.5 rounded">
                         {notif.type}
                       </span>
-                      <span className="text-[9px] font-mono text-[#B0A588]">{relativeTime(notif.created_at)}</span>
+                      <span className="text-[9px] font-mono text-[#726B58]">{relativeTime(notif.created_at)}</span>
                     </div>
                     <p className="text-xs font-bold text-[#241E17] leading-relaxed font-sans">{notif.title}</p>
                     {notif.message && (
@@ -272,7 +272,7 @@ export default function DashboardLayout({
                 ))}
               </div>
               <div className="p-4 border-t border-[#F4EEE0] bg-[#FBF8F1]/30 text-center">
-                <p className="text-[10px] text-[#B0A588] font-mono">NEXTCASE SECURITY TIMELINE</p>
+                <p className="text-[10px] text-[#726B58] font-mono">NEXTCASE SECURITY TIMELINE</p>
               </div>
             </div>
           )}

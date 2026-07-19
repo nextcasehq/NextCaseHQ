@@ -103,10 +103,11 @@ export default function EvidencePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-1">
+                <label htmlFor="evidence-file-size" className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-1">
                   File Size
                 </label>
                 <select
+                  id="evidence-file-size"
                   value={fileSize}
                   onChange={(e) => setFileSize(e.target.value)}
                   disabled={isUploading}
@@ -120,10 +121,11 @@ export default function EvidencePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-1">
+                <label htmlFor="evidence-key-version" className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-1">
                   Key Version
                 </label>
                 <select
+                  id="evidence-key-version"
                   value={keyVersion}
                   onChange={(e) => setKeyVersion(e.target.value)}
                   disabled={isUploading}
@@ -138,7 +140,7 @@ export default function EvidencePage() {
 
             <div className="border border-dashed border-[#111111]/20 rounded-lg p-6 text-center bg-[#111111]/2 hover:bg-[#111111]/5 transition-colors cursor-pointer">
               <span className="text-2xl mb-1 block">📥</span>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50">Click or Drag Files Here</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">Click or Drag Files Here</p>
               <p className="text-[10px] text-[#111111]/30 font-serif mt-1">Multi-tenant client-side pre-encryption secure pool.</p>
             </div>
 
@@ -161,7 +163,7 @@ export default function EvidencePage() {
 
         {/* Right Side: Registered Exhibits List */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#111111]/50">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#111111]/70">
             Registered Tenant Ledger Entries
           </h2>
 
@@ -188,7 +190,7 @@ export default function EvidencePage() {
 
                 <h3 className="font-bold text-sm text-[#111111]">{item.name}</h3>
 
-                <div className="mt-4 pt-3 border-t border-[#111111]/5 flex flex-col md:flex-row justify-between text-[10px] font-mono text-[#111111]/50 gap-2">
+                <div className="mt-4 pt-3 border-t border-[#111111]/5 flex flex-col md:flex-row justify-between text-[10px] font-mono text-[#111111]/70 gap-2">
                   <div className="truncate">
                     <span className="font-bold text-[#111111]/70 mr-1">HASH:</span>
                     <span className="text-[#111111]/60 font-mono select-all">{item.hash}</span>

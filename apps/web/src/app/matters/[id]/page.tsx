@@ -122,10 +122,10 @@ interface PreparationItem {
 function ComingSoonPanel({ title, description }: { title: string; description: string }) {
   return (
     <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-      <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-3">{title}</h3>
+      <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-3">{title}</h2>
       <div className="text-center py-8 bg-[#FBF8F1]/50 border border-dashed border-[#E7DFC9] rounded-xl">
-        <p className="text-xs font-semibold text-[#8A7A56]">Not yet available.</p>
-        <p className="text-[10px] text-[#B0A588] mt-1 max-w-xs mx-auto">{description}</p>
+        <p className="text-xs font-semibold text-[#6F5624]">Not yet available.</p>
+        <p className="text-[10px] text-[#726B58] mt-1 max-w-xs mx-auto">{description}</p>
       </div>
     </div>
   );
@@ -318,14 +318,14 @@ export default function MatterDetailsChamberPage() {
   if (needsAuth) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <main className="flex-1 flex flex-col justify-center items-center py-20 text-center">
+        <div className="flex-1 flex flex-col justify-center items-center py-20 text-center">
           <span className="text-3xl">🔒</span>
           <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-          <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
+          <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
           <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
             Go to Login →
           </Link>
-        </main>
+        </div>
       </div>
     );
   }
@@ -333,14 +333,14 @@ export default function MatterDetailsChamberPage() {
   if (matter === null) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <main className="flex-1 flex flex-col justify-center items-center py-20">
+        <div className="flex-1 flex flex-col justify-center items-center py-20">
           <span className="text-3xl">⚠️</span>
           <h2 className="text-lg font-bold mt-2">Matter Not Found</h2>
-          <p className="text-xs text-[#B0A588] mt-1">This matter does not exist or you don&apos;t have access to it.</p>
+          <p className="text-xs text-[#726B58] mt-1">This matter does not exist or you don&apos;t have access to it.</p>
           <Link href="/matters" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
             Back to Matters
           </Link>
-        </main>
+        </div>
       </div>
     );
   }
@@ -355,10 +355,10 @@ export default function MatterDetailsChamberPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
-      <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+      <div className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
         <BrandBackground />
         <div className="mb-6 flex items-center justify-between">
-          <Link href="/matters" className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors flex items-center gap-1">
+          <Link href="/matters" className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F] transition-colors flex items-center gap-1">
             ← Back to Matter Workspace
           </Link>
           {/* Matter-scoped Universal Search entry point (Product Direction,
@@ -380,7 +380,7 @@ export default function MatterDetailsChamberPage() {
               <span className="font-mono text-xs font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
                 {matter.matter_number || matter.id.slice(0, 8)}
               </span>
-              <span className="text-[10px] font-bold text-[#B0A588] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-[#726B58] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
                 {matter.engagement_type.replace('_', ' ')}
               </span>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
@@ -401,12 +401,12 @@ export default function MatterDetailsChamberPage() {
             <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">
               {matter.title}
             </h1>
-            <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider">
+            <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider">
               CLIENT: <span className="text-[#5C5340] font-sans">{matter.client_name || 'Not yet linked'}</span>
               {matter.court && <> · COURT: <span className="text-[#5C5340] font-sans">{matter.court}</span></>}
             </p>
             {health && (health.stage || health.next_hearing_date) && (
-              <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider">
+              <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider">
                 {health.stage && <>STAGE: <span className="text-[#8A6D2F] font-sans">{health.stage}</span></>}
                 {health.stage && health.next_hearing_date && ' · '}
                 {health.next_hearing_date && <>NEXT HEARING: <span className="text-[#8A6D2F] font-sans font-mono">{health.next_hearing_date}</span></>}
@@ -431,23 +431,23 @@ export default function MatterDetailsChamberPage() {
                 imminent looks exactly as it did before this milestone. */}
             {preparationItems.length > 0 && (
               <div className="bg-white border border-[#8A6D2F]/40 rounded-xl p-6 shadow-sm">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#8A6D2F] mb-4">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#8A6D2F] mb-4">
                   ⏰ Prepare for Hearing
-                </h3>
+                </h2>
                 <div className="space-y-5">
                   {preparationItems.map((item) => (
                     <div key={item.case_id} className="border-l-2 border-[#8A6D2F]/60 pl-4">
                       <div className="flex flex-wrap items-baseline gap-x-2">
                         <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{item.hearing_date}</span>
                         {item.court_forum_display && (
-                          <span className="text-[10px] text-[#B0A588]">{item.court_forum_display}</span>
+                          <span className="text-[10px] text-[#726B58]">{item.court_forum_display}</span>
                         )}
                         <Link href={`/cases/${item.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
                           {item.case_title}
                         </Link>
                       </div>
                       {item.stage && (
-                        <p className="text-[10px] font-bold text-[#B0A588] uppercase tracking-widest mt-1">
+                        <p className="text-[10px] font-bold text-[#726B58] uppercase tracking-widest mt-1">
                           Stage: <span className="text-[#3A3222] font-sans normal-case">{item.stage}</span>
                         </p>
                       )}
@@ -456,7 +456,7 @@ export default function MatterDetailsChamberPage() {
                       )}
                       {item.pending_actions.length > 0 && (
                         <div className="mt-2">
-                          <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">
+                          <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-widest">
                             Pending Actions ({item.pending_actions.length})
                           </span>
                           <ul className="mt-1 space-y-1">
@@ -468,7 +468,7 @@ export default function MatterDetailsChamberPage() {
                       )}
                       {item.documents.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-widest mr-1">
+                          <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-widest mr-1">
                             Documents ({item.documents.length}):
                           </span>
                           {item.documents.map((doc) => (
@@ -491,7 +491,7 @@ export default function MatterDetailsChamberPage() {
             {health && (
               <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Matter Health</h3>
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Matter Health</h2>
                   {health.needs_attention && (
                     <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
                       NEEDS ATTENTION
@@ -500,24 +500,24 @@ export default function MatterDetailsChamberPage() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Current Stage</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Current Stage</span>
                     <span className="text-sm font-bold text-[#8A6D2F] font-mono uppercase">{health.stage || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Next Hearing</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Next Hearing</span>
                     <span className="text-sm font-mono font-bold text-[#3A3222]">{health.next_hearing_date || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Pending Actions</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Pending Actions</span>
                     <span className="text-sm font-bold text-[#3A3222]">{health.pending_action_count}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Last Activity</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Last Activity</span>
                     <span className="text-sm font-bold text-[#3A3222]">{health.last_hearing_date || 'N/A'}</span>
                   </div>
                 </div>
                 {health.last_note && (
-                  <p className="text-xs text-[#8A7A56] mt-4 pt-4 border-t border-[#F4EEE0]">
+                  <p className="text-xs text-[#6F5624] mt-4 pt-4 border-t border-[#F4EEE0]">
                     <span className="font-bold text-[#4A4130]">{health.last_case_title}</span> · {health.last_court_forum_display}: {health.last_note}
                   </p>
                 )}
@@ -527,16 +527,16 @@ export default function MatterDetailsChamberPage() {
             {/* Recent Court Note — latest only; full aggregated history is
                 progressive disclosure, not shown immediately */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Recent Court Note</h3>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Recent Court Note</h2>
               {matterCourtNotes.length === 0 ? (
-                <p className="text-xs font-semibold text-[#8A7A56]">No Court Notes recorded yet for this matter.</p>
+                <p className="text-xs font-semibold text-[#6F5624]">No Court Notes recorded yet for this matter.</p>
               ) : (
                 <>
                   <div className="border-l-2 border-[#F4EEE0] pl-4">
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{matterCourtNotes[0].hearing_date}</span>
-                      <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-wider">{matterCourtNotes[0].stage}</span>
-                      <span className="text-[10px] text-[#B0A588]">· {matterCourtNotes[0].court_forum_display}</span>
+                      <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{matterCourtNotes[0].stage}</span>
+                      <span className="text-[10px] text-[#726B58]">· {matterCourtNotes[0].court_forum_display}</span>
                       <Link href={`/cases/${matterCourtNotes[0].case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
                         {matterCourtNotes[0].case_title}
                       </Link>
@@ -561,8 +561,8 @@ export default function MatterDetailsChamberPage() {
                             <div key={cn.id} className="border-l-2 border-[#F4EEE0] pl-4">
                               <div className="flex flex-wrap items-baseline gap-x-2">
                                 <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
-                                <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-wider">{cn.stage}</span>
-                                <span className="text-[10px] text-[#B0A588]">· {cn.court_forum_display}</span>
+                                <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{cn.stage}</span>
+                                <span className="text-[10px] text-[#726B58]">· {cn.court_forum_display}</span>
                                 <Link href={`/cases/${cn.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
                                   {cn.case_title}
                                 </Link>
@@ -583,9 +583,9 @@ export default function MatterDetailsChamberPage() {
 
             {/* Pending Actions — structured, derived from Court Notes */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Pending Actions</h3>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Pending Actions</h2>
               {matterTasks.filter((t) => t.status === 'PENDING').length === 0 ? (
-                <p className="text-xs font-semibold text-[#8A7A56]">No pending actions.</p>
+                <p className="text-xs font-semibold text-[#6F5624]">No pending actions.</p>
               ) : (
                 <ul className="space-y-3">
                   {matterTasks
@@ -594,7 +594,7 @@ export default function MatterDetailsChamberPage() {
                       <li key={task.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-[#FBF8F1]/50 border-[#F4EEE0]">
                         <div>
                           <p className="text-sm font-medium text-[#3A3222]">☐ {task.action_text}</p>
-                          <span className="text-[10px] text-[#B0A588]">
+                          <span className="text-[10px] text-[#726B58]">
                             {task.hearing_date && <>Due: {task.hearing_date} · </>}Source: {task.case_title}
                           </span>
                         </div>
@@ -607,7 +607,7 @@ export default function MatterDetailsChamberPage() {
                           </button>
                           <Link
                             href={`/cases/${task.case_id}`}
-                            className="text-[10px] font-bold uppercase text-[#B0A588] hover:underline"
+                            className="text-[10px] font-bold uppercase text-[#726B58] hover:underline"
                           >
                             View Source Note
                           </Link>
@@ -620,7 +620,7 @@ export default function MatterDetailsChamberPage() {
 
             {isEditing ? (
               <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Edit Matter</h3>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Edit Matter</h2>
                 <form onSubmit={handleUpdate} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">Matter Title</label>
@@ -655,7 +655,7 @@ export default function MatterDetailsChamberPage() {
                     <button
                       type="button"
                       onClick={() => setIsEditing(false)}
-                      className="px-4 py-2 border border-[#E7DFC9] text-[#8A7A56] text-xs font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
+                      className="px-4 py-2 border border-[#E7DFC9] text-[#6F5624] text-xs font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
                     >
                       Cancel
                     </button>
@@ -671,26 +671,26 @@ export default function MatterDetailsChamberPage() {
             ) : (
               <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm space-y-6">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Matter Overview</h3>
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-2">Matter Overview</h2>
                   <p className="text-sm text-[#4A4130] leading-relaxed font-medium whitespace-pre-line">
                     {matter.description || 'No description provided.'}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-6 border-t border-[#F4EEE0] pt-6">
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">PRACTICE AREA</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">PRACTICE AREA</span>
                     <span className="text-sm font-bold text-[#3A3222]">{matter.practice_area || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">OPPOSING PARTY</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">OPPOSING PARTY</span>
                     <span className="text-sm font-bold text-[#3A3222]">{matter.opposing_party_name || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">OPENED</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">OPENED</span>
                     <span className="text-xs font-mono text-[#5C5340]">{new Date(matter.opened_at).toLocaleDateString()}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">LAST UPDATED</span>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">LAST UPDATED</span>
                     <span className="text-xs font-mono text-[#5C5340]">{new Date(matter.updated_at).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -701,8 +701,8 @@ export default function MatterDetailsChamberPage() {
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Proceedings</h3>
-                  <span className="text-[10px] font-mono text-[#B0A588] font-bold">{proceedings.length} LINKED</span>
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Proceedings</h2>
+                  <span className="text-[10px] font-mono text-[#726B58] font-bold">{proceedings.length} LINKED</span>
                 </div>
                 <button
                   onClick={() => setShowProceedingForm(!showProceedingForm)}
@@ -758,10 +758,10 @@ export default function MatterDetailsChamberPage() {
                           <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded">
                             {c.id.slice(0, 8)}
                           </span>
-                          <span className="text-xs font-bold text-[#8A7A56]">{c.court || 'N/A'}</span>
+                          <span className="text-xs font-bold text-[#6F5624]">{c.court || 'N/A'}</span>
                         </div>
-                        <h4 className="font-bold text-sm text-[#3A3222]">{c.title}</h4>
-                        <p className="text-xs text-[#B0A588] font-mono mt-1">Status: {c.status}</p>
+                        <h3 className="font-bold text-sm text-[#3A3222]">{c.title}</h3>
+                        <p className="text-xs text-[#726B58] font-mono mt-1">Status: {c.status}</p>
                       </div>
                       <Link
                         href={`/cases/${c.id}`}
@@ -774,8 +774,8 @@ export default function MatterDetailsChamberPage() {
                 </div>
               ) : (
                 <div className="text-center py-10 bg-[#FBF8F1]/50 border border-[#F4EEE0] rounded-xl">
-                  <p className="text-xs font-semibold text-[#8A7A56]">No proceedings linked to this matter yet.</p>
-                  <p className="text-[10px] text-[#B0A588] mt-0.5">Not every matter becomes litigation — this is a valid state.</p>
+                  <p className="text-xs font-semibold text-[#6F5624]">No proceedings linked to this matter yet.</p>
+                  <p className="text-[10px] text-[#726B58] mt-0.5">Not every matter becomes litigation — this is a valid state.</p>
                 </div>
               )}
             </div>
@@ -787,7 +787,7 @@ export default function MatterDetailsChamberPage() {
                 the "Add Entry" capability is unchanged. */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Matter Timeline</h3>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Matter Timeline</h2>
                 <button
                   onClick={() => setShowEventForm(!showEventForm)}
                   className="bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs px-4 py-2 rounded-lg transition-all uppercase tracking-wider"
@@ -828,7 +828,7 @@ export default function MatterDetailsChamberPage() {
                         {new Date(ev.event_date).toLocaleDateString()}
                       </span>
                       {ev.source_type === 'HEARING' && (
-                        <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-[#B0A588] border border-[#E7DFC9] rounded px-1.5 py-0.5">
+                        <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-[#726B58] border border-[#E7DFC9] rounded px-1.5 py-0.5">
                           Court Note
                         </span>
                       )}
@@ -838,8 +838,8 @@ export default function MatterDetailsChamberPage() {
                 </ol>
               ) : (
                 <div className="text-center py-10 bg-[#FBF8F1]/50 border border-[#F4EEE0] rounded-xl">
-                  <p className="text-xs font-semibold text-[#8A7A56]">No chronology entries yet.</p>
-                  <p className="text-[10px] text-[#B0A588] mt-0.5">Add the first entry to start this matter&apos;s timeline.</p>
+                  <p className="text-xs font-semibold text-[#6F5624]">No chronology entries yet.</p>
+                  <p className="text-[10px] text-[#726B58] mt-0.5">Add the first entry to start this matter&apos;s timeline.</p>
                 </div>
               )}
             </div>
@@ -851,7 +851,7 @@ export default function MatterDetailsChamberPage() {
                 this page. */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Documents</h3>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Documents</h2>
                 <Link
                   href={`/documents/new?matter_id=${id}`}
                   className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
@@ -865,7 +865,7 @@ export default function MatterDetailsChamberPage() {
                     <div key={docItem.id} className="flex items-center justify-between border-b border-[#F4EEE0] pb-3 last:border-0 last:pb-0">
                       <div>
                         <p className="text-sm font-bold text-[#3A3222]">{docItem.title}</p>
-                        <p className="text-[10px] text-[#B0A588] font-bold uppercase tracking-wider">
+                        <p className="text-[10px] text-[#726B58] font-bold uppercase tracking-wider">
                           {getDocumentType(docItem.document_type)?.label ?? 'Uploaded'} · v{docItem.version_count || 1} ·{' '}
                           {new Date(docItem.updated_at).toLocaleDateString()}
                         </p>
@@ -881,8 +881,8 @@ export default function MatterDetailsChamberPage() {
                 </div>
               ) : (
                 <div className="text-center py-8 bg-[#FBF8F1]/50 border border-dashed border-[#E7DFC9] rounded-xl">
-                  <p className="text-xs font-semibold text-[#8A7A56]">No documents yet.</p>
-                  <p className="text-[10px] text-[#B0A588] mt-1">Prepare a new document to get started.</p>
+                  <p className="text-xs font-semibold text-[#6F5624]">No documents yet.</p>
+                  <p className="text-[10px] text-[#726B58] mt-1">Prepare a new document to get started.</p>
                 </div>
               )}
             </div>
@@ -899,14 +899,14 @@ export default function MatterDetailsChamberPage() {
           {/* Right Sidebar - Team */}
           <div className="space-y-6">
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Team</h3>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Team</h2>
               {participants.length > 0 ? (
                 <div className="space-y-3">
                   {participants.map((p) => (
                     <div key={p.id} className="flex items-center justify-between border-b border-[#F4EEE0] pb-3 last:border-0 last:pb-0">
                       <div>
                         <p className="text-sm font-bold text-[#3A3222]">{p.user_name || p.user_email}</p>
-                        <p className="text-[10px] text-[#B0A588] font-mono">{p.user_email}</p>
+                        <p className="text-[10px] text-[#726B58] font-mono">{p.user_email}</p>
                       </div>
                       <span className="text-[9px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
                         {p.role}
@@ -915,12 +915,12 @@ export default function MatterDetailsChamberPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#8A7A56] text-center py-4">No team members assigned yet.</p>
+                <p className="text-xs text-[#6F5624] text-center py-4">No team members assigned yet.</p>
               )}
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

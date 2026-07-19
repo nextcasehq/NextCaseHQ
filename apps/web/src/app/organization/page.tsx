@@ -48,7 +48,7 @@ export default function OrganizationPage() {
               <div className="h-4 bg-[#111111]/10 rounded w-2/3"></div>
             </div>
           </div>
-          <p className="text-center text-xs tracking-wider uppercase font-bold text-[#111111]/40">
+          <p className="text-center text-xs tracking-wider uppercase font-bold text-[#111111]/70">
             Binding secure multi-tenant PostgreSQL session context...
           </p>
         </div>
@@ -59,7 +59,7 @@ export default function OrganizationPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col justify-center items-center px-6 py-12 font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
       <div className="w-full max-w-xl text-center mb-8">
-        <h1 className="text-2xl font-bold uppercase tracking-widest text-[#111111]/40 mb-2">
+        <h1 className="text-2xl font-bold uppercase tracking-widest text-[#111111]/70 mb-2">
           Identity Workspace Gateway
         </h1>
         <p className="text-sm font-serif italic text-[#111111]/70">
@@ -75,10 +75,10 @@ export default function OrganizationPage() {
             className="w-full text-left p-6 border border-[#111111]/10 rounded hover:border-[#111111] hover:bg-[#111111]/5 transition-all flex justify-between items-center group active:scale-[0.99]"
           >
             <div>
-              <span className="text-xs font-bold font-mono text-[#111111]/40 uppercase tracking-widest block mb-1">
+              <span className="text-xs font-bold font-mono text-[#111111]/70 uppercase tracking-widest block mb-1">
                 Tenant: {tenant.id.slice(0, 8)} // {tenant.jurisdiction} Pack
               </span>
-              <span className="font-bold text-base text-[#111111] group-hover:text-brand">
+              <span className="font-bold text-base text-[#111111] group-hover:text-[#6F5624]">
                 {tenant.name}
               </span>
             </div>

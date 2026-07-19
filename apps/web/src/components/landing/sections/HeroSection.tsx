@@ -48,7 +48,7 @@ export default function HeroSection() {
             Zero-Knowledge · End-to-End Encrypted
           </span>
 
-          <h1 className="mt-3 text-balance font-serif text-2xl font-black leading-tight tracking-tight text-[#F6F1E7] md:text-4xl lg:text-[2.75rem]">
+          <h1 className="mt-3 text-balance font-serif text-2xl font-black leading-tight tracking-tight text-white md:text-4xl lg:text-[2.75rem]">
             The litigation operating system built for absolute confidentiality.
           </h1>
 
@@ -64,7 +64,7 @@ export default function HeroSection() {
             className="mt-4 flex w-full max-w-xl items-center gap-2 rounded-2xl border border-[#C6A253]/30 bg-[#F6F1E7] p-1.5 shadow-lg shadow-black/15 transition-all duration-300 focus-within:border-[#C6A253] focus-within:ring-4 focus-within:ring-[#C6A253]/20"
             role="search"
           >
-            <span className="pl-3 text-[#8A7A56]" aria-hidden="true">
+            <span className="pl-3 text-[#6F5624]" aria-hidden="true">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="7" strokeLinecap="round" />
                 <path d="m20 20-3-3" strokeLinecap="round" />
@@ -80,7 +80,7 @@ export default function HeroSection() {
             />
             <button
               type="submit"
-              className="shrink-0 rounded-xl bg-[#8A6D2F] px-6 py-2.5 text-sm font-bold text-[#F6F1E7] transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg hover:shadow-black/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B] active:scale-[0.98]"
+              className="shrink-0 rounded-xl bg-[#8A6D2F] px-6 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg hover:shadow-black/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B] active:scale-[0.98]"
             >
               Search
             </button>
@@ -89,7 +89,7 @@ export default function HeroSection() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-2.5 text-sm font-semibold text-[#F6F1E7] transition-all duration-200 hover:bg-[#6F5624] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B] active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#6F5624] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B] active:scale-[0.98]"
             >
               Access your chamber
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -98,7 +98,7 @@ export default function HeroSection() {
             </Link>
             <Link
               href="/features"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#C6A253]/40 bg-[#0B1F17]/40 px-6 py-2.5 text-sm font-semibold text-[#F6F1E7] backdrop-blur-sm transition-all duration-200 hover:border-[#C6A253]/70 hover:bg-[#0B1F17]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#C6A253]/40 bg-[#0B1F17]/40 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:border-[#C6A253]/70 hover:bg-[#0B1F17]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
             >
               Explore features
             </Link>
@@ -117,7 +117,7 @@ export default function HeroSection() {
               <span className="h-3 w-3 rounded-full bg-[#D9C48F]" aria-hidden="true" />
               <span className="h-3 w-3 rounded-full bg-[#D9C48F]" aria-hidden="true" />
               <span className="h-3 w-3 rounded-full bg-[#D9C48F]" aria-hidden="true" />
-              <span className="ml-3 truncate text-xs font-medium text-[#8A7A56]">
+              <span className="ml-3 truncate text-xs font-medium text-[#6F5624]">
                 app.nextcasehq.com/dashboard
               </span>
             </div>
@@ -133,14 +133,14 @@ export default function HeroSection() {
             >
               {/* Sidebar */}
               <div className="border-r border-[#E7DFC9] bg-[#FBF6EA] p-3">
-                <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-[#8A6D2F]">
+                <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-[#6F5624]">
                   NextCaseHQ
                 </p>
                 {["Dashboard", "Cases", "Documents", "Evidence"].map((item, i) => (
                   <div
                     key={item}
                     className={`mb-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold ${
-                      i === 1 ? "bg-[#8A6D2F] text-[#F6F1E7]" : "text-[#5C5340]"
+                      i === 1 ? "bg-[#8A6D2F] text-white" : "text-[#5C5340]"
                     }`}
                   >
                     {item}
@@ -158,12 +158,12 @@ export default function HeroSection() {
                   <span className="rounded bg-[#F4EEE0] px-1.5 py-0.5 text-[9px] font-semibold text-[#5C5340]">
                     Court 12B
                   </span>
-                  <span className="rounded bg-[#F1E9D3] px-1.5 py-0.5 text-[9px] font-semibold text-[#8A6D2F]">
+                  <span className="rounded bg-[#F1E9D3] px-1.5 py-0.5 text-[9px] font-semibold text-[#6F5624]">
                     Status: Discovery
                   </span>
                 </div>
 
-                <p className="mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-wider text-[#8A7A56]">
+                <p className="mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-wider text-[#6F5624]">
                   Evidence Timeline
                 </p>
                 {[
@@ -172,7 +172,7 @@ export default function HeroSection() {
                   ["Jun 5", "Deposition Notice", "Deposition notice served on CFO"],
                 ].map(([date, title, desc]) => (
                   <div key={title} className="mb-2 flex gap-2 border-l-2 border-[#D9C48F] pl-2.5">
-                    <div className="w-14 shrink-0 text-[9px] font-mono text-[#B0A588]">{date}</div>
+                    <div className="w-14 shrink-0 text-[9px] font-mono text-[#726B58]">{date}</div>
                     <div>
                       <p className="text-[10.5px] font-bold">{title}</p>
                       <p className="text-[9.5px] leading-snug text-[#5C5340]">{desc}</p>
@@ -184,7 +184,7 @@ export default function HeroSection() {
               {/* AI assistant pane */}
               <div className="bg-[#F6F1E7] p-3">
                 <div className="mb-2 flex items-center gap-1.5">
-                  <span className="flex h-5 w-5 items-center justify-center rounded bg-[#8A6D2F] text-[9px] font-bold text-[#F6F1E7]">
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-[#8A6D2F] text-[9px] font-bold text-white">
                     AI
                   </span>
                   <p className="text-[10px] font-bold uppercase tracking-wide text-[#241E17]">
@@ -195,7 +195,7 @@ export default function HeroSection() {
                   Key issue: alleged breach of the supply contract (Cl. 4.1). Defense
                   relies on a force majeure clause (Para 12).
                 </p>
-                <p className="mt-2 text-[9px] font-bold uppercase tracking-wider text-[#8A6D2F]">
+                <p className="mt-2 text-[9px] font-bold uppercase tracking-wider text-[#6F5624]">
                   Suggested next step
                 </p>
                 <p className="text-[9.5px] leading-snug text-[#5C5340]">
@@ -207,7 +207,7 @@ export default function HeroSection() {
 
           {/* Floating security badge */}
           <div className="absolute -bottom-4 -left-4 hidden items-center gap-3 rounded-xl border border-[#C6A253]/30 bg-[#F6F1E7] px-4 py-3 shadow-md sm:flex">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#8A6D2F] text-[#F6F1E7]" aria-hidden="true">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#8A6D2F] text-white" aria-hidden="true">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="m9 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />

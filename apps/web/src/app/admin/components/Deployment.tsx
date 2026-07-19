@@ -5,7 +5,7 @@ export default function Deployment() {
     <div className="space-y-6 bg-white border border-[#F4EEE0] p-6 rounded-2xl shadow-sm">
       <div>
         <h3 className="text-xl font-black text-[#111111]">Continuous Deployment Status</h3>
-        <p className="text-sm text-[#B0A588] font-serif italic mt-0.5">Vercel deployments sync status, GitHub webhook integrations, and branch version maps.</p>
+        <p className="text-sm text-[#726B58] font-serif italic mt-0.5">Vercel deployments sync status, GitHub webhook integrations, and branch version maps.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -33,7 +33,7 @@ export default function Deployment() {
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-xs font-bold text-emerald-700">ONLINE: Live Ingress Routing Configured</span>
           </div>
-          <p className="text-[11px] text-[#B0A588]">Any push to <code>main</code> triggers automated build, test coverage verification, and live rollout.</p>
+          <p className="text-[11px] text-[#726B58]">Any push to <code>main</code> triggers automated build, test coverage verification, and live rollout.</p>
         </div>
       </div>
     </div>

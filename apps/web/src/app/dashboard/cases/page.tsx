@@ -70,7 +70,7 @@ export default function CasesPage() {
       <div className="flex justify-between items-center border-b border-[#111111]/10 pb-4">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">Active Litigation Portfolios</h1>
-          <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-widest mt-1">
+          <p className="text-xs font-semibold text-[#726B58] uppercase tracking-widest mt-1">
             Active Tenant Context: <span className="font-mono text-[#8A6D2F]">{tenantId.slice(0, 8)}...</span>
           </p>
         </div>
@@ -94,12 +94,12 @@ export default function CasesPage() {
               <span className="text-[10px] font-mono border border-[#111111]/10 bg-[#111111]/5 text-[#111111]/70 px-2 py-0.5 rounded uppercase tracking-wider mr-2">
                 {c.id}
               </span>
-              <span className="text-xs font-bold text-[#111111]/40 uppercase tracking-widest">
+              <span className="text-xs font-bold text-[#111111]/70 uppercase tracking-widest">
                 {c.court} // {c.jurisdiction}
               </span>
-              <h3 className="font-bold text-lg text-[#111111] mt-2 group-hover:text-[#8A6D2F] transition-colors">
+              <h2 className="font-bold text-lg text-[#111111] mt-2 group-hover:text-[#8A6D2F] transition-colors">
                 {c.title}
-              </h3>
+              </h2>
             </div>
             <span className="px-3 py-1.5 border border-[#111111]/10 rounded text-[10px] font-mono uppercase tracking-wider bg-[#111111]/5">
               {c.status}

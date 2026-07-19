@@ -17,7 +17,7 @@ const POINTS = [
 
 export default function Security() {
   return (
-    <section className="border-y border-[#0A1B14] bg-[#0E241B] text-[#F6F1E7]">
+    <section className="border-y border-[#0A1B14] bg-[#0E241B] text-white">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-6 py-16 md:px-12 lg:grid-cols-2 lg:py-24">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-widest text-[#E4C77E]">
@@ -33,16 +33,16 @@ export default function Security() {
 
           <dl className="mt-10 flex flex-col gap-6">
             {POINTS.map((point) => (
-              <div key={point.title} className="flex gap-4">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#8A6D2F] text-[#F6F1E7]" aria-hidden="true">
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="m5 12 5 5 9-11" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-                <div>
-                  <dt className="font-serif text-base font-bold">{point.title}</dt>
-                  <dd className="mt-1 text-sm leading-relaxed text-[#B0A588]">{point.body}</dd>
-                </div>
+              <div key={point.title}>
+                <dt className="flex items-center gap-4 font-serif text-base font-bold">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#8A6D2F] text-white" aria-hidden="true">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m5 12 5 5 9-11" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  {point.title}
+                </dt>
+                <dd className="mt-1 pl-[52px] text-sm leading-relaxed text-[#CFC3A8]">{point.body}</dd>
               </div>
             ))}
           </dl>
@@ -52,7 +52,7 @@ export default function Security() {
         <div className="relative">
           <div className="rounded-2xl border border-[#C6A253]/20 bg-[#0B1F17]/60 p-8 backdrop-blur-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#CFC3A8]">
                 Envelope status
               </span>
               <span className="inline-flex items-center gap-2 rounded-full bg-[#C6A253]/15 px-3 py-1 text-xs font-bold text-[#E4C77E]">
@@ -62,19 +62,19 @@ export default function Security() {
             </div>
             <div className="mt-6 flex flex-col gap-3 font-mono text-sm">
               <div className="flex items-center justify-between rounded-lg border border-[#C6A253]/15 bg-black/20 px-4 py-3">
-                <span className="text-[#B0A588]">Document key</span>
+                <span className="text-[#CFC3A8]">Document key</span>
                 <span className="text-[#E7DFC9]">AES-256-GCM</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-[#C6A253]/15 bg-black/20 px-4 py-3">
-                <span className="text-[#B0A588]">Wrapped by</span>
+                <span className="text-[#CFC3A8]">Wrapped by</span>
                 <span className="text-[#E7DFC9]">KMS · HSM</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-[#C6A253]/15 bg-black/20 px-4 py-3">
-                <span className="text-[#B0A588]">Server access</span>
+                <span className="text-[#CFC3A8]">Server access</span>
                 <span className="text-[#E4C77E]">Ciphertext only</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-[#C6A253]/15 bg-black/20 px-4 py-3">
-                <span className="text-[#B0A588]">Audit entry</span>
+                <span className="text-[#CFC3A8]">Audit entry</span>
                 <span className="text-[#E7DFC9]">Ledger #48291</span>
               </div>
             </div>
