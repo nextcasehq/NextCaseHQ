@@ -230,11 +230,67 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const db = new DatabaseClient();
-    const rows = await db.execute<{ id: string; matter_id: string | null }>(
+
+    // RLS scopes this to the caller's own tenant — a case belonging to
+    // another tenant is indistinguishable from a nonexistent one, so a
+    // cross-tenant id returns 404 here without ever running the dependent
+    // check below.
+    const caseRows = await db.execute<{ id: string }>(
       session.tenantId,
-      `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id, matter_id`,
+      `SELECT id FROM "LegalCase" WHERE id = $1`,
       [id]
     );
+    if (caseRows.length === 0) {
+      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+
+    // DocumentEnvelope.case_id is now RESTRICT, not CASCADE (Sprint 3, PR
+    // 3A) — this endpoint checks explicitly up front rather than relying
+    // on the resulting FK violation, so the caller gets a clear,
+    // actionable response instead of a raw 500, matching the same
+    // deterministic-409 pattern already used by matters/clients.
+    const documentRows = await db.execute<{ count: number }>(
+      session.tenantId,
+      `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE case_id = $1`,
+      [id]
+    );
+    const linkedDocuments = documentRows[0].count;
+    if (linkedDocuments > 0) {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'CASE_HAS_LINKED_DOCUMENTS',
+          message: 'This case still has linked documents. Remove or relink them before deleting this case.',
+          linked: { documents: linkedDocuments },
+        },
+        { status: 409 }
+      );
+    }
+
+    let rows: { id: string; matter_id: string | null }[];
+    try {
+      rows = await db.execute<{ id: string; matter_id: string | null }>(
+        session.tenantId,
+        `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id, matter_id`,
+        [id]
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('foreign key constraint')) {
+        // Defense in depth against a document linked in the narrow window
+        // between the check above and this delete — still a deterministic
+        // 409, never a raw 500 leaking a Postgres error.
+        return NextResponse.json(
+          {
+            error: 'CONFLICT',
+            code: 'CASE_HAS_LINKED_DOCUMENTS',
+            message: 'This case still has linked documents. Remove or relink them before deleting this case.',
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });

@@ -35,12 +35,14 @@ describe('GET /api/documents — real DocumentEnvelope listing', () => {
     await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
   });
 
   afterAll(async () => {
     await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
     await closePool();
   });
 
@@ -82,6 +84,30 @@ describe('GET /api/documents — real DocumentEnvelope listing', () => {
     const body = await res.json();
     expect(body.documents).toHaveLength(1);
     expect(body.documents[0].title).toBe('Linked Doc');
+  });
+
+  test('filters by matter_id', async () => {
+    const matterRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'Filter Test Matter']
+    );
+    const matterId = matterRows[0].id;
+
+    await db.execute(TENANT_A, `INSERT INTO "DocumentEnvelope" (tenant_id, matter_id, title) VALUES ($1, $2, $3)`, [
+      TENANT_A,
+      matterId,
+      'Matter Linked Doc',
+    ]);
+    await db.execute(TENANT_A, `INSERT INTO "DocumentEnvelope" (tenant_id, title) VALUES ($1, $2)`, [
+      TENANT_A,
+      'Unlinked Doc',
+    ]);
+
+    const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, `?matter_id=${matterId}`));
+    const body = await res.json();
+    expect(body.documents).toHaveLength(1);
+    expect(body.documents[0].title).toBe('Matter Linked Doc');
   });
 
   test('rejects an out-of-range limit (400)', async () => {

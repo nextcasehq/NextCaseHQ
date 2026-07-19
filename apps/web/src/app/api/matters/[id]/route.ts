@@ -232,12 +232,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // MatterParticipant and MatterEvent are ON DELETE CASCADE at the schema
-    // level (see db/schema.sql), but this endpoint deliberately does not
-    // rely on that: every dependent record type is checked up front and
-    // blocks deletion if any exist, so a Matter is never deleted out from
-    // under linked Proceedings/participants/chronology without an explicit,
-    // separate action to remove them first.
-    const [proceedingRows, participantRows, eventRows] = await Promise.all([
+    // level (see db/schema.sql), and DocumentEnvelope.matter_id is RESTRICT
+    // (Sprint 3, PR 3A), but this endpoint deliberately does not rely on
+    // either: every dependent record type is checked up front and blocks
+    // deletion if any exist, so a Matter is never deleted out from under
+    // linked Proceedings/participants/chronology/documents without an
+    // explicit, separate action to remove them first.
+    const [proceedingRows, participantRows, eventRows, documentRows] = await Promise.all([
       db.execute<{ count: number }>(
         session.tenantId,
         `SELECT COUNT(*)::int AS count FROM "LegalCase" WHERE matter_id = $1`,
@@ -253,21 +254,27 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         `SELECT COUNT(*)::int AS count FROM "MatterEvent" WHERE matter_id = $1`,
         [id]
       ),
+      db.execute<{ count: number }>(
+        session.tenantId,
+        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE matter_id = $1`,
+        [id]
+      ),
     ]);
 
     const linked = {
       proceedings: proceedingRows[0].count,
       participants: participantRows[0].count,
       events: eventRows[0].count,
+      documents: documentRows[0].count,
     };
 
-    if (linked.proceedings > 0 || linked.participants > 0 || linked.events > 0) {
+    if (linked.proceedings > 0 || linked.participants > 0 || linked.events > 0 || linked.documents > 0) {
       return NextResponse.json(
         {
           error: 'CONFLICT',
           code: 'MATTER_HAS_LINKED_RECORDS',
           message:
-            'This matter still has linked proceedings, participants, or chronology entries. Remove, reassign, or archive them before deleting this matter.',
+            'This matter still has linked proceedings, participants, chronology entries, or documents. Remove, reassign, or archive them before deleting this matter.',
           linked,
         },
         { status: 409 }

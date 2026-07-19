@@ -41,11 +41,19 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
   });
 
   beforeEach(async () => {
+    // DocumentEnvelope.case_id is RESTRICT, not CASCADE (Sprint 3, PR 3A) —
+    // must be cleared (versions first, then envelopes) before the cases
+    // they reference, or this cleanup itself would fail with a foreign
+    // key violation for any test that links a document to a case.
+    await db.execute(TENANT_A, `DELETE FROM "DocumentVersion" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
   });
 
   afterAll(async () => {
+    await db.execute(TENANT_A, `DELETE FROM "DocumentVersion" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
     await closePool();
@@ -203,5 +211,23 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
 
     const verify = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
     expect(verify.status).toBe(200);
+  });
+
+  test('DELETE returns a deterministic 409 (never a raw 500) when a document is linked, and leaves the case intact', async () => {
+    const id = await createCase(TENANT_A, 'Case With Linked Document');
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, case_id, title) VALUES ($1, $2, $3)`,
+      [TENANT_A, id, 'Linked Document']
+    );
+
+    const res = await DELETE(buildRequest('DELETE', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('CASE_HAS_LINKED_DOCUMENTS');
+    expect(body.linked.documents).toBe(1);
+
+    const stillThere = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "LegalCase" WHERE id = $1`, [id]);
+    expect(stillThere).toHaveLength(1);
   });
 });
