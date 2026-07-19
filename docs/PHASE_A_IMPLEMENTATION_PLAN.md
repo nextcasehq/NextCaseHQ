@@ -14,7 +14,7 @@ This means Phase A is not "add a drawer to an existing shell" — it is "give `/
 |---|---|---|
 | `components/NavbarWrapper.tsx` | Add `/matters` to the hide-list (prefix match, matching the existing `/dashboard`/`/admin`/`/system` pattern) so the public marketing Navbar no longer renders on Matter Workspace routes. | Low — one-line, additive condition, no existing route's behavior changes. |
 | `apps/web/src/app/matters/page.tsx` | No structural change in Phase A. Continues to render the Matter List exactly as it does today; only affected indirectly by the Navbar removal (loses the marketing nav, gains nothing yet — Phase A does not add the new shell here, only to `/matters/[id]`, per the routing decision's explicit scope: "Matter Workspace" is the `[id]` page, `/matters` is the list). | Low — visual only (one fewer nav bar), reversible by reverting the `NavbarWrapper.tsx` change. |
-| `apps/web/src/app/matters/[id]/page.tsx` | Wrap existing content in the new Top Bar / Matter Navigator / Main Workspace / Context Drawer shell. **All 9 existing data-fetching sections (Matter Health, Prepare for Hearing, Recent Court Note, Pending Actions, Matter Overview/Edit, Proceedings, Matter Timeline, Documents, Team) are relocated into the new shell's regions, not rewritten** — same `fetch` calls, same state, same handlers, only their container changes. Matter Navigator surfaces section links (Overview, Facts, Parties, Documents, Timeline — reusing the Health/Overview/Team data already fetched here); Context Drawer starts collapsed and initially empty (Citations/AI/Related Cases wiring is Phase B, not Phase A). | Medium — largest diff of Phase A, but zero data-flow change; risk is layout/CSS regression, not logic regression. |
+| `apps/web/src/app/matters/[id]/page.tsx` | Wrap existing content in the new Top Bar / Matter Navigator / Main Workspace / Context Drawer shell. **All 9 existing data-fetching sections (Matter Health, Prepare for Hearing, Recent Court Note, Pending Actions, Matter Overview/Edit, Proceedings, Matter Timeline, Documents, Team) are relocated into the new shell's regions, not rewritten** — same `fetch` calls, same state, same handlers, only their container changes. Matter Navigator surfaces section links (Overview, Facts, Parties, Documents, Timeline — reusing the Health/Overview/Team data already fetched here); Context Drawer starts collapsed and initially empty (Citations/AI/Related Cases wiring is Phase B, not Phase A). Main Workspace's default (no active task) state reserves the search bar + Action Card zone described below — non-functional/placeholder in Phase A, per the Mock Data Policy (no new UI built around fabricated results). | Medium — largest diff of Phase A, but zero data-flow change; risk is layout/CSS regression, not logic regression. |
 | `apps/web/src/app/dashboard/layout.tsx` | Not modified in Phase A. Its off-canvas mechanism is read and replicated (same hook pattern: `isMobileNavOpen` state, Escape-key handler, `translate-x` transform, backdrop) into the new `matters/layout.tsx` below — copied, not imported, since the two shells' nav content differs enough that a shared abstraction is a Phase A non-goal (avoid coupling `/dashboard`'s launch-page shell to `/matters`' workspace shell before both are proven). | None — file untouched. |
 
 ## Files to Add
@@ -50,6 +50,32 @@ Phase A's job is purely to re-house calls that already exist; it introduces zero
 - **`apps/web/src/app/matters/[id]/page.tsx`**: every existing `fetch` call, state hook, and handler is preserved unchanged; only JSX nesting/layout classes change. A revert is a straightforward `git revert` of the Phase A commit with no follow-on cleanup (no new tables, no new API contracts to also unwind).
 - **`dashboard/page.tsx` / `dashboard/ai-chamber/page.tsx`**: reverting restores `TriPaneChamber` as the default `/dashboard` view exactly as it exists today — the component itself is never modified in Phase A, so this revert has zero risk of losing work.
 - No database migration, no new environment variable, and no API contract change occurs in Phase A, so rollback never requires anything beyond a code revert and redeploy.
+
+## Search Experience & Action Cards — Design Requirements for the Main Workspace
+
+Per Product Owner direction, these are design requirements the Phase A shell must accommodate structurally, not functionality to build now. Both extend `MATTER_WORKSPACE_DEPENDENCY_MAP.md` §7 (Search Experience) with further detail and add a new element (Action Cards) to the Main Workspace's default state.
+
+### Search Experience ("Command Center")
+
+Google's search-first minimalism is the inspiration, not the UI to copy — this is a legal-research search, not a general web search:
+
+- Large, distraction-free search field is the primary visual focus of the Matter Workspace's default (no active task) state.
+- No traditional "Search" button — a subtle arrow/send icon inside the field, right-aligned.
+- Enter or arrow-click both submit, matching the existing `dashboard/search/page.tsx` form's `onSubmit` semantics (§7 of the dependency map already specifies pointing this at the real `GET /api/search`).
+- Generous whitespace around the field; sized for long legal queries, not a short keyword box.
+- Placeholder text establishes the box's scope to the user, e.g. *"Search cases, Acts, Sections, judgments, or ask AI about your matter..."*
+- **Future-ready, not built now**: the field's markup/component boundary must not preclude later additions — natural-language research, AI assistant, matter/document/citation search, Act & Section lookup, voice input, document upload, OCR search, saved searches, search history. None of these are implemented in Phase A or authorized by this document; the requirement is only that Phase A's component structure doesn't force a rebuild to add them later (consistent with `/api/search`'s existing `type`/provider-registry design already anticipating this).
+
+### Action Cards
+
+Compact quick-action affordances beneath the search bar, above the main content area, to reduce clicks to the Matter's most common next actions:
+
+- Examples: Ask AI, Search Case Law, Search Acts & Sections, Upload Documents, Draft Petition/Notice/Written Statement, Summarize Documents, Compare Judgments, Build Case Timeline, Hearing Preparation, Evidence Review, Research History.
+- Cards are **quick actions, not a navigation menu** — distinct from the Matter Navigator's section links.
+- Show only the 4–6 most relevant cards at a time; adapt to the current Matter and the user's workflow; prioritize frequently used actions.
+- Compact, unobtrusive — recede once the user starts working (e.g. once a document is open or an AI conversation is underway), consistent with the reading-first principle already established in `DASHBOARD_WORKSPACE_ARCHITECTURE.md` §7.
+
+**Phase A scope for both**: reserve the layout region and establish the component boundary (empty/placeholder state, e.g. a static, non-personalized card set or none at all) so Phase B can wire real behavior (real search execution, real per-Matter action relevance) without a shell rebuild. No search execution logic, no action-relevance logic, and no new API calls are implemented in Phase A.
 
 ## Validation Strategy
 
