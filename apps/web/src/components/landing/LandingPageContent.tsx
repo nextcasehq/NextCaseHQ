@@ -1,6 +1,7 @@
 import React from "react";
 import JsonLd from "@/components/seo/JsonLd";
 import HeroSection from "@/components/landing/sections/HeroSection";
+import ProductPreview from "@/components/landing/sections/ProductPreview";
 import TrustBar from "@/components/landing/sections/TrustBar";
 import Features from "@/components/landing/sections/Features";
 import Security from "@/components/landing/sections/Security";
@@ -17,6 +18,7 @@ export default function LandingPageContent() {
       <JsonLd type="SoftwareApplication" />
 
       <HeroSection />
+      <ProductPreview />
       <TrustBar />
       <Features />
       <Security />
