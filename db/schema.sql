@@ -281,6 +281,74 @@ $$;
 -- not a migration-pending one.
 ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "matter_id" UUID REFERENCES "Matter"("id");
 
+-- 3c. CourtNote — Court Note Quick Entry Foundation (Product Direction,
+-- Milestone 1). One immutable row per hearing, recorded by the advocate in
+-- under 30 seconds. case_id is the Proceeding the hearing belongs to;
+-- matter_id is denormalized from LegalCase.matter_id at insert time (same
+-- rationale as AiUsageEvent storing both matter_id and proceeding_id) so a
+-- Matter's full hearing history can be read without joining through
+-- LegalCase. case_id is RESTRICT, not CASCADE — same lesson as
+-- DocumentEnvelope.case_id (Sprint 3, PR 3A): a Proceeding with recorded
+-- Court Notes must not silently lose that hearing history via cascade;
+-- DELETE /api/cases/[id] checks for and blocks on linked Court Notes
+-- explicitly, exactly like it already does for linked documents.
+--
+-- court_forum_type is a fixed quick-select value or 'OTHER'; when 'OTHER',
+-- court_forum_other preserves the advocate's exact wording (e.g. "Tahsildar
+-- Court") and court_forum_display always holds the one string every future
+-- reader (list views, search, templates) should show, so no caller ever
+-- needs a CASE expression to resolve which of the two columns to read.
+--
+-- Append-only, same as AiUsageEvent/DocumentAccessEvent: UPDATE and DELETE
+-- are revoked from the application role below (a real grant restriction,
+-- not just convention). A correction is a new Court Note, never an edit to
+-- a prior one — the hearing history this table exists to preserve must
+-- never be silently rewritten.
+--
+-- hearing_date/next_hearing_date are TEXT (not DATE), matching
+-- LegalCase.hearing_date's own precedent above: the UI already works in
+-- plain YYYY-MM-DD, and a DATE column round-trips through node-pg as a JS
+-- Date, which JSON-serializes as a full UTC timestamp — the exact
+-- timezone-conversion footgun that precedent exists to avoid.
+CREATE TABLE IF NOT EXISTS "CourtNote" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "case_id" UUID NOT NULL REFERENCES "LegalCase"("id"),
+    "matter_id" UUID REFERENCES "Matter"("id"),
+    "author_user_id" UUID NOT NULL REFERENCES "User"("id"),
+    "hearing_date" TEXT NOT NULL,
+    "next_hearing_date" TEXT,
+    "court_forum_type" TEXT NOT NULL,
+    "court_forum_other" TEXT,
+    "court_forum_display" TEXT NOT NULL,
+    "stage" TEXT NOT NULL,
+    "note" TEXT NOT NULL,
+    "next_actions" TEXT,
+    "input_method" TEXT NOT NULL DEFAULT 'MANUAL',
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'courtnote_court_forum_type_check'
+    ) THEN
+        ALTER TABLE "CourtNote" ADD CONSTRAINT courtnote_court_forum_type_check
+            CHECK ("court_forum_type" IN (
+                'SUPREME_COURT', 'HIGH_COURT', 'CIVIL_COURT', 'CRIMINAL_COURT',
+                'FAMILY_COURT', 'COMMERCIAL_COURT', 'CONSUMER_COMMISSION',
+                'LABOUR_COURT', 'MACT', 'ARBITRATION', 'REVENUE_COURT', 'OTHER'
+            ));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'courtnote_input_method_check'
+    ) THEN
+        ALTER TABLE "CourtNote" ADD CONSTRAINT courtnote_input_method_check
+            CHECK ("input_method" IN ('MANUAL', 'VOICE', 'HYBRID'));
+    END IF;
+END
+$$;
+
 -- 4. DocumentEnvelope
 CREATE TABLE IF NOT EXISTS "DocumentEnvelope" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -665,6 +733,8 @@ ALTER TABLE "MatterParticipant" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterParticipant" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "MatterEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterEvent" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "CourtNote" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "CourtNote" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentVersion" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentVersion" FORCE ROW LEVEL SECURITY;
 
@@ -711,6 +781,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterEvent";
 CREATE POLICY tenant_isolation_policy ON "MatterEvent"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "CourtNote";
+CREATE POLICY tenant_isolation_policy ON "CourtNote"
+    USING ("tenant_id" = get_active_session_tenant());
+
 DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentVersion";
 CREATE POLICY tenant_isolation_policy ON "DocumentVersion"
     USING ("tenant_id" = get_active_session_tenant());
@@ -751,6 +825,9 @@ CREATE INDEX IF NOT EXISTS idx_matter_client ON "Matter"("client_id");
 CREATE INDEX IF NOT EXISTS idx_matterparticipant_matter ON "MatterParticipant"("matter_id");
 CREATE INDEX IF NOT EXISTS idx_matterparticipant_user ON "MatterParticipant"("user_id");
 CREATE INDEX IF NOT EXISTS idx_matterevent_matter_date ON "MatterEvent"("matter_id", "event_date");
+CREATE INDEX IF NOT EXISTS idx_courtnote_case_created ON "CourtNote"("case_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_courtnote_matter_created ON "CourtNote"("matter_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_courtnote_tenant_created ON "CourtNote"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_created ON "AiUsageEvent"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_matter ON "AiUsageEvent"("tenant_id", "matter_id");
 CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_envelope ON "DocumentAccessEvent"("tenant_id", "envelope_id", "created_at");
@@ -772,3 +849,7 @@ REVOKE UPDATE, DELETE ON "AiUsageEvent" FROM nextcase_app;
 -- DocumentAccessEvent is the same kind of append-only ledger, for the same
 -- reason (Sprint 3B, PR 3B-2).
 REVOKE UPDATE, DELETE ON "DocumentAccessEvent" FROM nextcase_app;
+
+-- CourtNote is the same kind of append-only ledger — a hearing record must
+-- never be silently rewritten (Product Direction, Milestone 1).
+REVOKE UPDATE, DELETE ON "CourtNote" FROM nextcase_app;
