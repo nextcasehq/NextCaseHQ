@@ -66,6 +66,7 @@ interface MatterCourtNote {
 
 interface MatterTaskItem {
   id: string;
+  case_id: string;
   case_title: string;
   status: 'PENDING' | 'COMPLETED' | 'DISMISSED';
   action_text: string | null;
@@ -111,6 +112,7 @@ export default function MatterDetailsChamberPage() {
   const [matterCourtNotes, setMatterCourtNotes] = useState<MatterCourtNote[]>([]);
   const [matterTasks, setMatterTasks] = useState<MatterTaskItem[]>([]);
   const [health, setHealth] = useState<MatterHealth | null>(null);
+  const [showFullCourtNoteHistory, setShowFullCourtNoteHistory] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -321,6 +323,11 @@ export default function MatterDetailsChamberPage() {
               }`}>
                 {matter.status}
               </span>
+              {health?.needs_attention && (
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                  NEEDS ATTENTION
+                </span>
+              )}
             </div>
 
             <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">
@@ -330,6 +337,13 @@ export default function MatterDetailsChamberPage() {
               CLIENT: <span className="text-[#5C5340] font-sans">{matter.client_name || 'Not yet linked'}</span>
               {matter.court && <> · COURT: <span className="text-[#5C5340] font-sans">{matter.court}</span></>}
             </p>
+            {health && (health.stage || health.next_hearing_date) && (
+              <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider">
+                {health.stage && <>STAGE: <span className="text-[#8A6D2F] font-sans">{health.stage}</span></>}
+                {health.stage && health.next_hearing_date && ' · '}
+                {health.next_hearing_date && <>NEXT HEARING: <span className="text-[#8A6D2F] font-sans font-mono">{health.next_hearing_date}</span></>}
+              </p>
+            )}
           </div>
 
           <button
@@ -378,6 +392,100 @@ export default function MatterDetailsChamberPage() {
                 )}
               </div>
             )}
+
+            {/* Recent Court Note — latest only; full aggregated history is
+                progressive disclosure, not shown immediately */}
+            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Recent Court Note</h3>
+              {matterCourtNotes.length === 0 ? (
+                <p className="text-xs font-semibold text-[#8A7A56]">No Court Notes recorded yet for this matter.</p>
+              ) : (
+                <>
+                  <div className="border-l-2 border-[#F4EEE0] pl-4">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{matterCourtNotes[0].hearing_date}</span>
+                      <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-wider">{matterCourtNotes[0].stage}</span>
+                      <span className="text-[10px] text-[#B0A588]">· {matterCourtNotes[0].court_forum_display}</span>
+                      <Link href={`/cases/${matterCourtNotes[0].case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
+                        {matterCourtNotes[0].case_title}
+                      </Link>
+                    </div>
+                    <p className="text-xs text-[#3A3222] mt-1">{matterCourtNotes[0].note}</p>
+                    {matterCourtNotes[0].next_actions && (
+                      <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {matterCourtNotes[0].next_actions}</p>
+                    )}
+                  </div>
+
+                  {matterCourtNotes.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setShowFullCourtNoteHistory(!showFullCourtNoteHistory)}
+                        className="mt-4 text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                      >
+                        {showFullCourtNoteHistory ? 'Hide full history' : `View full history (${matterCourtNotes.length}) →`}
+                      </button>
+                      {showFullCourtNoteHistory && (
+                        <div className="space-y-4 mt-4 pt-4 border-t border-[#F4EEE0]">
+                          {matterCourtNotes.slice(1).map((cn) => (
+                            <div key={cn.id} className="border-l-2 border-[#F4EEE0] pl-4">
+                              <div className="flex flex-wrap items-baseline gap-x-2">
+                                <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
+                                <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-wider">{cn.stage}</span>
+                                <span className="text-[10px] text-[#B0A588]">· {cn.court_forum_display}</span>
+                                <Link href={`/cases/${cn.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
+                                  {cn.case_title}
+                                </Link>
+                              </div>
+                              <p className="text-xs text-[#3A3222] mt-1">{cn.note}</p>
+                              {cn.next_actions && (
+                                <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {cn.next_actions}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Pending Actions — structured, derived from Court Notes */}
+            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Pending Actions</h3>
+              {matterTasks.filter((t) => t.status === 'PENDING').length === 0 ? (
+                <p className="text-xs font-semibold text-[#8A7A56]">No pending actions.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {matterTasks
+                    .filter((task) => task.status === 'PENDING')
+                    .map((task) => (
+                      <li key={task.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-[#FBF8F1]/50 border-[#F4EEE0]">
+                        <div>
+                          <p className="text-sm font-medium text-[#3A3222]">☐ {task.action_text}</p>
+                          <span className="text-[10px] text-[#B0A588]">
+                            {task.hearing_date && <>Due: {task.hearing_date} · </>}Source: {task.case_title}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 flex-none">
+                          <button
+                            onClick={() => handleTaskStatusChange(task.id, 'COMPLETED')}
+                            className="text-[10px] font-bold uppercase text-[#8A6D2F] hover:underline"
+                          >
+                            Complete
+                          </button>
+                          <Link
+                            href={`/cases/${task.case_id}`}
+                            className="text-[10px] font-bold uppercase text-[#B0A588] hover:underline"
+                          >
+                            View Source Note
+                          </Link>
+                        </div>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
 
             {isEditing ? (
               <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
@@ -541,10 +649,14 @@ export default function MatterDetailsChamberPage() {
               )}
             </div>
 
-            {/* Chronology Section */}
+            {/* Matter Timeline — unified chronology: Court Note-generated
+                events (read-only, source_type='HEARING') alongside manual
+                entries (source_type='MANUAL'), same table/list since
+                Milestone 1 — this section only renames and repositions it,
+                the "Add Entry" capability is unchanged. */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Chronology</h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Matter Timeline</h3>
                 <button
                   onClick={() => setShowEventForm(!showEventForm)}
                   className="bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs px-4 py-2 rounded-lg transition-all uppercase tracking-wider"
@@ -584,6 +696,11 @@ export default function MatterDetailsChamberPage() {
                       <span className="text-[10px] font-mono font-bold text-[#8A6D2F]">
                         {new Date(ev.event_date).toLocaleDateString()}
                       </span>
+                      {ev.source_type === 'HEARING' && (
+                        <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-[#B0A588] border border-[#E7DFC9] rounded px-1.5 py-0.5">
+                          Court Note
+                        </span>
+                      )}
                       <p className="text-sm text-[#3A3222] font-medium">{ev.description}</p>
                     </li>
                   ))}
@@ -593,80 +710,6 @@ export default function MatterDetailsChamberPage() {
                   <p className="text-xs font-semibold text-[#8A7A56]">No chronology entries yet.</p>
                   <p className="text-[10px] text-[#B0A588] mt-0.5">Add the first entry to start this matter&apos;s timeline.</p>
                 </div>
-              )}
-            </div>
-
-            {/* Court Note History — aggregated across every linked Proceeding */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Court Note History</h3>
-              {matterCourtNotes.length === 0 ? (
-                <p className="text-xs font-semibold text-[#8A7A56]">No Court Notes recorded yet for this matter.</p>
-              ) : (
-                <div className="space-y-4">
-                  {matterCourtNotes.map((cn) => (
-                    <div key={cn.id} className="border-l-2 border-[#F4EEE0] pl-4">
-                      <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
-                        <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-wider">{cn.stage}</span>
-                        <span className="text-[10px] text-[#B0A588]">· {cn.court_forum_display}</span>
-                        <Link
-                          href={`/cases/${cn.case_id}`}
-                          className="text-[10px] font-bold text-[#8A6D2F] hover:underline"
-                        >
-                          {cn.case_title}
-                        </Link>
-                      </div>
-                      <p className="text-xs text-[#3A3222] mt-1">{cn.note}</p>
-                      {cn.next_actions && (
-                        <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {cn.next_actions}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Pending Actions — structured, derived from Court Notes */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Pending Actions</h3>
-              {matterTasks.length === 0 ? (
-                <p className="text-xs font-semibold text-[#8A7A56]">No pending actions.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {matterTasks.map((task) => (
-                    <li
-                      key={task.id}
-                      className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${
-                        task.status === 'PENDING' ? 'bg-[#FBF8F1]/50 border-[#F4EEE0]' : 'bg-white border-[#F4EEE0] opacity-50'
-                      }`}
-                    >
-                      <div>
-                        <p className={`text-sm font-medium text-[#3A3222] ${task.status !== 'PENDING' ? 'line-through' : ''}`}>
-                          {task.action_text}
-                        </p>
-                        <span className="text-[10px] text-[#B0A588]">{task.case_title} · {task.hearing_date}</span>
-                      </div>
-                      {task.status === 'PENDING' ? (
-                        <div className="flex gap-2 flex-none">
-                          <button
-                            onClick={() => handleTaskStatusChange(task.id, 'COMPLETED')}
-                            className="text-[10px] font-bold uppercase text-[#8A6D2F] hover:underline"
-                          >
-                            Mark Done
-                          </button>
-                          <button
-                            onClick={() => handleTaskStatusChange(task.id, 'DISMISSED')}
-                            className="text-[10px] font-bold uppercase text-[#B0A588] hover:underline"
-                          >
-                            Dismiss
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-bold uppercase text-[#B0A588] flex-none">{task.status}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
               )}
             </div>
 
