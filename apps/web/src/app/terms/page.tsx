@@ -1,8 +1,32 @@
-'use client';
-
 import React from 'react';
+import type { Metadata } from 'next';
 import { Footer } from '@/components/Footer';
 import { Badge } from '@/components/ui/Badge';
+
+const title = 'Terms of Service | NextCaseHQ';
+const description =
+  'NextCaseHQ terms of service: usage guidelines and multi-tenant boundary isolation requirements for practice tenant sessions.';
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: '/terms' },
+  openGraph: {
+    title,
+    description,
+    url: '/terms',
+    siteName: 'NextCaseHQ',
+    type: 'website',
+    locale: 'en_US',
+    images: [{ url: '/landing/product-preview.png', width: 1200, height: 900, alt: 'NextCaseHQ product preview' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description,
+    images: ['/landing/product-preview.png'],
+  },
+};
 
 export default function TermsPage() {
   return (

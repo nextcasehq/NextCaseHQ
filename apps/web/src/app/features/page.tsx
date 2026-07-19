@@ -1,8 +1,34 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+
+const title = "Platform Features | NextCaseHQ";
+const description =
+  "Explore NextCaseHQ's modular zero-knowledge litigation workspace: end-to-end encrypted document handling, statutory compliance mapping, and an interactive draft sheet.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/features" },
+  openGraph: {
+    title,
+    description,
+    url: "/features",
+    siteName: "NextCaseHQ",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/landing/product-preview.png", width: 1200, height: 900, alt: "NextCaseHQ product preview" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/landing/product-preview.png"],
+  },
+};
 
 export default function FeaturesPage() {
   return (
