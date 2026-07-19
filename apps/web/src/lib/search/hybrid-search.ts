@@ -36,10 +36,22 @@ export interface HybridSearchResult {
 
 export interface HybridSearchOptions {
   caseId?: string | null;
+  matterId?: string | null;
   limit?: number;
   offset?: number;
 }
 
+/**
+ * caseId and matterId are independent, AND-composed filters — the same
+ * relationship GET /api/documents already uses for its own case_id/
+ * matter_id filters. Since PR 3A auto-derives a document's matter_id from
+ * its case_id at write time, filtering by matterId alone is already a
+ * superset of every Proceeding under that Matter plus documents linked
+ * directly to it with no Proceeding at all, with no further backfill
+ * needed here. Appended as new params ($8) rather than renumbering the
+ * existing $1-$7 placeholders, so the already-proven case_id path is
+ * untouched by this change.
+ */
 export async function hybridSearch(
   tenantId: string,
   query: string,
@@ -48,6 +60,7 @@ export async function hybridSearch(
   const limit = options.limit ?? DEFAULT_LIMIT;
   const offset = options.offset ?? 0;
   const caseId = options.caseId ?? null;
+  const matterId = options.matterId ?? null;
 
   const provider = getEmbeddingProvider();
   const queryVector = toVectorLiteral(await provider.generateEmbedding(query));
@@ -60,6 +73,7 @@ export async function hybridSearch(
        FROM "DocumentChunkVector"
        WHERE embedding IS NOT NULL
          AND ($2::uuid IS NULL OR envelope_id IN (SELECT id FROM "DocumentEnvelope" WHERE case_id = $2))
+         AND ($8::uuid IS NULL OR envelope_id IN (SELECT id FROM "DocumentEnvelope" WHERE matter_id = $8))
        ORDER BY embedding <=> $1::vector
        LIMIT $5
      ),
@@ -68,6 +82,7 @@ export async function hybridSearch(
        FROM "DocumentChunkVector"
        WHERE content_tsv @@ plainto_tsquery('english', $3)
          AND ($2::uuid IS NULL OR envelope_id IN (SELECT id FROM "DocumentEnvelope" WHERE case_id = $2))
+         AND ($8::uuid IS NULL OR envelope_id IN (SELECT id FROM "DocumentEnvelope" WHERE matter_id = $8))
        ORDER BY ts_rank(content_tsv, plainto_tsquery('english', $3)) DESC
        LIMIT $5
      ),
@@ -82,6 +97,6 @@ export async function hybridSearch(
      JOIN "DocumentChunkVector" c ON c.id = fused.id
      ORDER BY fused.score DESC
      LIMIT $4 OFFSET $7`,
-    [queryVector, caseId, query, limit, CANDIDATE_POOL_SIZE, RRF_K, offset]
+    [queryVector, caseId, query, limit, CANDIDATE_POOL_SIZE, RRF_K, offset, matterId]
   );
 }

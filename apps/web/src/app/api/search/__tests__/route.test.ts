@@ -40,18 +40,23 @@ describe('GET /api/search', () => {
     await Promise.all(uploadedObjectKeys.map((key) => deleteObject(key).catch(() => {})));
     await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_B]);
+    await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
     await closePool();
   });
 
-  async function createAndIndexDocument(tenantId: string, content: string): Promise<string> {
+  async function createAndIndexDocument(
+    tenantId: string,
+    content: string,
+    matterId: string | null = null
+  ): Promise<string> {
     const documentId = crypto.randomUUID();
     const objectKey = `${tenantId}/${documentId}/file.txt`;
     await putObject(objectKey, Buffer.from(content), 'text/plain');
     uploadedObjectKeys.push(objectKey);
     await db.execute(
       tenantId,
-      `INSERT INTO "DocumentEnvelope" (id, tenant_id, title, storage_structure) VALUES ($1, $2, $3, $4)`,
-      [documentId, tenantId, 'file.txt', { object_key: objectKey, content_type: 'text/plain' }]
+      `INSERT INTO "DocumentEnvelope" (id, tenant_id, matter_id, title, storage_structure) VALUES ($1, $2, $3, $4, $5)`,
+      [documentId, tenantId, matterId, 'file.txt', { object_key: objectKey, content_type: 'text/plain' }]
     );
     await indexDocument(tenantId, documentId);
     return documentId;
@@ -113,5 +118,46 @@ describe('GET /api/search', () => {
     );
     const bodyB = await resB.json();
     expect(bodyB.results.some((r: { envelope_id: string }) => r.envelope_id === tenantBDocId)).toBe(true);
+  });
+
+  test('filters by matter_id — a document linked to another Matter is excluded', async () => {
+    if (!hasS3()) return;
+    const matterRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'Search Filter Test Matter']
+    );
+    const matterId = matterRows[0].id;
+
+    const matterDocId = await createAndIndexDocument(
+      TENANT_A,
+      'litigation strategy memorandum regarding discovery obligations. '.repeat(20),
+      matterId
+    );
+    const unlinkedDocId = await createAndIndexDocument(
+      TENANT_A,
+      'litigation strategy memorandum regarding discovery obligations. '.repeat(20),
+      null
+    );
+
+    const res = await GET(
+      buildRequest(`http://localhost/api/search?q=discovery%20obligations&matter_id=${matterId}`, {
+        cookie: await sessionCookieHeader(TENANT_A),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results.some((r: { envelope_id: string }) => r.envelope_id === matterDocId)).toBe(true);
+    expect(body.results.every((r: { envelope_id: string }) => r.envelope_id !== unlinkedDocId)).toBe(true);
+
+    // Omitting matter_id reproduces the unfiltered behavior — both surface.
+    const unfilteredRes = await GET(
+      buildRequest('http://localhost/api/search?q=discovery%20obligations', {
+        cookie: await sessionCookieHeader(TENANT_A),
+      })
+    );
+    const unfilteredBody = await unfilteredRes.json();
+    expect(unfilteredBody.results.some((r: { envelope_id: string }) => r.envelope_id === matterDocId)).toBe(true);
+    expect(unfilteredBody.results.some((r: { envelope_id: string }) => r.envelope_id === unlinkedDocId)).toBe(true);
   });
 });

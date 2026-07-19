@@ -5,6 +5,7 @@ import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { isObjectStorageConfigured, putObject, deleteObject } from '@/lib/storage/object-storage';
 import { validateFileType, buildVersionObjectKey, MAX_DOCUMENT_SIZE_BYTES } from '@/lib/storage/document-key';
+import { indexDocument, type IndexDocumentResult } from '@/lib/search/indexing';
 
 /**
  * DocumentVersion history for a single DocumentEnvelope (Sprint 3, PR 3A).
@@ -207,7 +208,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       throw dbError;
     }
 
-    return NextResponse.json({ version, bytes_received: totalBytesReceived }, { status: 201 });
+    // Deterministic synchronous re-index (Sprint 3B, PR 3B-1): the new
+    // version is already the current one by this point (touched_envelope
+    // above), so its own indexDocument() call unconditionally invalidates
+    // whatever chunks the prior version left behind before attempting to
+    // produce new ones — no window where a stale version keeps appearing
+    // in search results. The uploaded version itself is never rolled back
+    // if indexing fails; the failure is reported honestly in the response
+    // instead, and the document is left in a FAILED/retryable state
+    // (retry via the existing POST /api/documents/[id]/index endpoint —
+    // no separate queue or worker infrastructure is introduced for this).
+    let indexing: IndexDocumentResult;
+    try {
+      indexing = await indexDocument(tenantId, id);
+    } catch (indexError) {
+      indexing = {
+        status: 'FAILED',
+        error: indexError instanceof Error ? indexError.message : 'Unknown indexing error.',
+      };
+    }
+
+    return NextResponse.json({ version, bytes_received: totalBytesReceived, indexing }, { status: 201 });
   } catch (error) {
     console.error('[DOCUMENTS_API] POST /api/documents/[id]/versions failed:', error);
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
