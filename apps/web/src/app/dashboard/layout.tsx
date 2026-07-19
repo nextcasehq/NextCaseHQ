@@ -33,8 +33,25 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
+
+  // Close the off-canvas nav on route change (below md) — matches
+  // TriPaneChamber's own mobile-panel-switch behavior of not leaving a
+  // now-irrelevant mobile surface open after navigating.
+  React.useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [pathname]);
+
+  React.useEffect(() => {
+    if (!isMobileNavOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileNavOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isMobileNavOpen]);
 
   const sidebarItems = [
     { label: 'AI Chamber', href: '/dashboard/ai-chamber', icon: '⚡' },
@@ -74,16 +91,47 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-white text-[#241E17] font-sans selection:bg-[#8A6D2F] selection:text-white relative">
-      {/* High-density Left Sidebar */}
-      <aside className="w-64 border-r border-[#F4EEE0] bg-white flex flex-col z-20 flex-none h-full">
+      {/* Backdrop — mobile/tablet only, shown while the off-canvas nav is open */}
+      {isMobileNavOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-20 md:hidden"
+          onClick={() => setIsMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* High-density Left Sidebar — static and always visible at md+ (desktop
+          behavior unchanged); below md it's an off-canvas panel toggled by
+          the header's hamburger button, reusing the same
+          state-driven show/hide-by-breakpoint technique TriPaneChamber's
+          panels already use internally. */}
+      <aside
+        id="dashboard-mobile-nav"
+        className={`
+          fixed md:static inset-y-0 left-0 z-30 md:z-20
+          w-64 border-r border-[#F4EEE0] bg-white flex flex-col flex-none h-full
+          transform transition-transform duration-200 ease-in-out md:translate-x-0
+          ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
         {/* Sidebar Header */}
         <div className="h-16 px-6 border-b border-[#F4EEE0] flex items-center justify-between">
           <Link href="/dashboard" className="text-xl font-black tracking-tight text-[#241E17] flex items-center gap-1">
             <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </Link>
-          <span className="text-[10px] font-mono border border-[#E7DFC9] text-[#8A7A56] rounded px-1.5 py-0.5 uppercase bg-[#FBF8F1]">
-            HQ // PRO
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono border border-[#E7DFC9] text-[#8A7A56] rounded px-1.5 py-0.5 uppercase bg-[#FBF8F1]">
+              HQ // PRO
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(false)}
+              aria-label="Close navigation menu"
+              className="md:hidden p-1 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Sidebar Navigation Items */}
@@ -126,10 +174,22 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden h-full">
         {/* Top Header Row */}
-        <header className="h-16 border-b border-[#F4EEE0] bg-white px-8 flex items-center justify-between z-10 flex-none">
-          <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-xs uppercase tracking-widest font-black text-[#B0A588]">
+        <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between z-10 flex-none">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={isMobileNavOpen}
+              aria-controls="dashboard-mobile-nav"
+              className="md:hidden flex-none p-2 -ml-2 text-[#8A7A56] hover:text-[#241E17] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-none"></span>
+            <span className="text-xs uppercase tracking-widest font-black text-[#B0A588] truncate">
               PostgreSQL Session RLS Active
             </span>
           </div>
