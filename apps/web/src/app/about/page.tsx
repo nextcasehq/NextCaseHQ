@@ -1,7 +1,33 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/Badge";
+
+const title = "Our Mission | NextCaseHQ";
+const description =
+  "NextCaseHQ's mission: give modern advocates and counsel the world's most secure, high-focus, zero-knowledge litigation operating system.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title,
+    description,
+    url: "/about",
+    siteName: "NextCaseHQ",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/landing/product-preview.png", width: 1200, height: 900, alt: "NextCaseHQ product preview" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/landing/product-preview.png"],
+  },
+};
 
 export default function AboutPage() {
   return (

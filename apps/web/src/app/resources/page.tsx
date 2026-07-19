@@ -1,9 +1,33 @@
-'use client';
-
 import React from 'react';
+import type { Metadata } from 'next';
 import { Footer } from '@/components/Footer';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+
+const title = 'Resources | NextCaseHQ';
+const description =
+  'NextCaseHQ compliance handbooks, whitepapers, and operational reports on regulatory change and zero-knowledge litigation practice.';
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: '/resources' },
+  openGraph: {
+    title,
+    description,
+    url: '/resources',
+    siteName: 'NextCaseHQ',
+    type: 'website',
+    locale: 'en_US',
+    images: [{ url: '/landing/product-preview.png', width: 1200, height: 900, alt: 'NextCaseHQ product preview' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description,
+    images: ['/landing/product-preview.png'],
+  },
+};
 
 export default function ResourcesPage() {
   return (

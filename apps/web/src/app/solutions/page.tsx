@@ -1,8 +1,34 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+
+const title = "Litigation Practice Solutions | NextCaseHQ";
+const description =
+  "Tailored NextCaseHQ solutions for practice groups, corporate legal teams, and solo practitioners, with jurisdictional compliance frameworks built in.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/solutions" },
+  openGraph: {
+    title,
+    description,
+    url: "/solutions",
+    siteName: "NextCaseHQ",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/landing/product-preview.png", width: 1200, height: 900, alt: "NextCaseHQ product preview" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/landing/product-preview.png"],
+  },
+};
 
 export default function SolutionsPage() {
   return (

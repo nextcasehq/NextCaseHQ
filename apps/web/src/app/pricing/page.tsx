@@ -1,7 +1,33 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/Badge";
+
+const title = "Pricing | NextCaseHQ";
+const description =
+  "Transparent pricing for the NextCaseHQ Counsel Pro plan: unlimited secure practice tenants, infinite context search, and full KMS access.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/pricing" },
+  openGraph: {
+    title,
+    description,
+    url: "/pricing",
+    siteName: "NextCaseHQ",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/landing/product-preview.png", width: 1200, height: 900, alt: "NextCaseHQ product preview" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/landing/product-preview.png"],
+  },
+};
 
 export default function PricingPage() {
   return (
