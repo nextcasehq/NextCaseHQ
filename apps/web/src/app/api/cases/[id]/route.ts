@@ -249,12 +249,25 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // on the resulting FK violation, so the caller gets a clear,
     // actionable response instead of a raw 500, matching the same
     // deterministic-409 pattern already used by matters/clients.
-    const documentRows = await db.execute<{ count: number }>(
-      session.tenantId,
-      `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE case_id = $1`,
-      [id]
-    );
+    // CourtNote.case_id is RESTRICT (no ON DELETE clause), same rule as
+    // DocumentEnvelope.case_id (Sprint 3, PR 3A) — a Proceeding's hearing
+    // history must never silently disappear via cascade, so this is
+    // checked explicitly here too rather than relying on the resulting FK
+    // violation.
+    const [documentRows, courtNoteRows] = await Promise.all([
+      db.execute<{ count: number }>(
+        session.tenantId,
+        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE case_id = $1`,
+        [id]
+      ),
+      db.execute<{ count: number }>(
+        session.tenantId,
+        `SELECT COUNT(*)::int AS count FROM "CourtNote" WHERE case_id = $1`,
+        [id]
+      ),
+    ]);
     const linkedDocuments = documentRows[0].count;
+    const linkedCourtNotes = courtNoteRows[0].count;
     if (linkedDocuments > 0) {
       return NextResponse.json(
         {
@@ -262,6 +275,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           code: 'CASE_HAS_LINKED_DOCUMENTS',
           message: 'This case still has linked documents. Remove or relink them before deleting this case.',
           linked: { documents: linkedDocuments },
+        },
+        { status: 409 }
+      );
+    }
+    if (linkedCourtNotes > 0) {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'CASE_HAS_COURT_NOTES',
+          message: 'This case has recorded Court Notes. Its hearing history must be preserved and cannot be deleted.',
+          linked: { court_notes: linkedCourtNotes },
         },
         { status: 409 }
       );
@@ -277,14 +301,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       if (message.includes('foreign key constraint')) {
-        // Defense in depth against a document linked in the narrow window
-        // between the check above and this delete — still a deterministic
-        // 409, never a raw 500 leaking a Postgres error.
+        // Defense in depth against a document or Court Note linked in the
+        // narrow window between the checks above and this delete — still a
+        // deterministic 409, never a raw 500 leaking a Postgres error.
         return NextResponse.json(
           {
             error: 'CONFLICT',
             code: 'CASE_HAS_LINKED_DOCUMENTS',
-            message: 'This case still has linked documents. Remove or relink them before deleting this case.',
+            message: 'This case still has linked documents or Court Notes. Remove them before deleting this case.',
           },
           { status: 409 }
         );
