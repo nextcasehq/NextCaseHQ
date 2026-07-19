@@ -75,7 +75,26 @@ Compact quick-action affordances beneath the search bar, above the main content 
 - Show only the 4–6 most relevant cards at a time; adapt to the current Matter and the user's workflow; prioritize frequently used actions.
 - Compact, unobtrusive — recede once the user starts working (e.g. once a document is open or an AI conversation is underway), consistent with the reading-first principle already established in `DASHBOARD_WORKSPACE_ARCHITECTURE.md` §7.
 
-**Phase A scope for both**: reserve the layout region and establish the component boundary (empty/placeholder state, e.g. a static, non-personalized card set or none at all) so Phase B can wire real behavior (real search execution, real per-Matter action relevance) without a shell rebuild. No search execution logic, no action-relevance logic, and no new API calls are implemented in Phase A.
+### Intelligent Action Cards
+
+Cards are context-aware workflow accelerators, not static shortcuts — the set shown depends on the Matter's workflow stage, not a fixed list:
+
+- Prioritization inputs: Matter status, current user activity, recent history, workflow stage.
+- Illustrative stage-based sets (still only 4–6 shown at a time):
+  - **New Matter**: Upload Documents, Add Parties, Ask AI, Search Case Law.
+  - **Research Stage**: Related Judgments, Search Acts, Search Sections, Compare Cases.
+  - **Drafting Stage**: Draft Petition, Draft Notice, AI Review, Export Draft.
+  - **Hearing Stage**: Hearing Preparation, Evidence Bundle, Timeline, Oral Arguments.
+- Cards remain workflow accelerators, never a second navigation system — the Matter Navigator stays the single place for Matter section navigation.
+- Once meaningful work begins, cards become secondary so the reading workspace stays dominant (same recede-on-engagement behavior as the non-intelligent version above, now driven by workflow stage rather than only "a document is open").
+
+**Phase A scope**: identical to the base Action Cards scope above — reserve the layout region and component boundary only. Determining workflow stage, matching it to a card set, and reprioritizing by recent history is real product logic (Matter-status inference, activity tracking) and is explicitly **Phase B or later**, not Phase A. Phase A's placeholder may show a fixed illustrative set (e.g. the New Matter set) without any stage-detection logic behind it.
+
+### Reading Experience (governing principle)
+
+The central Main Workspace must never feel like a dashboard — its purpose is reading, research, drafting, reviewing, and comparing authorities; every other element (Matter Navigator, Context Drawer, search bar, Action Cards) supports that experience rather than competing with it. Where a future addition (a widget, a card, a panel) would conflict with reading clarity, reading clarity wins. This principle governs every subsequent phase's design decisions, not just Phase A's shell.
+
+**Phase A scope**: no code implication beyond what's already planned above — recorded here as the standing design principle that Phase A's shell (and every later phase) must be judged against.
 
 ## Validation Strategy
 
