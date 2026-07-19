@@ -5,6 +5,8 @@ export interface PromptLayers {
   instructions: string;
   matterContext?: string;
   retrievedDocuments?: string;
+  /** The prior draft text being revised (DRAFT_IMPROVE only) — optional, additive; every existing caller that omits it is unaffected. */
+  existingDraft?: string;
   userRequest: string;
 }
 
@@ -29,6 +31,9 @@ export function buildPrompt(layers: PromptLayers): ChatMessage[] {
   }
   if (layers.retrievedDocuments) {
     userParts.push(`Context excerpts:\n\n${layers.retrievedDocuments}`);
+  }
+  if (layers.existingDraft) {
+    userParts.push(`Existing draft to revise:\n\n${layers.existingDraft}`);
   }
   userParts.push(`Question: ${layers.userRequest}`);
 

@@ -536,6 +536,37 @@ BEGIN
 END
 $$;
 
+-- 4d. Document Type (Milestone 4, Prepare Document)
+--
+-- Nullable by design: every pre-existing DocumentEnvelope row (plain
+-- uploads from Sprint 3 onward) has no drafting-flow type and must keep
+-- reading exactly as it does today — NULL means "general upload," not
+-- "unknown error." Only documents created through the /documents/new
+-- drafting flow (POST /api/documents/upload's optional x-document-type
+-- header) ever populate this column. TEXT + CHECK (not a Postgres ENUM)
+-- matches this file's existing convention for every other fixed-vocabulary
+-- column (index_status above, AiUsageEvent.operation_type below) —
+-- appending a future type is one CHECK-constraint edit, never a
+-- column-type migration. The 15 allowed values mirror the Product
+-- Owner-approved list in lib/domain/document-type.ts exactly; the two
+-- must be changed together.
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "document_type" TEXT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentenvelope_document_type_check'
+    ) THEN
+        ALTER TABLE "DocumentEnvelope" ADD CONSTRAINT documentenvelope_document_type_check
+            CHECK ("document_type" IS NULL OR "document_type" IN (
+                'PLAINT', 'WRITTEN_STATEMENT', 'AFFIDAVIT', 'INTERIM_APPLICATION', 'LEGAL_NOTICE',
+                'BAIL_APPLICATION', 'ANTICIPATORY_BAIL_APPLICATION', 'CRIMINAL_COMPLAINT', 'OBJECTION_STATEMENT', 'PETITION',
+                'WRIT_PETITION', 'WRIT_APPEAL', 'REVISION_PETITION', 'REVIEW_PETITION', 'MEMO'
+            ));
+    END IF;
+END
+$$;
+
 -- 5. DocumentChunkVector
 CREATE TABLE IF NOT EXISTS "DocumentChunkVector" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),

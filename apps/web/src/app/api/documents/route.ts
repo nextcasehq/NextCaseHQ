@@ -23,6 +23,9 @@ interface DocumentEnvelopeRow {
   created_at: string;
   index_status: string;
   indexed_version_number: number | null;
+  document_type: string | null;
+  version_count: number;
+  updated_at: string;
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -76,28 +79,40 @@ export async function GET(request: NextRequest) {
     const filterParams: unknown[] = [];
     if (case_id) {
       filterParams.push(case_id);
-      conditions.push(`case_id = $${filterParams.length}`);
+      conditions.push(`de.case_id = $${filterParams.length}`);
     }
     if (matter_id) {
       filterParams.push(matter_id);
-      conditions.push(`matter_id = $${filterParams.length}`);
+      conditions.push(`de.matter_id = $${filterParams.length}`);
     }
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const listParams = [...filterParams, limit, offset];
 
     const [rows, countRows] = await Promise.all([
+      // version_count/updated_at (Milestone 4, Prepare Document) come from
+      // a LEFT JOIN LATERAL over DocumentVersion rather than a new column
+      // on DocumentEnvelope — the version count is inherently derived data
+      // (already Sprint 3, PR 3A's source of truth), never duplicated.
       db.execute<DocumentEnvelopeRow>(
         session.tenantId,
-        `SELECT id, tenant_id, case_id, matter_id, title, storage_structure, created_at, index_status, indexed_version_number
-         FROM "DocumentEnvelope"
+        `SELECT de.id, de.tenant_id, de.case_id, de.matter_id, de.title, de.storage_structure, de.created_at,
+                de.index_status, de.indexed_version_number, de.document_type,
+                COALESCE(dv.version_count, 0) AS version_count,
+                COALESCE(dv.latest_version_created_at, de.created_at) AS updated_at
+         FROM "DocumentEnvelope" de
+         LEFT JOIN LATERAL (
+           SELECT COUNT(*)::int AS version_count, MAX(created_at) AS latest_version_created_at
+           FROM "DocumentVersion"
+           WHERE envelope_id = de.id
+         ) dv ON true
          ${whereClause}
-         ORDER BY created_at DESC
+         ORDER BY de.created_at DESC
          LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}`,
         listParams
       ),
       db.execute<{ count: number }>(
         session.tenantId,
-        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" ${whereClause}`,
+        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" de ${whereClause}`,
         filterParams
       ),
     ]);

@@ -116,4 +116,47 @@ describe('GET /api/documents — real DocumentEnvelope listing', () => {
     );
     expect(res.status).toBe(400);
   });
+
+  // Milestone 4 (Prepare Document): document_type/version_count/updated_at
+  // are additive fields — existing fields/behavior above are unaffected.
+  test('includes document_type, version_count, and updated_at per document', async () => {
+    const envelopeRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, title, document_type) VALUES ($1, $2, $3) RETURNING id`,
+      [TENANT_A, 'Typed Doc', 'PLAINT']
+    );
+    const envelopeId = envelopeRows[0].id;
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentVersion" (tenant_id, envelope_id, version_number, title, storage_structure) VALUES ($1, $2, 1, $3, '{}')`,
+      [TENANT_A, envelopeId, 'Typed Doc']
+    );
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentVersion" (tenant_id, envelope_id, version_number, title, storage_structure) VALUES ($1, $2, 2, $3, '{}')`,
+      [TENANT_A, envelopeId, 'Typed Doc']
+    );
+
+    const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }));
+    const body = await res.json();
+    expect(body.documents).toHaveLength(1);
+    expect(body.documents[0].document_type).toBe('PLAINT');
+    expect(body.documents[0].version_count).toBe(2);
+    expect(body.documents[0].updated_at).toBeTruthy();
+
+    await db.execute(TENANT_A, `DELETE FROM "DocumentVersion" WHERE envelope_id = $1`, [envelopeId]);
+  });
+
+  test('document_type is null and version_count is 0 for a document with no versions', async () => {
+    await db.execute(TENANT_A, `INSERT INTO "DocumentEnvelope" (tenant_id, title) VALUES ($1, $2)`, [
+      TENANT_A,
+      'No Version Doc',
+    ]);
+
+    const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }));
+    const body = await res.json();
+    expect(body.documents).toHaveLength(1);
+    expect(body.documents[0].document_type).toBeNull();
+    expect(body.documents[0].version_count).toBe(0);
+  });
 });
