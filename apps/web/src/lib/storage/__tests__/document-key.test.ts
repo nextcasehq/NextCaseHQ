@@ -1,4 +1,4 @@
-import { validateFileType, sanitizeFileName, buildObjectKey } from '../document-key';
+import { validateFileType, sanitizeFileName, buildObjectKey, isPreviewEligible } from '../document-key';
 
 describe('validateFileType', () => {
   test('accepts an allowed extension case-insensitively', () => {
@@ -42,5 +42,25 @@ describe('buildObjectKey', () => {
   test('sanitizes the file name within the key', () => {
     const key = buildObjectKey('tenant-a', 'doc-123', '../../evil.pdf');
     expect(key).toBe('tenant-a/doc-123/evil.pdf');
+  });
+});
+
+describe('isPreviewEligible', () => {
+  test('accepts images, PDF, and plain text', () => {
+    expect(isPreviewEligible('image/jpeg')).toBe(true);
+    expect(isPreviewEligible('image/png')).toBe(true);
+    expect(isPreviewEligible('application/pdf')).toBe(true);
+    expect(isPreviewEligible('text/plain')).toBe(true);
+  });
+
+  test('rejects DOC and DOCX — download-only by design', () => {
+    expect(isPreviewEligible('application/msword')).toBe(false);
+    expect(isPreviewEligible('application/vnd.openxmlformats-officedocument.wordprocessingml.document')).toBe(false);
+  });
+
+  test('rejects a missing or empty content type', () => {
+    expect(isPreviewEligible(null)).toBe(false);
+    expect(isPreviewEligible(undefined)).toBe(false);
+    expect(isPreviewEligible('')).toBe(false);
   });
 });

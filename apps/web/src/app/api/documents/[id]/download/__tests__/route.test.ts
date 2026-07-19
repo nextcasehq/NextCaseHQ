@@ -37,6 +37,14 @@ describe('GET /api/documents/[id]/download', () => {
       TENANT_B,
       'Download Test Tenant B',
     ]);
+    // DocumentAccessEvent.user_id references "User"(id) — the session's
+    // `sub` claim must resolve to a real row for the audit insert to
+    // actually succeed rather than fail open.
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "User" (id, tenant_id, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+      [USER_ID, TENANT_A, 'download-test@nextcase.local']
+    );
   });
 
   afterAll(async () => {
@@ -100,5 +108,43 @@ describe('GET /api/documents/[id]/download', () => {
     );
     const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }), routeParams(documentId));
     expect(res.status).toBe(404);
+  });
+
+  test('returns a deterministic 404 DOCUMENT_OBJECT_MISSING when the object is gone from storage — never a raw 500', async () => {
+    if (!hasS3()) return;
+    const documentId = crypto.randomUUID();
+    const objectKey = `${TENANT_A}/${documentId}/deleted-before-download.txt`;
+    await putObject(objectKey, Buffer.from('will be deleted'), 'text/plain');
+    await deleteObject(objectKey);
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (id, tenant_id, title, storage_structure) VALUES ($1, $2, $3, $4)`,
+      [documentId, TENANT_A, 'deleted-before-download.txt', { object_key: objectKey, content_type: 'text/plain' }]
+    );
+
+    const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }), routeParams(documentId));
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.code).toBe('DOCUMENT_OBJECT_MISSING');
+  });
+
+  test('records a durable DOWNLOAD audit event on a real download, with a correlation id when supplied', async () => {
+    if (!hasS3()) return;
+    const id = await createDocumentWithRealObject(TENANT_A, 'audited download content');
+    const res = await GET(
+      buildRequest({ cookie: await sessionCookieHeader(TENANT_A), 'x-request-id': 'corr-download-1' }),
+      routeParams(id)
+    );
+    expect(res.status).toBe(200);
+
+    const rows = await db.execute<{ action: string; user_id: string; correlation_id: string; version_number: number | null }>(
+      TENANT_A,
+      `SELECT action, user_id, correlation_id, version_number FROM "DocumentAccessEvent" WHERE envelope_id = $1`,
+      [id]
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].action).toBe('DOWNLOAD');
+    expect(rows[0].user_id).toBe(USER_ID);
+    expect(rows[0].correlation_id).toBe('corr-download-1');
   });
 });

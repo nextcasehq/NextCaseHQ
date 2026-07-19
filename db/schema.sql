@@ -580,6 +580,49 @@ BEGIN
 END
 $$;
 
+-- 7d. DocumentAccessEvent — durable, append-only preview/download audit
+-- trail (Sprint 3B, PR 3B-2). One row per successful preview or download,
+-- written by the application role but never updated or deleted afterward
+-- (see the REVOKE near the bottom of this file — a real grant
+-- restriction, not just convention, same pattern as AiUsageEvent).
+--
+-- envelope_id/version_id are deliberately plain UUID columns with NO
+-- foreign key — matching SecurityAuditTrail.resource_id's existing
+-- precedent in this same file, not AiUsageEvent's FK-to-DocumentEnvelope
+-- one. An audit trail must survive the deletion of the document it
+-- describes (durable), and must never itself become a reason a document
+-- can't be deleted (which is exactly what AiUsageEvent.document_id's FK
+-- already does today, by design, for a different reason — usage billing
+-- history). Recording who viewed a document must not make that document
+-- permanently undeletable.
+--
+-- Only the minimum fields required for a real access audit are stored:
+-- who, which document/version, what action, when, and (when the request
+-- carried one) a correlation id — never file contents, extracted text, or
+-- any other document-derived data.
+CREATE TABLE IF NOT EXISTS "DocumentAccessEvent" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "user_id" UUID REFERENCES "User"("id"),
+    "envelope_id" UUID NOT NULL,
+    "version_id" UUID,
+    "version_number" INTEGER,
+    "action" TEXT NOT NULL,
+    "correlation_id" TEXT,
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentaccessevent_action_check'
+    ) THEN
+        ALTER TABLE "DocumentAccessEvent" ADD CONSTRAINT documentaccessevent_action_check
+            CHECK ("action" IN ('PREVIEW', 'DOWNLOAD'));
+    END IF;
+END
+$$;
+
 -- 8. SecurityAuditTrail
 CREATE TABLE IF NOT EXISTS "SecurityAuditTrail" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -612,6 +655,8 @@ ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "AiUsageEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AiUsageEvent" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentAccessEvent" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentAccessEvent" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Client" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Client" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Matter" ENABLE ROW LEVEL SECURITY;
@@ -674,6 +719,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "AiUsageEvent";
 CREATE POLICY tenant_isolation_policy ON "AiUsageEvent"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentAccessEvent";
+CREATE POLICY tenant_isolation_policy ON "DocumentAccessEvent"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -704,6 +753,8 @@ CREATE INDEX IF NOT EXISTS idx_matterparticipant_user ON "MatterParticipant"("us
 CREATE INDEX IF NOT EXISTS idx_matterevent_matter_date ON "MatterEvent"("matter_id", "event_date");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_created ON "AiUsageEvent"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_matter ON "AiUsageEvent"("tenant_id", "matter_id");
+CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_envelope ON "DocumentAccessEvent"("tenant_id", "envelope_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_created ON "DocumentAccessEvent"("tenant_id", "created_at");
 
 -- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
 GRANT USAGE ON SCHEMA public TO nextcase_app;
@@ -717,3 +768,7 @@ GRANT EXECUTE ON FUNCTION get_active_session_tenant() TO nextcase_app;
 -- re-grant UPDATE/DELETE on every table including this one; REVOKE is
 -- always safe to re-run regardless of what was previously granted.
 REVOKE UPDATE, DELETE ON "AiUsageEvent" FROM nextcase_app;
+
+-- DocumentAccessEvent is the same kind of append-only ledger, for the same
+-- reason (Sprint 3B, PR 3B-2).
+REVOKE UPDATE, DELETE ON "DocumentAccessEvent" FROM nextcase_app;
