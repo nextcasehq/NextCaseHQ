@@ -27,7 +27,7 @@
     "23": "COMPLETE — Milestone 2 (Matter Intelligence Layer): PR 2A + 2B + 2C all landed"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-19T15:00:00Z",
+  "last_updated": "2026-07-19T15:45:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -515,6 +515,30 @@
         "dynamic_legal_discovery_layer_modules",
         "ai_geo_optimisation",
         "product_direction_milestone_6"
+      ]
+    },
+    "ui_ux_validation_audit": {
+      "status": "COMPLETE — Product Owner-directed read-only audit, no code changed",
+      "description": "Read-only Production Validation & UI/UX Audit against a real local PostgreSQL 16 + pgvector + Redis instance (schema migrated, seeded, real login session) rather than static code review alone: 33 routes x 4 viewports (1920x1080, 1366x768, 768x1024, 390x844) = 132 page loads, capturing full-page screenshots, console/network errors, and an axe-core accessibility scan per page. docs/UI_UX_VALIDATION_REPORT.md records 9 findings with Issue/Location/Severity/User Impact/Root Cause/Recommended Fix/Estimated Effort/Screenshot per finding, most severe first: (1) Critical — authenticated /dashboard/* shell has no mobile/tablet responsiveness (fixed 264px sidebar, no collapse pattern); (2) High — home page's Organization JSON-LD (added in PR #103) referenced a missing logo asset (404) — a self-flagged regression from this same session's prior SEO sprint, since fixed by UX-0 (see below); (3) High — GET /api/admin/sentinels doesn't exist, called by both /admin and /system, fails silently; (4) High — nested <main> landmarks on 26 pages (root layout.tsx wraps children in <main>, and nearly every page independently wraps its own content in a second <main>); (5) High — color contrast violations sitewide, heaviest on /admin (47 nodes) and /cases/[id] (24 nodes); (6) High — critical-severity missing form labels/accessible names on 3 dashboard pages; (7) Medium — heading hierarchy issues (missing or skipped <h1>) on 18 pages; (8) Medium — no favicon configured anywhere; (9) Low — a <dl> structure violation on the home page. Also records positive findings for balance: empty-state handling, the auth flow, /documents/new, and the Matter detail page's mobile layout are all well-implemented. Screenshots committed to docs/ui-ux-audit-screenshots/.",
+      "pr": 105,
+      "merge_commit": "d62a4cf",
+      "verification": "No automated verification applicable — documentation and screenshot assets only, no code changed. Evidence for each finding is the captured axe-core/console/network data (raw results not committed) and the corresponding screenshot.",
+      "out_of_scope_next": [
+        "ux_1_dashboard_mobile_tablet_responsiveness",
+        "ux_2_accessibility_remediation",
+        "ux_3_admin_system_sentinels_backend_validation"
+      ]
+    },
+    "ux_0_organization_logo_fix": {
+      "status": "COMPLETE — isolated fix, Product Owner-approved milestone UX-0",
+      "description": "Fixes Finding #2 from ui_ux_validation_audit (above): components/seo/JsonLd.tsx's Organization schema has referenced ${baseUrl}/assets/logo.png since PR #103 (seo_geo_foundation_sprint), but no file existed at that path, so the URL 404'd. Adds apps/web/public/assets/logo.png (512x512, transparent background), rendered directly from the exact existing Logo.tsx brand mark (same shield, scales-of-justice emblem, brand colors used everywhere else in the app) — not a new design, just materializing the already-approved mark as a static asset at the path the schema already expected. Single isolated change, per approved scope: no other SEO changes, no UI redesign, no accessibility changes, no backend changes.",
+      "pr": 106,
+      "merge_commit": "92e5dcc",
+      "verification": "pnpm --filter web build succeeds cleanly. Verified against a real production server (next start): home page returns 200, GET /assets/logo.png returns 200 (was 404 before this fix), and the rendered JSON-LD payload's Organization.logo field resolves to a real image end to end.",
+      "out_of_scope_next": [
+        "ux_1_dashboard_mobile_tablet_responsiveness",
+        "ux_2_accessibility_remediation",
+        "ux_3_admin_system_sentinels_backend_validation"
       ]
     },
     "product_direction_seven_day_preparation_m3": {
