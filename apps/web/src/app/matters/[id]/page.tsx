@@ -357,9 +357,19 @@ export default function MatterDetailsChamberPage() {
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
       <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
         <BrandBackground />
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Link href="/matters" className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors flex items-center gap-1">
             ← Back to Matter Workspace
+          </Link>
+          {/* Matter-scoped Universal Search entry point (Product Direction,
+              Milestone 5) — reuses the existing matter_id filter, restricted
+              to the entity types meaningful within a single Matter (not
+              other Matters/Clients). */}
+          <Link
+            href={`/search?matter_id=${id}&type=document,proceeding,court_note`}
+            className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+          >
+            🔍 Search this Matter
           </Link>
         </div>
 

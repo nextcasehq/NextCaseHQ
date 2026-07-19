@@ -952,6 +952,22 @@ CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_envelope ON "DocumentA
 CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_created ON "DocumentAccessEvent"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_matterpreparationreminder_case_hearing ON "MatterPreparationReminder"("case_id", "hearing_date");
 
+-- Universal Search — Milestone 5 (Product Direction, Milestone 5). pg_trgm
+-- backs EntitySearchProvider's structured-field search (Matter/Proceeding/
+-- Client/CourtNote) — the "Option C" approved architecture's lighter-weight
+-- ranking path (docs/MILESTONE_5_PLAN.md §2.3), kept deliberately separate
+-- from DocumentSearchProvider's existing pgvector+full-text path rather
+-- than forcing both into one scoring model. No new table; no RLS change —
+-- every indexed table already carries FORCE ROW LEVEL SECURITY.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS matter_title_trgm_idx ON "Matter" USING GIN ("title" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS matter_description_trgm_idx ON "Matter" USING GIN ("description" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS legalcase_title_trgm_idx ON "LegalCase" USING GIN ("title" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS legalcase_notes_trgm_idx ON "LegalCase" USING GIN ("notes" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS client_name_trgm_idx ON "Client" USING GIN ("name" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS courtnote_note_trgm_idx ON "CourtNote" USING GIN ("note" gin_trgm_ops);
+
 -- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
 GRANT USAGE ON SCHEMA public TO nextcase_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nextcase_app;
