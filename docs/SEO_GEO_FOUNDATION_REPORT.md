@@ -3,9 +3,11 @@
 Product-Owner-directed engineering sprint, sequenced ahead of Milestone 6. Scope: fix
 sitemap/metadata/robots/JSON-LD correctness on existing public marketing pages. Explicitly
 **not** a marketing initiative — no new public content, no Knowledge Graph, no AI/GEO
-expansion, no Milestone 6 feature work. This report also documents a separate, read-only
-investigation into Legal Dictionary / 15,000-keyword-programme readiness requested mid-sprint
-(§6); nothing in that investigation was implemented.
+expansion, no Milestone 6 feature work. This report also documents two separate, read-only investigations requested after the
+sprint's initial scope: Legal Dictionary / 15,000-keyword-programme readiness (§6), and a
+Dynamic Legal Discovery Layer / keyword-placement architecture with blank-space audit (§7).
+Nothing from either investigation was implemented — no modules, pages, migrations, or bulk
+content.
 
 ## 1. Completed This Sprint
 
@@ -136,3 +138,81 @@ Proposed sheets: `Keywords`, `Relations`, `DictionaryEntries`, `Pages`, `ChangeL
 - Should `CourtPack`/`LawPack`/`ProcedurePack` be reconciled with `court`/`practice_area` before or independently of Knowledge Graph work?
 - Confirm the workbook remains the sole authoring surface (no admin UI for direct DB edits to keyword/dictionary data).
 - Approve or reject `DefinedTerm` as the Legal Dictionary entry schema type.
+
+---
+
+## Dynamic Legal Discovery Layer and Keyword Placement Architecture
+
+*(Architectural direction and read-only audit, requested after PR #103's initial scope. Nothing in this section is implemented — no modules, pages, migrations, or bulk content. This is documentation only, added to PR #103 because it is a report addition, not a scope change to the shipped code.)*
+
+### 7.1 Workbook Ownership (Claude's responsibility, confirmed)
+
+Claude maintains the SEO/GEO workbook's structure, taxonomy, relationships, dedup rules, status fields, and export readiness; the workbook remains the sole authoring source (§6.5). Every keyword record carries, at minimum, the fields already specified in §6.2 (`KeywordRecord`) plus two additional status fields this direction introduces:
+
+- `visibility_status` (`PRIVATE` | `PUBLIC`) — distinct from `verification_status`. A keyword can be `SME_REVIEWED` and still `PRIVATE` (used only for internal research/Knowledge Graph prep) until a Product Owner decision makes it `PUBLIC`.
+- `indexable` (boolean) — whether the keyword's target page is allowed to be indexed once public; defaults `FALSE` until every §7.4 publication gate is satisfied.
+
+Both are additive to the `KeywordRecord` schema already proposed in §6.2 — no redesign of that model was needed.
+
+### 7.2 Blank-Space Audit (read-only, current public pages)
+
+No page was found to be "empty" in a way that justifies filling it for its own sake. What follows are structurally genuine openings — places where either dead-end content already exists (unlinked badges, static cards with no destination) or a page's own stated purpose already implies a browse/discovery function it doesn't yet deliver.
+
+| Route | Current section | Space/weakness | Proposed module | User value | SEO/GEO value | Keyword/entity types | Visual/UX risk | New content required? | Priority |
+|---|---|---|---|---|---|---|---|---|---|
+| `/` (home) | `TrustBar` — six plain, unlinked badges: BNS, BNSS, FRCP, CPR, NI Act, IT Act | Real statute names already rendered but dead-end (no `href`) | "Browse by Act" — same badges become links to real Act pages | Lets a visitor go straight from "we support BNS" to what BNS actually covers | Direct entity-page internal linking from the highest-traffic page on the site | Act | None — same visual, only adds `href` | Yes (Act pages must exist first) | High (once Phase 3/4 entity pages exist) |
+| `/features` | "Statutory Engines" card names BNS/BNSS/FRCP/CPR/NI Act inline in body text | Statute names appear in prose but aren't linked | Inline links from statute names to their Act pages | Reader can jump from feature description to the real legal content | Low-risk internal link from an already-indexed page | Act | None — text unchanged, just add anchor tags | Yes (same dependency as above) | Medium |
+| `/resources` | Two static publication cards (BNS/BNSS Playbook, Zero-Knowledge Whitepaper) — currently unclickable dead ends | Page's own framing ("Expert Legal Tech Publications") already promises a content hub it doesn't deliver | "Popular Legal Questions," "Recently Reviewed Legal Definitions," "Legal Topic Clusters" — this page is the natural home for the discovery layer | Turns an already-published but non-functional page into a real destination | Highest-leverage single placement — one page absorbing several module types at once | Dictionary terms, questions, topic clusters | Low if module cards match existing card styling already used on this page | Yes (Dictionary/FAQ/article content) | High (best single starting point) |
+| Home `SiteFooter` "Product" column | 4 links (Features, Solutions, Pricing, Resources) | Column has visual room for more entries; other columns (Company, Legal) are similarly short | Add a "Legal Dictionary" / "Browse by Practice Area" link once those routes exist | One more real, low-friction navigation path into the discovery layer sitewide | Sitewide footer link = crawled from every page | Practice Area, Dictionary | None — same list pattern, one more `<li>` | Yes | Medium |
+| Marketing pages' shared `Footer` (`about`, `contact`, `features`, `pricing`, `solutions`, `privacy`, `terms`) | Only 4 static links, no nav columns (unlike the home page's richer `SiteFooter`) | Structural inconsistency across 7 pages, not a deliberate design choice | Eventually align with `SiteFooter`'s column pattern, adding a "Legal Resources" column | Consistent sitewide navigation into real content | Same link surfaced from 7 more pages | Practice Area, Dictionary, Court | Touches 7 files at once — real layout change, not a one-line addition | Yes | Low (defer — this is a small redesign, not a blank-space fill) |
+| Primary `Navbar` | No "Resources" or "Learn" entry at all — `/resources` is reachable only via footer or direct URL | Not blank space exactly, but a genuine discoverability gap: the one page shaped like a content hub isn't in primary nav | Add a nav entry once `/resources` (or a renamed discovery hub) has real content | Direct primary-nav path to the discovery layer | Improves crawl depth/priority signal for the hub page | N/A (navigation, not content) | Adding a nav item is a real, visible layout change | No | Low (defer — nav changes need explicit sign-off, not bundled with content work) |
+
+**Explicitly not treated as opportunities:** `/pricing` (single plan card — wrong search intent for legal content, would dilute a transactional-intent page), `/about`/`/contact` (company pages, not legal-content pages), `/privacy`/`/terms` (policy pages — inserting keyword modules into legal-boilerplate pages risks looking like exactly the "unsupported legal claims" pattern this whole programme is designed to avoid). Authenticated `/documents/*`, `/search`, `/matters/*` etc. are `noindex` and out of scope entirely.
+
+### 7.3 Recommended Reusable Modules (design only)
+
+Each module is a server-rendered, semantic-HTML component (`<section>`/`<nav aria-label>`/`<ul>`, matching the pattern already established by `Breadcrumbs.tsx`) that queries only `KeywordRecord`/`Page` rows where `visibility_status = PUBLIC` and `indexable = TRUE` (§7.4) — never draft or private rows:
+
+- **Browse by Practice Area / Court / Act / Section / Procedure / Jurisdiction** — a linked index list, one entry per real published entity page. Same list-of-links shape as `SiteFooter`'s nav columns; no new visual language needed.
+- **Related Legal Terms / Related Questions** — rendered from `KeywordRelation` rows (`RELATED_TERM`/`QUESTION_VARIANT`), shown at the bottom of a Dictionary/entity page, same placement convention as a "related articles" block.
+- **Legal Term of the Day / Recently Reviewed Definitions** — a single featured `LegalDictionaryEntry` where `verification_status = SME_REVIEWED`, rotated deterministically (e.g., by date) — never randomly surfacing an unreviewed entry.
+- **Popular Legal Questions / Legal Topic Clusters / Common Document Types** — curated lists driven by `priority`/`search_volume` on already-published `KeywordRecord` rows, grouped by `parent_topic`.
+
+All modules link only to real canonical URLs (`canonical_target`), never to a placeholder or "coming soon" page — a module has nothing to render until its underlying entity pages exist, and simply doesn't render rather than showing an empty or fake state.
+
+### 7.4 Keyword-to-Page Clustering Model
+
+Consolidation targets (page groups, not one page per keyword) for the ~15,000-keyword set:
+
+| Content group | Estimated real pages | Consolidation logic |
+|---|---|---|
+| Legal Dictionary | ~2,000–3,000 | One page per distinct term; synonyms/abbreviations map to the same page via `KeywordRelation`, not duplicate pages |
+| Courts | ~50–100 | Major courts + high-tier district courts; low-search-volume courts roll into their state/jurisdiction page rather than getting a standalone page |
+| Acts | ~200–400 | One page per Act; minor/rarely-searched Acts grouped into a practice-area page's "related Acts" list instead of a standalone page |
+| Sections | ~1,000–2,000 | Only high-search-volume Sections get a standalone page; the rest live as an indexed list on their parent Act page |
+| Practice Areas | ~30–50 | Standard practice-area taxonomy (Criminal, Civil, Family, Corporate, IP, Labour, Tax, etc.) |
+| Procedures | ~50–100 | One page per distinct legal procedure (bail process, appeal process, etc.), extending `ProcedurePack`'s existing 7-step model |
+| Jurisdictions | ~40–60 | Country + state/UT level |
+| Legal Documents | ~15–30 | Directly maps to the existing 15 `document-type.ts` slugs, one explainer page each, plus a small number of category-overview pages |
+| Legal Questions / FAQs | ~200–500 standalone + many more as FAQ sections on entity pages | A question only becomes a standalone page if it doesn't fit naturally as an FAQ block on an existing entity page — avoids duplicate near-identical pages |
+| Explanatory articles | ~100–300 | Evergreen topic-cluster and comparison content, each with one primary intent |
+
+**Total: roughly 3,500–5,000 real pages** absorbing ~15,000 keywords (avg. ~3–4 keywords per page via primary + related-term mapping) — never a 1:1 keyword-to-page ratio. Every page in every group still requires: one primary search intent, one primary entity/topic, a bounded secondary-term set, real original content, citations, internal links, canonical URL, appropriate structured data, and human/SME review before publication — no exceptions by content group.
+
+### 7.5 Publication Gates (restated, binding)
+
+A keyword may influence public content only when **all** of the following hold: `verification_status = APPROVED`, `visibility_status = PUBLIC`, `indexable = TRUE`, a `canonical_target` page exists, an authoritative source is recorded, duplicate review is complete, and the target content has had human/SME review. Keywords failing any gate remain usable internally for research, search expansion, and Knowledge Graph preparation — never surfaced as hidden or draft page content.
+
+### 7.6 Risks
+
+- **Premature module rendering**: a module with no `PUBLIC`/`indexable` rows to show must render nothing, not a placeholder — a "coming soon" grid at this scale would itself look like a doorway pattern.
+- **Footer/nav inconsistency** (§7.2) becoming a rushed redesign rather than a deliberate, separately-approved change once content exists to justify it.
+- **Consolidation drift**: without enforcing the §7.4 grouping logic at authoring time (in the workbook, not after the fact), authors will default to one page per keyword, recreating the exact problem this model exists to prevent.
+
+### 7.7 Proposed Future Milestone Sequence
+
+1. Workbook build-out (§7.1 schema, `KeywordRecord`/`KeywordRelation`) — no public code.
+2. Small-batch Legal Dictionary + entity pages (Courts/Acts first, since `CourtPack`/`LawPack` already provide seed data once reconciled per §6.7).
+3. `/resources` becomes the first real discovery-module host (§7.2's highest-priority opportunity), using only already-published entries.
+4. Extend modules sitewide (`TrustBar` links, footer column) once enough entity pages exist to link to.
+5. Navbar/IA changes considered separately, only once the discovery layer has real, published content to justify surfacing it in primary navigation.
