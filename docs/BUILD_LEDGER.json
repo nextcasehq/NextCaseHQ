@@ -27,7 +27,7 @@
     "23": "COMPLETE — Milestone 2 (Matter Intelligence Layer): PR 2A + 2B + 2C all landed"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-19T15:45:00Z",
+  "last_updated": "2026-07-19T16:00:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -539,6 +539,29 @@
         "ux_1_dashboard_mobile_tablet_responsiveness",
         "ux_2_accessibility_remediation",
         "ux_3_admin_system_sentinels_backend_validation"
+      ]
+    },
+    "ux_1_dashboard_responsive_shell": {
+      "status": "COMPLETE — isolated fix, Product Owner-approved milestone UX-1",
+      "description": "Fixes Finding #1 (Critical) from ui_ux_validation_audit: apps/web/src/app/dashboard/layout.tsx's sidebar was a fixed w-64 block with no responsive breakpoint at all, overflowing horizontally on any viewport below 768px across all 8 /dashboard/* routes. Below the md breakpoint, the sidebar is now an off-canvas panel (translate-x slide in/out, matching the visual language of this same file's existing Sliding Notifications Drawer), toggled by a new hamburger button in the header and closed via its own close button, the backdrop, Escape, or navigating to a new route. At md and above, desktop/tablet-static behavior is unchanged — no hamburger, no backdrop, sidebar remains static and always visible exactly as before. Reuses the same state-driven show/hide-by-breakpoint technique TriPaneChamber's own panels already use internally, adapted to an off-canvas drawer rather than a bottom tab bar since a 7-item sidebar nav doesn't fit a tab bar the way TriPaneChamber's 3 panels do. TriPaneChamber.tsx itself was left untouched. Scope: dashboard/layout.tsx only, per approved UX-1 boundaries — no accessibility bundle, no backend changes, no SEO changes, no redesign, no feature additions.",
+      "pr": 108,
+      "merge_commit": "2b3b4df",
+      "verification": "pnpm typecheck (all 15 workspace projects), pnpm --filter web build, and the full Jest suite all pass — test failure count byte-for-byte identical to main (356 failed/221 passed, pre-existing environment-dependent failures unrelated to this change). Focused Playwright regression against a real seeded Postgres/Redis instance: all 8 /dashboard/* routes x 4 viewports (1920x1080, 1366x768, 768x1024, 390x844) = 32 combinations, zero horizontal overflow on every combination with the mobile nav both closed and open. Hamburger control correctly hidden at >=768px and shown only <768px. Keyboard accessibility confirmed via actual element position tracking (bounding-box x: -256 -> 0 on Tab+Enter open, 0 -> -256 on Escape close) rather than DOM visibility alone, which false-negatives on transform-based hiding. Desktop screenshot confirmed visually unchanged from the pre-fix baseline.",
+      "known_residual_issue": "At exactly 768px (tablet), the 2 routes that render TriPaneChamber (/dashboard, /dashboard/ai-chamber) still show visually tight/overlapping panel content — TriPaneChamber's own internal 3-panel md: breakpoint design, unchanged by this fix (the sidebar was already md:-visible at 768px before this PR too, so this condition pre-dates it and isn't introduced or worsened here). No DOM-level horizontal overflow results from it. Logged separately as tripane_chamber_768px_tightness (below) as its own focused component-level responsiveness task — explicitly not folded into ux_2_accessibility_remediation, per Product Owner instruction.",
+      "out_of_scope_next": [
+        "ux_2_accessibility_remediation",
+        "ux_3_admin_system_sentinels_backend_validation",
+        "tripane_chamber_768px_tightness"
+      ]
+    },
+    "tripane_chamber_768px_tightness": {
+      "status": "NOT STARTED — logged for future, separately-scoped validation; not mixed into UX-2 accessibility work, per explicit Product Owner instruction",
+      "description": "Residual visual-quality issue identified during ux_1_dashboard_responsive_shell verification (not introduced by it): at exactly 768px viewport width, TriPaneChamber.tsx's own internal 3-panel layout (used only by /dashboard and /dashboard/ai-chamber) renders its full desktop-style 3-column view (its md: breakpoint is also 768px), which is a tight fit and produces visually crowded/overlapping panel content at that specific width. No DOM-level horizontal overflow results — content is clipped/contained via TriPaneChamber's own overflow-hidden containers, not pushing the page wider — but the visual crowding is real and worth a dedicated look.",
+      "pr": null,
+      "merge_commit": null,
+      "verification": "N/A — not yet implemented.",
+      "out_of_scope_next": [
+        "component_level_responsiveness_fix_for_tripane_chamber_at_768px"
       ]
     },
     "product_direction_seven_day_preparation_m3": {
