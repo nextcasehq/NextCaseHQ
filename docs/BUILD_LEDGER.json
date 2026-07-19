@@ -27,7 +27,7 @@
     "23": "COMPLETE — Milestone 2 (Matter Intelligence Layer): PR 2A + 2B + 2C all landed"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-19T16:00:00Z",
+  "last_updated": "2026-07-19T16:15:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -562,6 +562,17 @@
       "verification": "N/A — not yet implemented.",
       "out_of_scope_next": [
         "component_level_responsiveness_fix_for_tripane_chamber_at_768px"
+      ]
+    },
+    "ux_4_dashboard_experience_redesign": {
+      "status": "NOT STARTED — logged as a backlog item per explicit Product Owner direction; not part of the UX-1/UX-2/UX-3 remediation series and not to be implemented without separate approval",
+      "description": "Product Owner-identified architectural redesign milestone (also referenceable as PRODUCT-1), distinct from the UX-1/UX-2/UX-3 remediation series: although UX-1 made the dashboard shell responsive, the underlying three-vertical-column TriPaneChamber workspace is difficult to read and does not provide the best experience for legal research and case intelligence work, independent of any responsiveness fix. Objectives for the eventual proposal: re-evaluate the dashboard information architecture; improve readability of AI responses, legal research, and case data; reduce visual clutter; optimize content density; improve navigation between panels; design for lawyers' actual workflows rather than preserving the current three-column layout; consider whether a two-panel, adaptive, or progressive-disclosure layout provides a better experience. This explicitly supersedes/absorbs tripane_chamber_768px_tightness (above) as a narrower symptom of the same underlying layout, once this milestone is scoped.",
+      "pr": null,
+      "merge_commit": null,
+      "verification": "N/A — not yet implemented. No code changes authorized under this entry.",
+      "out_of_scope_next": [
+        "dashboard_ux_architecture_proposal_readonly",
+        "dashboard_information_architecture_redesign_implementation"
       ]
     },
     "product_direction_seven_day_preparation_m3": {
