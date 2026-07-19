@@ -96,6 +96,38 @@ The central Main Workspace must never feel like a dashboard — its purpose is r
 
 **Phase A scope**: no code implication beyond what's already planned above — recorded here as the standing design principle that Phase A's shell (and every later phase) must be judged against.
 
+## The Matter Workspace Philosophy (standing north star)
+
+The Matter Workspace is not a dashboard — it is the advocate's digital desk. Every design decision, in this phase and every later one, must answer: *"Does this help the advocate think, research, analyse, draft, or prepare the case?"* If not, it does not belong in the primary workspace.
+
+### Information Hierarchy
+
+1. The user's legal work
+2. The user's legal research
+3. AI assistance
+4. Navigation
+5. Shortcuts and Action Cards
+6. Analytics, widgets, badges, and secondary information
+
+Priority 4–6 items must never compete visually with Priority 1–3. Concretely for Phase A: the shell (Matter Navigator, Top Bar chrome) and the Action Card placeholder are Priority 4–5 and must be visually subordinate to the Priority 1–3 content already on `/matters/[id]` today (Matter Health, Court Notes, Documents, Timeline, Proceedings) — the shell wraps that content, it does not upstage it.
+
+### Zero-Clutter Rule
+
+Every new panel, widget, badge, button, or card added in Phase A must justify its existence against the hierarchy above. When in doubt, remove it. Whitespace, reading space, and focus are features, not empty space to be filled.
+
+## Implementation Authority
+
+Phase A implementation begins once this PR is merged. Objectives:
+
+1. Build the Matter Workspace shell.
+2. Reuse existing production APIs — no new endpoints (per §"APIs Reused" above).
+3. Remove dependence on mock workspace structures where approved (per the Mock Data Policy — `TriPaneChamber` demoted from default landing surface, per "Files to Retire" above).
+4. Preserve all existing business functionality — every one of the 9 real data sections on `/matters/[id]` keeps working unchanged.
+5. Deliver a production-ready implementation (typecheck/lint/build/test gates per Validation Strategy above).
+6. Keep the implementation isolated to the approved Phase A scope — no Phase B work (real Action Card logic, Context Drawer content, search execution rewiring, mock-data deletion) in the same PR.
+
+Implementation stops at the end of Phase A as scoped in this document; Product Owner review is required before Phase B begins.
+
 ## Validation Strategy
 
 1. **Typecheck, lint, production build** — standard gate, matching every prior milestone in this engagement.
