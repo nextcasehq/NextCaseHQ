@@ -238,7 +238,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // deletion if any exist, so a Matter is never deleted out from under
     // linked Proceedings/participants/chronology/documents without an
     // explicit, separate action to remove them first.
-    const [proceedingRows, participantRows, eventRows, documentRows] = await Promise.all([
+    const [proceedingRows, participantRows, eventRows, documentRows, taskRows] = await Promise.all([
       db.execute<{ count: number }>(
         session.tenantId,
         `SELECT COUNT(*)::int AS count FROM "LegalCase" WHERE matter_id = $1`,
@@ -259,6 +259,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE matter_id = $1`,
         [id]
       ),
+      // MatterTask.matter_id is ON DELETE CASCADE (Product Direction,
+      // Milestone 2) — checked explicitly anyway, same reasoning as
+      // MatterEvent/MatterParticipant above: a Matter with real,
+      // unresolved pending actions should not disappear silently.
+      db.execute<{ count: number }>(
+        session.tenantId,
+        `SELECT COUNT(*)::int AS count FROM "MatterTask" WHERE matter_id = $1`,
+        [id]
+      ),
     ]);
 
     const linked = {
@@ -266,9 +275,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       participants: participantRows[0].count,
       events: eventRows[0].count,
       documents: documentRows[0].count,
+      tasks: taskRows[0].count,
     };
 
-    if (linked.proceedings > 0 || linked.participants > 0 || linked.events > 0 || linked.documents > 0) {
+    if (linked.proceedings > 0 || linked.participants > 0 || linked.events > 0 || linked.documents > 0 || linked.tasks > 0) {
       return NextResponse.json(
         {
           error: 'CONFLICT',

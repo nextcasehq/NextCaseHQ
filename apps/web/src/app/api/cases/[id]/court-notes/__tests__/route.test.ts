@@ -194,6 +194,74 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
     expect(events[0].description).toContain('Next: Prepare rejoinder written submissions.');
   });
 
+  test('POST on a matter-linked Proceeding with next_actions creates exactly one MatterTask (Milestone 2)', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+
+    const tasks = await db.execute<{ matter_id: string; case_id: string; court_note_id: string; status: string }>(
+      TENANT_A,
+      `SELECT matter_id, case_id, court_note_id, status FROM "MatterTask" WHERE matter_id = $1`,
+      [matterId]
+    );
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].case_id).toBe(caseId);
+    expect(tasks[0].court_note_id).toBe(body.court_note.id);
+    expect(tasks[0].status).toBe('PENDING');
+  });
+
+  test('POST with no next_actions creates no MatterTask, even when matter-linked', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    const { next_actions: _omit, ...payloadWithoutNextActions } = VALID_PAYLOAD as typeof VALID_PAYLOAD & { next_actions?: string };
+    const res = await POST(
+      buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, payloadWithoutNextActions),
+      routeParams(caseId)
+    );
+    expect(res.status).toBe(201);
+
+    const tasks = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "MatterTask" WHERE matter_id = $1`, [matterId]);
+    expect(tasks).toHaveLength(0);
+  });
+
+  test('POST on a Proceeding with no Matter creates no MatterTask, even with next_actions', async () => {
+    const caseId = await createCase(TENANT_A);
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+
+    const tasks = await db.execute<{ id: string }>(
+      TENANT_A,
+      `SELECT id FROM "MatterTask" WHERE court_note_id = $1`,
+      [body.court_note.id]
+    );
+    expect(tasks).toHaveLength(0);
+  });
+
+  test('two Court Notes on the same Proceeding each with next_actions produce two separate MatterTask rows, never merged', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { ...VALID_PAYLOAD, hearing_date: '2026-03-15', next_actions: 'File exhibits.' }
+      ),
+      routeParams(caseId)
+    );
+
+    const tasks = await db.execute<{ court_note_id: string }>(
+      TENANT_A,
+      `SELECT court_note_id FROM "MatterTask" WHERE matter_id = $1`,
+      [matterId]
+    );
+    expect(tasks).toHaveLength(2);
+    expect(new Set(tasks.map((t) => t.court_note_id)).size).toBe(2);
+  });
+
   test('two sequential Court Notes both persist unchanged; the Proceeding reflects only the latest', async () => {
     const caseId = await createCase(TENANT_A);
     await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));

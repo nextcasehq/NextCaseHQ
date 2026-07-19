@@ -349,6 +349,57 @@ BEGIN
 END
 $$;
 
+-- 3d. MatterTask — Hearing-Driven Matter Record Building (Product
+-- Direction, Milestone 2). A structured, correctable pending action
+-- derived from a Court Note's next_actions. Unlike CourtNote, this table
+-- is NOT append-only (its whole purpose is to be marked done), but it
+-- deliberately has no text/content column of its own: the task's display
+-- text is always CourtNote.next_actions, read via court_note_id — never
+-- copied — so a task can never drift from the immutable record it was
+-- derived from. court_note_id is UNIQUE: exactly one task per Court Note,
+-- created once, atomically, in the same transaction as the Court Note
+-- itself (see POST /api/cases/[id]/court-notes). matter_id is CASCADE,
+-- matching MatterEvent.matter_id's own precedent — a task is scoped state
+-- belonging entirely to its Matter, not an independent audit trail.
+-- court_note_id has no ON DELETE clause (RESTRICT), matching
+-- CourtNote.case_id's own precedent, even though CourtNote itself has no
+-- DELETE grant at all today. case_id is denormalized from the source
+-- Court Note at insert time, same rationale as CourtNote.matter_id.
+CREATE TABLE IF NOT EXISTS "MatterTask" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "case_id" UUID NOT NULL REFERENCES "LegalCase"("id"),
+    "court_note_id" UUID NOT NULL UNIQUE REFERENCES "CourtNote"("id"),
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "completed_at" TIMESTAMPTZ,
+    "completed_by" UUID REFERENCES "User"("id"),
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'mattertask_status_check'
+    ) THEN
+        ALTER TABLE "MatterTask" ADD CONSTRAINT mattertask_status_check
+            CHECK ("status" IN ('PENDING', 'COMPLETED', 'DISMISSED'));
+    END IF;
+END
+$$;
+
+-- One-time backfill: Court Notes saved between Milestone 1's merge and
+-- this migration already have next_actions with no derived MatterTask —
+-- idempotent (NOT EXISTS guard) and safe to re-run.
+INSERT INTO "MatterTask" (tenant_id, matter_id, case_id, court_note_id)
+SELECT cn.tenant_id, cn.matter_id, cn.case_id, cn.id
+FROM "CourtNote" cn
+WHERE cn.matter_id IS NOT NULL
+  AND cn.next_actions IS NOT NULL
+  AND btrim(cn.next_actions) <> ''
+  AND NOT EXISTS (SELECT 1 FROM "MatterTask" mt WHERE mt.court_note_id = cn.id);
+
 -- 4. DocumentEnvelope
 CREATE TABLE IF NOT EXISTS "DocumentEnvelope" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -735,6 +786,8 @@ ALTER TABLE "MatterEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterEvent" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "CourtNote" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "CourtNote" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterTask" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterTask" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentVersion" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentVersion" FORCE ROW LEVEL SECURITY;
 
@@ -785,6 +838,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "CourtNote";
 CREATE POLICY tenant_isolation_policy ON "CourtNote"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterTask";
+CREATE POLICY tenant_isolation_policy ON "MatterTask"
+    USING ("tenant_id" = get_active_session_tenant());
+
 DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentVersion";
 CREATE POLICY tenant_isolation_policy ON "DocumentVersion"
     USING ("tenant_id" = get_active_session_tenant());
@@ -828,6 +885,8 @@ CREATE INDEX IF NOT EXISTS idx_matterevent_matter_date ON "MatterEvent"("matter_
 CREATE INDEX IF NOT EXISTS idx_courtnote_case_created ON "CourtNote"("case_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_courtnote_matter_created ON "CourtNote"("matter_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_courtnote_tenant_created ON "CourtNote"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_mattertask_matter_status ON "MatterTask"("matter_id", "status");
+CREATE INDEX IF NOT EXISTS idx_mattertask_tenant_created ON "MatterTask"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_created ON "AiUsageEvent"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_matter ON "AiUsageEvent"("tenant_id", "matter_id");
 CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_envelope ON "DocumentAccessEvent"("tenant_id", "envelope_id", "created_at");

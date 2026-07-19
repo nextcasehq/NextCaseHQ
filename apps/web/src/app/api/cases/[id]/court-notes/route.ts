@@ -15,11 +15,15 @@ import { COURT_FORUM_TYPES, COURT_NOTE_INPUT_METHODS, resolveCourtForumDisplay }
  * correction is a new Court Note, never an edit to a prior one). Saving one
  * atomically: (1) inserts the CourtNote row, (2) updates the Proceeding's
  * current hearing_date/stage/court so the case detail page always reflects
- * the latest hearing without a second action, and (3) — only when the
+ * the latest hearing without a second action, (3) — only when the
  * Proceeding is linked to a Matter — appends one MatterEvent
  * (source_type='HEARING') so the Matter's existing chronology
- * (/api/matters/[id]/events) picks it up automatically, satisfying "never
- * ask the advocate to enter the same information twice."
+ * (/api/matters/[id]/events) picks it up automatically, and (4) — only
+ * when matter-linked and next_actions is non-empty — inserts exactly one
+ * MatterTask (Milestone 2), a correctable, no-text checklist entry that
+ * always reads its display text back from this same CourtNote row rather
+ * than copying it, satisfying "never ask the advocate to enter the same
+ * information twice."
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -206,6 +210,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
          SELECT $2, target_case.matter_id, $4::date, $13, 'HEARING'
          FROM target_case
          WHERE target_case.matter_id IS NOT NULL
+         RETURNING id
+       ),
+       inserted_task AS (
+         INSERT INTO "MatterTask" (tenant_id, matter_id, case_id, court_note_id)
+         SELECT $2, target_case.matter_id, target_case.id, inserted_note.id
+         FROM target_case, inserted_note
+         WHERE target_case.matter_id IS NOT NULL AND $11 IS NOT NULL AND btrim($11) <> ''
+         ON CONFLICT (court_note_id) DO NOTHING
          RETURNING id
        )
        SELECT inserted_note.*, target_case.matter_id AS updated_matter_id
