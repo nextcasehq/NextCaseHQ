@@ -651,6 +651,28 @@ CREATE TABLE IF NOT EXISTS "Notification" (
     "created_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- 7b-i. MatterPreparationReminder — Seven-Day Case Preparation Workflow
+-- (Product Direction, Milestone 3). Pure idempotency/dedup ledger: exactly
+-- one row per (case_id, hearing_date) that has ever triggered a
+-- preparation Notification, so the daily cron trigger can run any number
+-- of times without ever double-notifying for the same hearing. A hearing
+-- date change (adjournment) is a new dedup key by design — it must fire
+-- again, not be suppressed, per the Implementation Plan. notification_id
+-- points at the Notification created alongside it (traceability only; a
+-- single hearing may address multiple recipients, so it is not the only
+-- Notification row that reminder produced). Append-only, like CourtNote —
+-- a reminder record is a fact ("this was already sent"), never edited.
+-- Declared after Notification since notification_id references it.
+CREATE TABLE IF NOT EXISTS "MatterPreparationReminder" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "case_id" UUID NOT NULL REFERENCES "LegalCase"("id"),
+    "hearing_date" TEXT NOT NULL,
+    "notification_id" UUID NOT NULL REFERENCES "Notification"("id"),
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    UNIQUE ("case_id", "hearing_date")
+);
+
 -- 7c. AiUsageEvent — instrumentation only (Milestone 2C). Every AI operation
 -- that reaches a real provider call records exactly one row here, success
 -- or failure — never updated or deleted afterward (see the REVOKE at the
@@ -790,6 +812,8 @@ ALTER TABLE "MatterTask" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterTask" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentVersion" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentVersion" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterPreparationReminder" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterPreparationReminder" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -854,6 +878,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentAccessEvent";
 CREATE POLICY tenant_isolation_policy ON "DocumentAccessEvent"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterPreparationReminder";
+CREATE POLICY tenant_isolation_policy ON "MatterPreparationReminder"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -891,6 +919,7 @@ CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_created ON "AiUsageEvent"("te
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_matter ON "AiUsageEvent"("tenant_id", "matter_id");
 CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_envelope ON "DocumentAccessEvent"("tenant_id", "envelope_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_created ON "DocumentAccessEvent"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_matterpreparationreminder_case_hearing ON "MatterPreparationReminder"("case_id", "hearing_date");
 
 -- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
 GRANT USAGE ON SCHEMA public TO nextcase_app;
@@ -912,3 +941,8 @@ REVOKE UPDATE, DELETE ON "DocumentAccessEvent" FROM nextcase_app;
 -- CourtNote is the same kind of append-only ledger — a hearing record must
 -- never be silently rewritten (Product Direction, Milestone 1).
 REVOKE UPDATE, DELETE ON "CourtNote" FROM nextcase_app;
+
+-- MatterPreparationReminder is the same kind of append-only ledger — once
+-- a hearing has been reminded-for, that fact never changes (Product
+-- Direction, Milestone 3).
+REVOKE UPDATE, DELETE ON "MatterPreparationReminder" FROM nextcase_app;
