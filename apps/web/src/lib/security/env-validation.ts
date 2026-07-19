@@ -13,6 +13,7 @@ export const INSECURE_JWT_SECRET_PLACEHOLDER = 'nchq-secret-placeholder';
 export const INSECURE_WEBHOOK_SECRET_PLACEHOLDER = 'nchq-webhook-secret-placeholder';
 export const INSECURE_ADMIN_TOKEN_PLACEHOLDER = 'nchq-admin-secret-key-2026';
 export const INSECURE_ADMIN_SESSION_SECRET_PLACEHOLDER = 'nchq-admin-session-secret-placeholder';
+export const INSECURE_CRON_SECRET_PLACEHOLDER = 'nchq-cron-secret-placeholder';
 
 export interface EnvValidationIssue {
   variable: string;
@@ -55,6 +56,14 @@ export function collectStartupEnvIssues(env: NodeJS.ProcessEnv = process.env): E
     issues.push({
       variable: 'ADMIN_SESSION_SECRET',
       message: 'ADMIN_SESSION_SECRET must be set to a real secret in production (missing or using the known insecure default).',
+    });
+  }
+
+  if (!env.CRON_SECRET || env.CRON_SECRET === INSECURE_CRON_SECRET_PLACEHOLDER) {
+    issues.push({
+      variable: 'CRON_SECRET',
+      message:
+        'CRON_SECRET must be set to a real secret in production (missing or using the known insecure default) — it is the only credential protecting POST /api/cron/seven-day-preparation.',
     });
   }
 

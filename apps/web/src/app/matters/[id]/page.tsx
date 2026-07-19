@@ -85,6 +85,27 @@ interface MatterHealth {
   needs_attention: boolean;
 }
 
+interface PreparationPendingAction {
+  id: string;
+  action_text: string | null;
+}
+
+interface PreparationDocument {
+  id: string;
+  title: string;
+}
+
+interface PreparationItem {
+  case_id: string;
+  case_title: string;
+  hearing_date: string;
+  stage: string | null;
+  court_forum_display: string | null;
+  last_note: string | null;
+  pending_actions: PreparationPendingAction[];
+  documents: PreparationDocument[];
+}
+
 /**
  * Honest placeholder for a future sub-milestone's real data — never
  * fabricated content (Milestone 1 condition: empty states must be honest).
@@ -112,6 +133,7 @@ export default function MatterDetailsChamberPage() {
   const [matterCourtNotes, setMatterCourtNotes] = useState<MatterCourtNote[]>([]);
   const [matterTasks, setMatterTasks] = useState<MatterTaskItem[]>([]);
   const [health, setHealth] = useState<MatterHealth | null>(null);
+  const [preparationItems, setPreparationItems] = useState<PreparationItem[]>([]);
   const [showFullCourtNoteHistory, setShowFullCourtNoteHistory] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
 
@@ -188,6 +210,13 @@ export default function MatterDetailsChamberPage() {
     setHealth(data.health);
   }, [id]);
 
+  const fetchPreparation = useCallback(async () => {
+    const res = await fetch(`/api/matters/${id}/preparation`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setPreparationItems(data.preparation);
+  }, [id]);
+
   const handleTaskStatusChange = async (taskId: string, status: 'COMPLETED' | 'DISMISSED' | 'PENDING') => {
     const res = await fetch(`/api/matters/${id}/tasks/${taskId}`, {
       method: 'PATCH',
@@ -208,7 +237,17 @@ export default function MatterDetailsChamberPage() {
     fetchMatterCourtNotes();
     fetchMatterTasks();
     fetchHealth();
-  }, [fetchMatter, fetchProceedings, fetchEvents, fetchParticipants, fetchMatterCourtNotes, fetchMatterTasks, fetchHealth]);
+    fetchPreparation();
+  }, [
+    fetchMatter,
+    fetchProceedings,
+    fetchEvents,
+    fetchParticipants,
+    fetchMatterCourtNotes,
+    fetchMatterTasks,
+    fetchHealth,
+    fetchPreparation,
+  ]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,6 +395,69 @@ export default function MatterDetailsChamberPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Prepare for Hearing — Seven-Day Case Preparation Workflow
+                (Product Direction, Milestone 3). Conditionally rendered:
+                entirely absent unless a Proceeding on this Matter has a
+                hearing within the next 7 days, so a Matter with nothing
+                imminent looks exactly as it did before this milestone. */}
+            {preparationItems.length > 0 && (
+              <div className="bg-white border border-[#8A6D2F]/40 rounded-xl p-6 shadow-sm">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[#8A6D2F] mb-4">
+                  ⏰ Prepare for Hearing
+                </h3>
+                <div className="space-y-5">
+                  {preparationItems.map((item) => (
+                    <div key={item.case_id} className="border-l-2 border-[#8A6D2F]/60 pl-4">
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{item.hearing_date}</span>
+                        {item.court_forum_display && (
+                          <span className="text-[10px] text-[#B0A588]">{item.court_forum_display}</span>
+                        )}
+                        <Link href={`/cases/${item.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
+                          {item.case_title}
+                        </Link>
+                      </div>
+                      {item.stage && (
+                        <p className="text-[10px] font-bold text-[#B0A588] uppercase tracking-widest mt-1">
+                          Stage: <span className="text-[#3A3222] font-sans normal-case">{item.stage}</span>
+                        </p>
+                      )}
+                      {item.last_note && (
+                        <p className="text-xs text-[#3A3222] mt-1">Last Court Note: {item.last_note}</p>
+                      )}
+                      {item.pending_actions.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">
+                            Pending Actions ({item.pending_actions.length})
+                          </span>
+                          <ul className="mt-1 space-y-1">
+                            {item.pending_actions.map((action) => (
+                              <li key={action.id} className="text-xs text-[#3A3222]">☐ {action.action_text}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {item.documents.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-widest mr-1">
+                            Documents ({item.documents.length}):
+                          </span>
+                          {item.documents.map((doc) => (
+                            <span
+                              key={doc.id}
+                              className="text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider"
+                            >
+                              {doc.title}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Matter Health */}
             {health && (
               <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
