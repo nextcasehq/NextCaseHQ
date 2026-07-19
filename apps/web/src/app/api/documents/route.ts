@@ -21,6 +21,8 @@ interface DocumentEnvelopeRow {
   title: string;
   storage_structure: Record<string, unknown>;
   created_at: string;
+  index_status: string;
+  indexed_version_number: number | null;
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -86,7 +88,7 @@ export async function GET(request: NextRequest) {
     const [rows, countRows] = await Promise.all([
       db.execute<DocumentEnvelopeRow>(
         session.tenantId,
-        `SELECT id, tenant_id, case_id, matter_id, title, storage_structure, created_at
+        `SELECT id, tenant_id, case_id, matter_id, title, storage_structure, created_at, index_status, indexed_version_number
          FROM "DocumentEnvelope"
          ${whereClause}
          ORDER BY created_at DESC

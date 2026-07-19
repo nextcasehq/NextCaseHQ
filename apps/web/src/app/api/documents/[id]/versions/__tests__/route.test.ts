@@ -163,4 +163,105 @@ describe('GET/POST /api/documents/[id]/versions', () => {
     expect(listBody.versions[0].version_number).toBe(2);
     expect(listBody.versions[1].version_number).toBe(1);
   });
+
+  test('POST synchronously indexes an indexable new version, reported honestly in the response', async () => {
+    if (!hasS3()) return;
+    const id = await createEnvelope(TENANT_A, 'plain.txt');
+
+    const res = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A), 'x-file-name': 'plain.txt' },
+        'the plaintiff filed a motion for summary judgment. '.repeat(20)
+      ),
+      routeParams(id)
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.indexing.status).toBe('INDEXED');
+    expect(body.indexing.chunksIndexed).toBeGreaterThan(0);
+    uploadedObjectKeys.push(body.version.storage_structure.object_key);
+
+    const chunkRows = await db.execute<{ content: string }>(
+      TENANT_A,
+      `SELECT content FROM "DocumentChunkVector" WHERE envelope_id = $1`,
+      [id]
+    );
+    expect(chunkRows.length).toBeGreaterThan(0);
+    expect(chunkRows[0].content).toContain('summary judgment');
+
+    const envelopeRows = await db.execute<{ index_status: string; indexed_version_number: number }>(
+      TENANT_A,
+      `SELECT index_status, indexed_version_number FROM "DocumentEnvelope" WHERE id = $1`,
+      [id]
+    );
+    expect(envelopeRows[0].index_status).toBe('INDEXED');
+    expect(envelopeRows[0].indexed_version_number).toBe(1);
+  });
+
+  test('POST replacing an indexed version invalidates the prior version\'s chunks — old content is no longer searchable', async () => {
+    if (!hasS3()) return;
+    const id = await createEnvelope(TENANT_A, 'contract.txt');
+
+    const first = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A), 'x-file-name': 'contract.txt' },
+        'the original clause discusses arbitration procedures. '.repeat(20)
+      ),
+      routeParams(id)
+    );
+    const firstBody = await first.json();
+    expect(firstBody.indexing.status).toBe('INDEXED');
+    uploadedObjectKeys.push(firstBody.version.storage_structure.object_key);
+
+    const second = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A), 'x-file-name': 'contract.txt' },
+        'the amended clause discusses termination procedures. '.repeat(20)
+      ),
+      routeParams(id)
+    );
+    const secondBody = await second.json();
+    expect(second.status).toBe(201);
+    expect(secondBody.indexing.status).toBe('INDEXED');
+    uploadedObjectKeys.push(secondBody.version.storage_structure.object_key);
+
+    const chunkRows = await db.execute<{ content: string }>(
+      TENANT_A,
+      `SELECT content FROM "DocumentChunkVector" WHERE envelope_id = $1`,
+      [id]
+    );
+    expect(chunkRows.every((row) => row.content.includes('termination'))).toBe(true);
+    expect(chunkRows.some((row) => row.content.includes('arbitration'))).toBe(false);
+
+    const envelopeRows = await db.execute<{ indexed_version_number: number }>(
+      TENANT_A,
+      `SELECT indexed_version_number FROM "DocumentEnvelope" WHERE id = $1`,
+      [id]
+    );
+    expect(envelopeRows[0].indexed_version_number).toBe(2);
+  });
+
+  test('POST with an unsupported file type reports SKIPPED indexing rather than failing the upload', async () => {
+    if (!hasS3()) return;
+    const id = await createEnvelope(TENANT_A, 'scan.pdf');
+
+    const res = await POST(
+      buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A), 'x-file-name': 'scan.pdf' }, '%PDF-1.4 fake'),
+      routeParams(id)
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.indexing).toEqual({ status: 'SKIPPED', reason: 'UNSUPPORTED_CONTENT_TYPE' });
+    uploadedObjectKeys.push(body.version.storage_structure.object_key);
+
+    const envelopeRows = await db.execute<{ index_status: string }>(
+      TENANT_A,
+      `SELECT index_status FROM "DocumentEnvelope" WHERE id = $1`,
+      [id]
+    );
+    expect(envelopeRows[0].index_status).toBe('NOT_INDEXED');
+  });
 });

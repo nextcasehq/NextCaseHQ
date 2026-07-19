@@ -388,6 +388,35 @@ SELECT de."tenant_id", de."id", 1, de."title", de."storage_structure", de."creat
 FROM "DocumentEnvelope" de
 WHERE NOT EXISTS (SELECT 1 FROM "DocumentVersion" dv WHERE dv."envelope_id" = de."id");
 
+-- 4c. Indexing Status Observability (Sprint 3, PR 3B-1)
+--
+-- A minimal, explicit status model — NOT_INDEXED / INDEXING / INDEXED /
+-- FAILED — sufficient to distinguish "nothing to index," "in progress,"
+-- "has real searchable chunks," and "attempted and failed," without
+-- building a general job-management system. Lives directly on
+-- DocumentEnvelope (the same table that already mirrors "the current
+-- version" per PR 3A) rather than a separate table. indexed_version_number
+-- is populated only when index_status = 'INDEXED', and always reflects
+-- which DocumentVersion the current DocumentChunkVector rows actually
+-- came from — never a stale value left over from a prior, superseded
+-- version (see lib/search/indexing.ts for the invalidation rule that
+-- keeps this true).
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "index_status" TEXT NOT NULL DEFAULT 'NOT_INDEXED';
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "indexed_version_number" INTEGER;
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "index_error" TEXT;
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "index_updated_at" TIMESTAMPTZ;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentenvelope_index_status_check'
+    ) THEN
+        ALTER TABLE "DocumentEnvelope" ADD CONSTRAINT documentenvelope_index_status_check
+            CHECK ("index_status" IN ('NOT_INDEXED', 'INDEXING', 'INDEXED', 'FAILED'));
+    END IF;
+END
+$$;
+
 -- 5. DocumentChunkVector
 CREATE TABLE IF NOT EXISTS "DocumentChunkVector" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -442,6 +471,21 @@ BEGIN
     END IF;
 END
 $$;
+
+-- Backfill for the index_status columns added above (4c): any
+-- DocumentEnvelope that already has real chunks — indexed under the
+-- pre-3B manual-only flow, before this status model existed — is marked
+-- INDEXED against its current highest version, rather than defaulting to
+-- the misleading NOT_INDEXED for content that is actually live and
+-- searchable today. Guarded on the default value so this is a no-op on
+-- every subsequent migration run. Deferred to here (after this table's
+-- own CREATE TABLE) since schema.sql runs top-to-bottom as one script.
+UPDATE "DocumentEnvelope" de
+SET "index_status" = 'INDEXED',
+    "indexed_version_number" = (SELECT MAX(dv."version_number") FROM "DocumentVersion" dv WHERE dv."envelope_id" = de."id"),
+    "index_updated_at" = now()
+WHERE de."index_status" = 'NOT_INDEXED'
+  AND EXISTS (SELECT 1 FROM "DocumentChunkVector" cv WHERE cv."envelope_id" = de."id");
 
 -- 6. TenantWallet
 CREATE TABLE IF NOT EXISTS "TenantWallet" (
@@ -636,6 +680,7 @@ CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id"
 CREATE INDEX IF NOT EXISTS idx_legalcase_matter ON "LegalCase"("matter_id");
 CREATE INDEX IF NOT EXISTS idx_documentenvelope_case ON "DocumentEnvelope"("case_id");
 CREATE INDEX IF NOT EXISTS idx_documentenvelope_matter ON "DocumentEnvelope"("matter_id");
+CREATE INDEX IF NOT EXISTS idx_documentenvelope_index_status ON "DocumentEnvelope"("index_status");
 CREATE INDEX IF NOT EXISTS idx_documentversion_envelope ON "DocumentVersion"("envelope_id", "version_number");
 CREATE INDEX IF NOT EXISTS idx_documentversion_tenant ON "DocumentVersion"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_documentchunkvector_envelope ON "DocumentChunkVector"("envelope_id");
