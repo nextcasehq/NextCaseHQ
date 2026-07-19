@@ -1,7 +1,7 @@
 # NEXTCASEHQ — ADVOCATE OS UX BLUEPRINT
 **TO:** Founder, Product Owner, Engineering
 **FROM:** Chief Product Engineer
-**STATUS:** Draft for review — read-only architecture exercise. No code changed. Milestone 2 implementation blocked on approval of this document.
+**STATUS:** Approved by the Product Owner, with one standing note on navigation-unification sequencing (see the closing section). Read-only architecture exercise — no code changed.
 **SCOPE:** Translates the approved Product Direction (`docs/PRODUCT_DIRECTION.md`) and Implementation Plan (`docs/PRODUCT_DIRECTION_IMPLEMENTATION_PLAN.md`) into a single, stable UX architecture, grounded in the actual current repository — not a theoretical redesign.
 
 ---
@@ -287,7 +287,7 @@ Per §8: today's only path into Court Note requires the advocate to already be o
 
 Ordered by dependency and by how directly each closes a gap in §21, consistent with (not replacing) `docs/PRODUCT_DIRECTION_IMPLEMENTATION_PLAN.md`'s existing Milestone 2–6 sequencing:
 
-1. **Navigation unification** (new — should precede or accompany Milestone 2's first PR): retire the mock `/organization` tenant picker from the real login flow, redirect authenticated users to Home/Matters instead of `/dashboard`, and replace `Navbar`'s always-on marketing menu with the four-destination IA (§5) whenever a real session exists (marketing pages keep their own, separate nav when logged out). This is the single highest-leverage fix available — it costs no new backend work and removes the product's biggest structural inconsistency before any more screens are built on top of it.
+1. **Navigation unification** — a recommended architectural initiative: retire the mock `/organization` tenant picker from the real login flow, redirect authenticated users to Home/Matters instead of `/dashboard`, and replace `Navbar`'s always-on marketing menu with the four-destination IA (§5) whenever a real session exists (marketing pages keep their own, separate nav when logged out). Its implementation order relative to Milestone 2 and the other items below is a Product Owner decision based on dependency analysis, not fixed by this document.
 2. **Home screen** (§7) — new build, no backend change beyond querying data that already exists (today's hearings from `LegalCase.hearing_date`, matters needing attention from existing Matter/Court Note fields).
 3. **Court Note FAB + standalone Matter/Proceeding picker entry** (§6, §21.6) — additive UI, no backend change.
 4. **Milestone 2 (already sequenced): Hearing-Driven Matter Record Building** — Matter-level Court Note history aggregation (§8, §10) and the first structured Task entity from `next_actions`.
@@ -301,11 +301,11 @@ Called out on its own, not only implied by §9/§14/§15, because it is non-nego
 
 ## 23. Explicit Exclusions
 
-This blueprint does not propose: a redesign of the database schema or API contracts (every recommendation reuses existing tables/routes or names small, additive ones already implied by the approved direction); a new design system or component library; multi-tenant/firm-switching UI (deferred, §16); offline-first sync architecture (§17 recommends only local draft preservation, not full offline capability); any commercial/entitlement enforcement logic change (§15 describes target UX only — `enforceEntitlement()`'s real logic is separate, future work); AI-driven field extraction from voice (§14, explicitly excluded per the approved direction); removal or redesign of the legacy `/dashboard/*` shell's internals (only its role as the post-login destination is addressed, in §22's navigation-unification item — retiring it entirely is a separate decision, not assumed here).
+This blueprint does not propose: a redesign of the database schema or API contracts (every recommendation reuses existing tables/routes or names small, additive ones already implied by the approved direction); a new design system or component library; multi-tenant/firm-switching UI (deferred, §16); offline-first sync architecture (§17 recommends only local draft preservation, not full offline capability); any commercial/entitlement enforcement logic change (§15 describes target UX only — `enforceEntitlement()`'s real logic is separate, future work); AI-driven field extraction from voice (§14, explicitly excluded per the approved direction); removal or redesign of the legacy `/dashboard/*` shell's internals (only its role as the post-login destination is addressed, in §22's navigation-unification item — retiring it entirely is a separate decision, not assumed here); a fixed implementation order for navigation unification relative to Milestone 2 (§22 item 1 — the Product Owner decides this via dependency analysis, not this document).
 
 ## 24. Risks
 
-- **Risk: navigation unification (§22 item 1) is described as "should precede Milestone 2" but is not itself part of the currently-approved Milestone 2 scope.** Treating it as a prerequisite could stall Milestone 2 unless the Product Owner explicitly folds it in as a small, isolated first PR. Flagged as a genuine decision point (§25).
+- **Risk: navigation unification (§22 item 1) is not itself part of the currently-approved Milestone 2 scope.** Its implementation order relative to Milestone 2 is a Product Owner decision based on dependency analysis (not fixed by this document); until that decision is made, engineering should not assume it ships before, alongside, or after Milestone 2's first PR.
 - **Risk: the legacy `/dashboard/*` shell still has real, if partially mock, functionality** (notifications bell now wired to real `Notification` data, admin console, AI Chamber). Redirecting login away from it (§22 item 1) must not silently strand any real, working feature that has no equivalent yet on the new surface — an inventory of what in `/dashboard/*` is real vs. mock should be a five-minute check before that change ships, not assumed from this document alone.
 - **Risk: introducing a FAB is a small but real visual pattern change** — it should be validated against the existing brand's "calm legal aesthetic, no unnecessary animation" principle in an actual build, not just this document, before being treated as final.
 - **Risk of scope creep:** several sections here (Search frontend, Prepare Document, commercial UX) describe substantial future builds. Sequencing them (§22) is a recommendation, not an authorization to start; each remains its own future milestone requiring its own approval, exactly as Milestone 1 was.
@@ -314,11 +314,11 @@ This blueprint does not propose: a redesign of the database schema or API contra
 
 This blueprint is ready for approval when the Product Owner confirms:
 1. The four-destination IA (§5) and the FAB-based Court Note recommendation (§6) as the final navigation model, superseding the current dual-surface structure.
-2. Whether navigation unification (§22 item 1) ships as its own small PR before Milestone 2, or is folded into Milestone 2's first PR, or is explicitly deferred (a real decision is required here — see §24).
+2. Navigation unification (§22 item 1) as a recommended architectural initiative — its implementation order relative to Milestone 2 and the other sequenced items is decided by the Product Owner based on dependency analysis, not fixed by this document.
 3. The Home screen's five elements (§7) as the complete, correct first-cut scope — no additions before it ships once.
 4. That Prepare Document (§9) and Universal Search frontend (§12) remain sequenced after Milestone 2 as currently planned, not pulled forward.
 5. No engineering work begins against this document until this sign-off happens — consistent with Milestone 1's own review process.
 
 ---
 
-**Genuine Product Owner decision required, called out explicitly (not resolved unilaterally here):** whether to fix §21.1/§21.2 (login routing + Navbar) as a prerequisite step before Milestone 2, bundle it into Milestone 2's first PR, or defer it — see §24's first risk. This blueprint recommends fixing it first, but does not treat that recommendation as already approved.
+**Approved, with one standing note:** navigation unification (§21.1/§21.2, §22 item 1) is a recommended architectural initiative. Its implementation order — before, alongside, or after Milestone 2 — will be decided by the Product Owner based on dependency analysis, not fixed by this document.
