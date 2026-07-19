@@ -59,6 +59,21 @@ describe('buildPrompt', () => {
     expect(messages[1]).toEqual({ role: 'user', content: 'Question: Bare question.' });
   });
 
+  test('includes the existing draft between retrieved documents and the question, when given (DRAFT_IMPROVE)', () => {
+    const messages = buildPrompt({
+      systemPolicies: 'sys',
+      instructions: '',
+      existingDraft: 'Old draft text.',
+      userRequest: 'Revise it.',
+    });
+    expect(messages[1].content).toBe('Existing draft to revise:\n\nOld draft text.\n\nQuestion: Revise it.');
+  });
+
+  test('omits the "Existing draft to revise:" section when existingDraft is not given', () => {
+    const messages = buildPrompt({ systemPolicies: 'sys', instructions: '', userRequest: 'q' });
+    expect(messages[1].content).not.toContain('Existing draft to revise:');
+  });
+
   test('always returns exactly one system message followed by one user message', () => {
     const messages = buildPrompt({ systemPolicies: 'sys', instructions: 'ins', userRequest: 'q' });
     expect(messages).toHaveLength(2);

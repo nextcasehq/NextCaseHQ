@@ -18,10 +18,11 @@ interface DocumentEnvelopeRow {
   indexed_version_number: number | null;
   index_error: string | null;
   index_updated_at: string | null;
+  document_type: string | null;
 }
 
 const DOCUMENT_COLUMNS = `id, tenant_id, case_id, matter_id, title, storage_structure, created_at,
-                          index_status, indexed_version_number, index_error, index_updated_at`;
+                          index_status, indexed_version_number, index_error, index_updated_at, document_type`;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -73,7 +74,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
-    return NextResponse.json({ document: rows[0] }, { status: 200 });
+
+    // version_count/updated_at (Milestone 4, Prepare Document) are derived
+    // from DocumentVersion — never a duplicated column on DocumentEnvelope.
+    const versionStats = await db.execute<{ version_count: number; latest_version_created_at: string | null }>(
+      session.tenantId,
+      `SELECT COUNT(*)::int AS version_count, MAX(created_at) AS latest_version_created_at
+       FROM "DocumentVersion" WHERE envelope_id = $1`,
+      [id]
+    );
+    const versionCount = versionStats[0]?.version_count ?? 0;
+    const updatedAt = versionStats[0]?.latest_version_created_at ?? rows[0].created_at;
+
+    return NextResponse.json(
+      { document: { ...rows[0], version_count: versionCount, updated_at: updatedAt } },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('[DOCUMENTS_API] GET /api/documents/[id] failed:', error);
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });

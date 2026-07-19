@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
+import { getDocumentType } from '@/lib/domain/document-type';
 
 interface Matter {
   id: string;
@@ -95,6 +96,14 @@ interface PreparationDocument {
   title: string;
 }
 
+interface MatterDocument {
+  id: string;
+  title: string;
+  document_type: string | null;
+  version_count: number;
+  updated_at: string;
+}
+
 interface PreparationItem {
   case_id: string;
   case_title: string;
@@ -134,6 +143,7 @@ export default function MatterDetailsChamberPage() {
   const [matterTasks, setMatterTasks] = useState<MatterTaskItem[]>([]);
   const [health, setHealth] = useState<MatterHealth | null>(null);
   const [preparationItems, setPreparationItems] = useState<PreparationItem[]>([]);
+  const [matterDocuments, setMatterDocuments] = useState<MatterDocument[]>([]);
   const [showFullCourtNoteHistory, setShowFullCourtNoteHistory] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
 
@@ -217,6 +227,13 @@ export default function MatterDetailsChamberPage() {
     setPreparationItems(data.preparation);
   }, [id]);
 
+  const fetchMatterDocuments = useCallback(async () => {
+    const res = await fetch(`/api/documents?matter_id=${id}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setMatterDocuments(data.documents);
+  }, [id]);
+
   const handleTaskStatusChange = async (taskId: string, status: 'COMPLETED' | 'DISMISSED' | 'PENDING') => {
     const res = await fetch(`/api/matters/${id}/tasks/${taskId}`, {
       method: 'PATCH',
@@ -238,6 +255,7 @@ export default function MatterDetailsChamberPage() {
     fetchMatterTasks();
     fetchHealth();
     fetchPreparation();
+    fetchMatterDocuments();
   }, [
     fetchMatter,
     fetchProceedings,
@@ -247,6 +265,7 @@ export default function MatterDetailsChamberPage() {
     fetchMatterTasks,
     fetchHealth,
     fetchPreparation,
+    fetchMatterDocuments,
   ]);
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -815,10 +834,48 @@ export default function MatterDetailsChamberPage() {
               )}
             </div>
 
-            <ComingSoonPanel
-              title="Documents"
-              description="Document intake and management for this matter is planned for a future milestone."
-            />
+            {/* Documents — Milestone 4, Prepare Document. Real, read-only
+                data from the existing GET /api/documents?matter_id= route
+                (extended, not duplicated, with document_type/version_count/
+                updated_at) — same reuse pattern as every other section on
+                this page. */}
+            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Documents</h3>
+                <Link
+                  href={`/documents/new?matter_id=${id}`}
+                  className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                >
+                  + Prepare New Document
+                </Link>
+              </div>
+              {matterDocuments.length > 0 ? (
+                <div className="space-y-3">
+                  {matterDocuments.map((docItem) => (
+                    <div key={docItem.id} className="flex items-center justify-between border-b border-[#F4EEE0] pb-3 last:border-0 last:pb-0">
+                      <div>
+                        <p className="text-sm font-bold text-[#3A3222]">{docItem.title}</p>
+                        <p className="text-[10px] text-[#B0A588] font-bold uppercase tracking-wider">
+                          {getDocumentType(docItem.document_type)?.label ?? 'Uploaded'} · v{docItem.version_count || 1} ·{' '}
+                          {new Date(docItem.updated_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/documents/${docItem.id}`}
+                        className="text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2.5 py-1 rounded uppercase tracking-wider hover:bg-[#F4EEE0]"
+                      >
+                        Open
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-[#FBF8F1]/50 border border-dashed border-[#E7DFC9] rounded-xl">
+                  <p className="text-xs font-semibold text-[#8A7A56]">No documents yet.</p>
+                  <p className="text-[10px] text-[#B0A588] mt-1">Prepare a new document to get started.</p>
+                </div>
+              )}
+            </div>
             <ComingSoonPanel
               title="Evidence"
               description="Structured evidence registry for this matter is planned for a future milestone."

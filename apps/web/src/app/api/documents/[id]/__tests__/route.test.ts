@@ -92,6 +92,27 @@ describe('GET/PATCH/DELETE /api/documents/[id]', () => {
     expect(body.document.title).toBe('Owned Document');
   });
 
+  test('GET includes document_type, version_count, and updated_at (Milestone 4, Prepare Document)', async () => {
+    const rows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, title, document_type) VALUES ($1, $2, $3) RETURNING id`,
+      [TENANT_A, 'Typed Document', 'BAIL_APPLICATION']
+    );
+    const id = rows[0].id;
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentVersion" (tenant_id, envelope_id, version_number, title, storage_structure) VALUES ($1, $2, 1, $3, '{}')`,
+      [TENANT_A, id, 'Typed Document']
+    );
+
+    const res = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.document.document_type).toBe('BAIL_APPLICATION');
+    expect(body.document.version_count).toBe(1);
+    expect(body.document.updated_at).toBeTruthy();
+  });
+
   test('GET returns 404 for a real document belonging to a different tenant (RLS-backed, not a permission leak)', async () => {
     const id = await createDocument(TENANT_A, 'Belongs To A');
     const res = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_B) }), routeParams(id));

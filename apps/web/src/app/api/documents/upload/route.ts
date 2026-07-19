@@ -6,6 +6,7 @@ import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { isObjectStorageConfigured, putObject, deleteObject } from '@/lib/storage/object-storage';
 import { validateFileType, buildObjectKey, MAX_DOCUMENT_SIZE_BYTES } from '@/lib/storage/document-key';
+import { isValidDocumentTypeSlug } from '@/lib/domain/document-type';
 
 /**
  * NCHQ Module 17: Advanced File Ingestion Controller
@@ -84,6 +85,20 @@ export async function POST(request: NextRequest) {
     if (!rawFileName) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'x-file-name is required.' }, { status: 400 });
     }
+
+    // Milestone 4 (Prepare Document): the drafting flow's "Save Draft"
+    // step submits its reviewed text through this exact endpoint, adding
+    // only this one optional header — no separate persistence path.
+    // Omitted entirely by every plain file upload, which keeps
+    // document_type NULL exactly as before this milestone.
+    const rawDocumentType = request.headers.get('x-document-type');
+    if (rawDocumentType && !isValidDocumentTypeSlug(rawDocumentType)) {
+      return NextResponse.json(
+        { error: 'BAD_REQUEST', message: `Unrecognized x-document-type: ${rawDocumentType}` },
+        { status: 400 }
+      );
+    }
+    const documentType = rawDocumentType || null;
 
     const fileTypeResult = validateFileType(rawFileName);
     if (!fileTypeResult.valid) {
@@ -224,15 +239,15 @@ export async function POST(request: NextRequest) {
       }>(
         tenantId,
         `WITH envelope AS (
-           INSERT INTO "DocumentEnvelope" (id, tenant_id, case_id, matter_id, title, storage_structure)
-           VALUES ($1, $2, $3, $4, $5, $6)
+           INSERT INTO "DocumentEnvelope" (id, tenant_id, case_id, matter_id, title, storage_structure, document_type)
+           VALUES ($1, $2, $3, $4, $5, $6, $8)
            RETURNING id, tenant_id, case_id, matter_id, created_at
          ), version AS (
            INSERT INTO "DocumentVersion" (tenant_id, envelope_id, version_number, title, storage_structure, created_by)
            SELECT envelope.tenant_id, envelope.id, 1, $5, $6, $7 FROM envelope
          )
          SELECT id, tenant_id, case_id, matter_id, created_at FROM envelope`,
-        [documentId, tenantId, rawCaseId ?? null, effectiveMatterId ?? null, scrubbedFileName, storageStructure, session.sub]
+        [documentId, tenantId, rawCaseId ?? null, effectiveMatterId ?? null, scrubbedFileName, storageStructure, session.sub, documentType]
       );
       envelope = rows[0];
     } catch (dbError) {
@@ -249,6 +264,7 @@ export async function POST(request: NextRequest) {
       tenant_id: envelope.tenant_id,
       case_id: envelope.case_id,
       matter_id: envelope.matter_id,
+      document_type: documentType,
       bytes_received: totalBytesReceived,
       scrubbed_metadata: {
         file_name: scrubbedFileName,

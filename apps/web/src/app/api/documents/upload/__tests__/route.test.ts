@@ -443,4 +443,65 @@ describe('POST /api/documents/upload — real persistence + object storage', () 
 
     uploadedObjectKeys.push(versions[0].storage_structure.object_key);
   });
+
+  // Milestone 4 (Prepare Document): the drafting flow's "Save Draft" step
+  // reuses this exact endpoint, adding only the optional x-document-type
+  // header below.
+  test('rejects an unrecognized x-document-type (400)', async () => {
+    if (!hasS3()) return;
+    const req = buildRequest({
+      'x-tenant-key-version': 'v1',
+      cookie: await sessionCookieHeader(TENANT_A),
+      'x-file-name': 'draft.txt',
+      'x-document-type': 'NOT_A_REAL_TYPE',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  test('persists a valid x-document-type onto the new DocumentEnvelope', async () => {
+    if (!hasS3()) return;
+    const req = buildRequest(
+      {
+        'x-tenant-key-version': 'v1',
+        cookie: await sessionCookieHeader(TENANT_A),
+        'x-file-name': 'plaint-draft.txt',
+        'x-document-type': 'PLAINT',
+      },
+      'drafted plaint text'
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(202);
+    const body = await res.json();
+    expect(body.document_type).toBe('PLAINT');
+
+    const rows = await db.execute<{ document_type: string | null; storage_structure: { object_key: string } }>(
+      TENANT_A,
+      `SELECT document_type, storage_structure FROM "DocumentEnvelope" WHERE id = $1`,
+      [body.id]
+    );
+    expect(rows[0].document_type).toBe('PLAINT');
+    uploadedObjectKeys.push(rows[0].storage_structure.object_key);
+  });
+
+  test('leaves document_type NULL when the header is omitted (backward compatible)', async () => {
+    if (!hasS3()) return;
+    const req = buildRequest({
+      'x-tenant-key-version': 'v1',
+      cookie: await sessionCookieHeader(TENANT_A),
+      'x-file-name': 'plain-upload.pdf',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(202);
+    const body = await res.json();
+    expect(body.document_type).toBeNull();
+
+    const rows = await db.execute<{ document_type: string | null; storage_structure: { object_key: string } }>(
+      TENANT_A,
+      `SELECT document_type, storage_structure FROM "DocumentEnvelope" WHERE id = $1`,
+      [body.id]
+    );
+    expect(rows[0].document_type).toBeNull();
+    uploadedObjectKeys.push(rows[0].storage_structure.object_key);
+  });
 });
