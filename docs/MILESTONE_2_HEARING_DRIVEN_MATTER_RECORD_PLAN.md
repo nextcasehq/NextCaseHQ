@@ -1,5 +1,5 @@
 # MILESTONE 2 — HEARING-DRIVEN MATTER RECORD BUILDING
-**STATUS:** Plan for implementation, following the mandatory read-only audit below.
+**STATUS:** Implemented, tested, and verified against a real local Postgres instance and a real browser run.
 **SCOPE:** Matter-level Court Note aggregation, structured pending actions, Matter Health summary, chronology review, and their read-only display on the Matter screen — nothing else. Milestone 3, Prepare Document, Universal Search, Typist Collaboration, commercial UI, and navigation unification are explicitly out of scope for this PR.
 
 ---

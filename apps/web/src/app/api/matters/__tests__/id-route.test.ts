@@ -7,6 +7,16 @@ import { DatabaseClient, closePool } from '@/lib/db/db-client';
 const TENANT_A = '00000000-0000-4000-8000-0000000000f1';
 const TENANT_B = '00000000-0000-4000-8000-0000000000f2';
 const USER_ID = '00000000-0000-4000-8000-0000000000f3';
+// Dedicated tenant/user for the MatterTask-linked DELETE test only — a
+// Matter with a MatterTask requires a CourtNote, which is append-only
+// (nextcase_app has no UPDATE/DELETE grant) and whose case_id is
+// RESTRICT, so the Matter/LegalCase it references can never be cleaned
+// up by this file's per-test beforeEach/afterAll (which blanket-deletes
+// LegalCase/Matter for TENANT_A every test). Same fix already applied in
+// apps/web/src/app/api/cases/[id]/__tests__/route.test.ts for the
+// equivalent Court-Note-linked case.
+const TENANT_C = 'b06f4a6c-ac41-4701-875f-ab73f94870ad';
+const USER_C = 'fbd4184b-1346-44ba-b93e-550ac7b1bd8e';
 
 async function sessionCookieHeader(tenantId: string): Promise<string> {
   const token = await signSessionToken({ sub: USER_ID, tenantId, email: 'matters-id-test@nextcase.local' });
@@ -33,6 +43,15 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
       TENANT_B,
       'Matters ID Test Tenant B',
     ]);
+    await db.execute(TENANT_C, `INSERT INTO "Tenant" (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`, [
+      TENANT_C,
+      'Matters ID Test Tenant C (MatterTask)',
+    ]);
+    await db.execute(
+      TENANT_C,
+      `INSERT INTO "User" (id, tenant_id, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+      [USER_C, TENANT_C, 'matters-id-task-author@nextcase.local']
+    );
   });
 
   beforeEach(async () => {
@@ -261,6 +280,49 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
     expect(body.linked.documents).toBe(1);
 
     const stillThere = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "Matter" WHERE id = $1`, [matterWithDocument]);
+    expect(stillThere).toHaveLength(1);
+  });
+
+  test('DELETE returns 409 when a MatterTask is linked (Milestone 2), even with zero Proceedings/participants/events/documents', async () => {
+    const matterId = await createMatter(TENANT_C, 'Matter With Task');
+    const caseRows = await db.execute<{ id: string }>(
+      TENANT_C,
+      `INSERT INTO "LegalCase" (tenant_id, title, country_code, matter_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [TENANT_C, 'Test Proceeding', 'IN', matterId]
+    );
+    const caseId = caseRows[0].id;
+    const noteRows = await db.execute<{ id: string }>(
+      TENANT_C,
+      `INSERT INTO "CourtNote" (
+         tenant_id, case_id, matter_id, author_user_id, hearing_date, court_forum_type, court_forum_display, stage, note
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [TENANT_C, caseId, matterId, USER_C, '2026-01-01', 'HIGH_COURT', 'High Court', 'Arguments', 'Note']
+    );
+    await db.execute(
+      TENANT_C,
+      `INSERT INTO "MatterTask" (tenant_id, matter_id, case_id, court_note_id) VALUES ($1, $2, $3, $4)`,
+      [TENANT_C, matterId, caseId, noteRows[0].id]
+    );
+
+    // Delete the Proceeding's LegalCase row is impossible here (blocked by
+    // the Court Note's own RESTRICT), so this test necessarily also has a
+    // linked Proceeding — the assertion below still isolates the `tasks`
+    // count specifically, proving this endpoint's new check works, not
+    // just that some other linked-record check happened to fire first.
+    const cookie = `${SESSION_COOKIE_NAME}=${await signSessionToken({ sub: USER_C, tenantId: TENANT_C, email: 'matters-id-task-author@nextcase.local' })}`;
+    const res = await DELETE(
+      new NextRequest(`http://localhost/api/matters/${matterId}`, {
+        method: 'DELETE',
+        headers: { origin: 'http://localhost:3000', cookie },
+      }),
+      { params: Promise.resolve({ id: matterId }) }
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_HAS_LINKED_RECORDS');
+    expect(body.linked.tasks).toBe(1);
+
+    const stillThere = await db.execute<{ id: string }>(TENANT_C, `SELECT id FROM "Matter" WHERE id = $1`, [matterId]);
     expect(stillThere).toHaveLength(1);
   });
 });

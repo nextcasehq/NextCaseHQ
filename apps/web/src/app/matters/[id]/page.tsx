@@ -52,6 +52,38 @@ interface Participant {
   user_name: string | null;
 }
 
+interface MatterCourtNote {
+  id: string;
+  case_id: string;
+  case_title: string;
+  hearing_date: string;
+  next_hearing_date: string | null;
+  court_forum_display: string;
+  stage: string;
+  note: string;
+  next_actions: string | null;
+}
+
+interface MatterTaskItem {
+  id: string;
+  case_title: string;
+  status: 'PENDING' | 'COMPLETED' | 'DISMISSED';
+  action_text: string | null;
+  hearing_date: string;
+  court_forum_display: string;
+}
+
+interface MatterHealth {
+  stage: string | null;
+  last_hearing_date: string | null;
+  last_court_forum_display: string | null;
+  last_note: string | null;
+  last_case_title: string | null;
+  next_hearing_date: string | null;
+  pending_action_count: number;
+  needs_attention: boolean;
+}
+
 /**
  * Honest placeholder for a future sub-milestone's real data — never
  * fabricated content (Milestone 1 condition: empty states must be honest).
@@ -76,6 +108,9 @@ export default function MatterDetailsChamberPage() {
   const [proceedings, setProceedings] = useState<Proceeding[]>([]);
   const [events, setEvents] = useState<MatterEvent[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [matterCourtNotes, setMatterCourtNotes] = useState<MatterCourtNote[]>([]);
+  const [matterTasks, setMatterTasks] = useState<MatterTaskItem[]>([]);
+  const [health, setHealth] = useState<MatterHealth | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -130,12 +165,48 @@ export default function MatterDetailsChamberPage() {
     setParticipants(data.participants);
   }, [id]);
 
+  const fetchMatterCourtNotes = useCallback(async () => {
+    const res = await fetch(`/api/matters/${id}/court-notes`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setMatterCourtNotes(data.court_notes);
+  }, [id]);
+
+  const fetchMatterTasks = useCallback(async () => {
+    const res = await fetch(`/api/matters/${id}/tasks`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setMatterTasks(data.tasks);
+  }, [id]);
+
+  const fetchHealth = useCallback(async () => {
+    const res = await fetch(`/api/matters/${id}/health`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setHealth(data.health);
+  }, [id]);
+
+  const handleTaskStatusChange = async (taskId: string, status: 'COMPLETED' | 'DISMISSED' | 'PENDING') => {
+    const res = await fetch(`/api/matters/${id}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) {
+      fetchMatterTasks();
+      fetchHealth();
+    }
+  };
+
   useEffect(() => {
     fetchMatter();
     fetchProceedings();
     fetchEvents();
     fetchParticipants();
-  }, [fetchMatter, fetchProceedings, fetchEvents, fetchParticipants]);
+    fetchMatterCourtNotes();
+    fetchMatterTasks();
+    fetchHealth();
+  }, [fetchMatter, fetchProceedings, fetchEvents, fetchParticipants, fetchMatterCourtNotes, fetchMatterTasks, fetchHealth]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,6 +342,43 @@ export default function MatterDetailsChamberPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Matter Health */}
+            {health && (
+              <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Matter Health</h3>
+                  {health.needs_attention && (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                      NEEDS ATTENTION
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Current Stage</span>
+                    <span className="text-sm font-bold text-[#8A6D2F] font-mono uppercase">{health.stage || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Next Hearing</span>
+                    <span className="text-sm font-mono font-bold text-[#3A3222]">{health.next_hearing_date || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Pending Actions</span>
+                    <span className="text-sm font-bold text-[#3A3222]">{health.pending_action_count}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">Last Activity</span>
+                    <span className="text-sm font-bold text-[#3A3222]">{health.last_hearing_date || 'N/A'}</span>
+                  </div>
+                </div>
+                {health.last_note && (
+                  <p className="text-xs text-[#8A7A56] mt-4 pt-4 border-t border-[#F4EEE0]">
+                    <span className="font-bold text-[#4A4130]">{health.last_case_title}</span> · {health.last_court_forum_display}: {health.last_note}
+                  </p>
+                )}
+              </div>
+            )}
+
             {isEditing ? (
               <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Edit Matter</h3>
@@ -488,6 +596,80 @@ export default function MatterDetailsChamberPage() {
               )}
             </div>
 
+            {/* Court Note History — aggregated across every linked Proceeding */}
+            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Court Note History</h3>
+              {matterCourtNotes.length === 0 ? (
+                <p className="text-xs font-semibold text-[#8A7A56]">No Court Notes recorded yet for this matter.</p>
+              ) : (
+                <div className="space-y-4">
+                  {matterCourtNotes.map((cn) => (
+                    <div key={cn.id} className="border-l-2 border-[#F4EEE0] pl-4">
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
+                        <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-wider">{cn.stage}</span>
+                        <span className="text-[10px] text-[#B0A588]">· {cn.court_forum_display}</span>
+                        <Link
+                          href={`/cases/${cn.case_id}`}
+                          className="text-[10px] font-bold text-[#8A6D2F] hover:underline"
+                        >
+                          {cn.case_title}
+                        </Link>
+                      </div>
+                      <p className="text-xs text-[#3A3222] mt-1">{cn.note}</p>
+                      {cn.next_actions && (
+                        <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {cn.next_actions}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Pending Actions — structured, derived from Court Notes */}
+            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Pending Actions</h3>
+              {matterTasks.length === 0 ? (
+                <p className="text-xs font-semibold text-[#8A7A56]">No pending actions.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {matterTasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${
+                        task.status === 'PENDING' ? 'bg-[#FBF8F1]/50 border-[#F4EEE0]' : 'bg-white border-[#F4EEE0] opacity-50'
+                      }`}
+                    >
+                      <div>
+                        <p className={`text-sm font-medium text-[#3A3222] ${task.status !== 'PENDING' ? 'line-through' : ''}`}>
+                          {task.action_text}
+                        </p>
+                        <span className="text-[10px] text-[#B0A588]">{task.case_title} · {task.hearing_date}</span>
+                      </div>
+                      {task.status === 'PENDING' ? (
+                        <div className="flex gap-2 flex-none">
+                          <button
+                            onClick={() => handleTaskStatusChange(task.id, 'COMPLETED')}
+                            className="text-[10px] font-bold uppercase text-[#8A6D2F] hover:underline"
+                          >
+                            Mark Done
+                          </button>
+                          <button
+                            onClick={() => handleTaskStatusChange(task.id, 'DISMISSED')}
+                            className="text-[10px] font-bold uppercase text-[#B0A588] hover:underline"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase text-[#B0A588] flex-none">{task.status}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <ComingSoonPanel
               title="Documents"
               description="Document intake and management for this matter is planned for a future milestone."
@@ -495,10 +677,6 @@ export default function MatterDetailsChamberPage() {
             <ComingSoonPanel
               title="Evidence"
               description="Structured evidence registry for this matter is planned for a future milestone."
-            />
-            <ComingSoonPanel
-              title="Tasks"
-              description="Task and deadline tracking for this matter is planned for a future milestone."
             />
             <ComingSoonPanel
               title="Drafts & Research"
