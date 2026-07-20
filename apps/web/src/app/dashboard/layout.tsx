@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 
 interface NotificationItem {
@@ -32,10 +32,43 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = React.useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
   const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const profileRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isProfileOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [isProfileOpen]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    setIsMobileSearchOpen(false);
+  };
+
+  const handleLogOut = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear();
+      localStorage.clear();
+      document.cookie = 'NEXTCASE_CURRENT_TENANT_ID_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'NEXTCASE_CURRENT_CASE_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      window.location.href = '/';
+    }
+  };
 
   // Close the off-canvas nav on route change (below md) — matches
   // TriPaneChamber's own mobile-panel-switch behavior of not leaving a
@@ -173,9 +206,9 @@ export default function DashboardLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden h-full">
-        {/* Top Header Row */}
-        <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between z-10 flex-none">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* Top Header Row — Search, Notifications, AI Credits, Profile */}
+        <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between gap-3 z-10 flex-none relative">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
@@ -188,13 +221,51 @@ export default function DashboardLayout({
                 <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-none"></span>
-            <span className="text-xs uppercase tracking-widest font-black text-[#B0A588] truncate">
-              PostgreSQL Session RLS Active
-            </span>
+
+            {/* Search — the one dashboard search experience; the main
+                content area does not duplicate this. */}
+            <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center flex-1 max-w-sm bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg px-3 py-1.5 focus-within:border-[#8A6D2F] transition-colors">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#B0A588] flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search matters, case numbers, parties, courts, documents..."
+                aria-label="Search"
+                className="w-full bg-transparent border-none outline-none text-xs font-medium text-[#241E17] placeholder-[#B0A588] px-2 py-0.5"
+              />
+            </form>
+            <button
+              type="button"
+              onClick={() => setIsMobileSearchOpen((v) => !v)}
+              aria-label="Search"
+              aria-expanded={isMobileSearchOpen}
+              className="sm:hidden flex-none p-2 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 md:gap-4 flex-none">
+            {/* AI Credits — a small account-status control, not a dashboard card. */}
+            <div
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#E7DFC9] bg-[#FBF8F1]"
+              title="Illustrative — AI credit metering is not yet connected to a production billing system."
+            >
+              <span aria-hidden="true" className="text-[11px]">✨</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[#8A7A56]">AI Credits</span>
+              <span className="text-xs font-black text-[#8A6D2F]">240</span>
+              <Link href="/pricing" className="text-[9px] font-bold uppercase text-[#8A6D2F] hover:underline ml-0.5">
+                Buy More
+              </Link>
+            </div>
+
             {/* Interactive Notification Bell */}
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
@@ -207,21 +278,63 @@ export default function DashboardLayout({
               )}
             </button>
 
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  sessionStorage.clear();
-                  localStorage.clear();
-                  document.cookie = "NEXTCASE_CURRENT_TENANT_ID_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                  document.cookie = "NEXTCASE_CURRENT_CASE_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                  window.location.href = '/';
-                }
-              }}
-              className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
-            >
-              Log Out
-            </button>
+            {/* Profile */}
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setIsProfileOpen((v) => !v)}
+                aria-label="Profile menu"
+                aria-expanded={isProfileOpen}
+                className="w-8 h-8 rounded-full bg-[#8A6D2F] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm cursor-pointer border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] focus-visible:ring-offset-2"
+              >
+                NC
+              </button>
+              {isProfileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-[#E7DFC9] rounded-xl shadow-xl z-40 py-1.5 animate-in slide-in-from-top-1 duration-150">
+                  <div className="px-4 py-2 border-b border-[#F4EEE0]">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#3A3222]">Counsel Session</p>
+                    <p className="text-[9px] text-[#B0A588] font-mono">Bound Context: ACTIVE</p>
+                  </div>
+                  <Link
+                    href="/dashboard/settings"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors"
+                  >
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleLogOut}
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors bg-transparent border-none outline-none cursor-pointer"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Mobile search overlay — keeps the header itself uncluttered
+              below sm, per "no horizontal overflow" / "no crowding". */}
+          {isMobileSearchOpen && (
+            <form
+              onSubmit={handleSearchSubmit}
+              className="sm:hidden absolute top-full left-0 right-0 bg-white border-b border-[#E7DFC9] shadow-md p-3 flex items-center gap-2 z-40"
+            >
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search matters, case numbers, parties, courts, documents..."
+                aria-label="Search"
+                className="w-full bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#241E17] placeholder-[#B0A588] px-3 py-2"
+              />
+              <button type="submit" aria-label="Submit search" className="flex-none text-[#8A6D2F] bg-transparent border-none outline-none">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </form>
+          )}
         </header>
 
         {/* Dynamic Route Content */}
