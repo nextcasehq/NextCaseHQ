@@ -163,7 +163,7 @@ function SearchPageContent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by case number, client name, court, or keyword…"
-          className="flex-1 px-4 py-3 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm"
+          className="flex-1 min-w-0 px-4 py-3 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm"
         />
         <button
           type="submit"
