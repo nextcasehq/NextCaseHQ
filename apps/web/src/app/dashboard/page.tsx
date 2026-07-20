@@ -97,8 +97,7 @@ export default function DashboardPage() {
         {betaPreview && (
           <div className="inline-flex items-center gap-2 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
-            Beta Preview — sample data ·{' '}
-            <Link href="/login" className="underline hover:no-underline">Sign in for your workspace</Link>
+            Beta Preview — sample data · Your own workspace available after beta
           </div>
         )}
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-[#111111]">

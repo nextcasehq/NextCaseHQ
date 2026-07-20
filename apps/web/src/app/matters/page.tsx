@@ -216,12 +216,9 @@ function MattersChamberContent() {
       {showSignInPrompt && (
         <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
           <p className="text-xs font-semibold text-[#5C5340]">
-            This is a read-only Beta Preview. Sign in to create and manage your own Matters.
+            This is a read-only Beta Preview. Creating and managing your own Matters is available after beta.
           </p>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-              Sign In →
-            </Link>
             <button
               onClick={() => setShowSignInPrompt(false)}
               className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"

@@ -450,12 +450,9 @@ export default function MatterDetailsChamberPage() {
         {showSignInPrompt && (
           <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
             <p className="text-xs font-semibold text-[#5C5340]">
-              This is a read-only Beta Preview Matter. Sign in to make changes to your own Matters.
+              This is a read-only Beta Preview Matter. Making changes to your own Matters is available after beta.
             </p>
             <div className="flex items-center gap-3">
-              <Link href="/login" className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-                Sign In →
-              </Link>
               <button
                 onClick={() => setShowSignInPrompt(false)}
                 className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
@@ -500,19 +497,30 @@ export default function MatterDetailsChamberPage() {
 
           <div className="mt-3 flex flex-wrap gap-2.5">
             {[
-              { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note` },
-              { label: '📤 Upload Documents', href: `/documents/new?matter_id=${id}` },
-              { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
-              { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
-            ].map((card) => (
-              <Link
-                key={card.label}
-                href={card.href}
-                className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
-              >
-                {card.label}
-              </Link>
-            ))}
+              { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note`, guarded: false },
+              { label: '📤 Upload Documents', href: `/documents/new?matter_id=${id}`, guarded: true },
+              { label: '⚡ Ask AI', href: '/dashboard/ai-chamber', guarded: true },
+              { label: '✍️ Draft Document', href: '/dashboard/draft-builder', guarded: true },
+            ].map((card) =>
+              card.guarded && isDemo ? (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={() => setShowSignInPrompt(true)}
+                  className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
+                >
+                  {card.label}
+                </button>
+              ) : (
+                <Link
+                  key={card.label}
+                  href={card.href}
+                  className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
+                >
+                  {card.label}
+                </Link>
+              )
+            )}
           </div>
         </div>
 
@@ -946,12 +954,22 @@ export default function MatterDetailsChamberPage() {
             <div id="documents" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Documents</h3>
-                <Link
-                  href={`/documents/new?matter_id=${id}`}
-                  className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
-                >
-                  + Prepare New Document
-                </Link>
+                {isDemo ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSignInPrompt(true)}
+                    className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                  >
+                    + Prepare New Document
+                  </button>
+                ) : (
+                  <Link
+                    href={`/documents/new?matter_id=${id}`}
+                    className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                  >
+                    + Prepare New Document
+                  </Link>
+                )}
               </div>
               {matterDocuments.length > 0 ? (
                 <div className="space-y-3">

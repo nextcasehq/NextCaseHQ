@@ -39,7 +39,7 @@ const DEMO_MATTER = {
   bench: null,
   judge: null,
   description:
-    'This is a read-only sample Matter shown for Beta Preview only. No real client, document, or case data is loaded — sign in to work with your own Matters.',
+    'This is a read-only sample Matter shown for Beta Preview only. No real client, document, or case data is loaded — working with your own Matters is available after beta.',
   opened_at: '2026-05-01T00:00:00.000Z',
   closed_at: null,
   created_at: '2026-05-01T00:00:00.000Z',
