@@ -145,24 +145,31 @@ export function matchBetaPreviewRoute(
   }
 
   if (pathname === '/api/matters') {
+    // Honor the same ?status= filter the real route supports — otherwise
+    // the demo Matter (status ACTIVE) would incorrectly still appear
+    // under every other status tab (ON_HOLD, CLOSED, ...) on /matters.
+    const statusFilter = searchParams.get('status');
+    const matchesFilter = !statusFilter || statusFilter === 'ALL' || statusFilter === DEMO_MATTER.status;
     return {
-      matters: [
-        {
-          id: DEMO_MATTER.id,
-          title: DEMO_MATTER.title,
-          matter_number: DEMO_MATTER.matter_number,
-          engagement_type: DEMO_MATTER.engagement_type,
-          practice_area: DEMO_MATTER.practice_area,
-          status: DEMO_MATTER.status,
-          client_id: null,
-          client_name: DEMO_MATTER.client_name,
-          opposing_party_name: DEMO_MATTER.opposing_party_name,
-          court: DEMO_MATTER.court,
-          created_at: DEMO_MATTER.created_at,
-          is_demo: true,
-        },
-      ],
-      total: 1,
+      matters: matchesFilter
+        ? [
+            {
+              id: DEMO_MATTER.id,
+              title: DEMO_MATTER.title,
+              matter_number: DEMO_MATTER.matter_number,
+              engagement_type: DEMO_MATTER.engagement_type,
+              practice_area: DEMO_MATTER.practice_area,
+              status: DEMO_MATTER.status,
+              client_id: null,
+              client_name: DEMO_MATTER.client_name,
+              opposing_party_name: DEMO_MATTER.opposing_party_name,
+              court: DEMO_MATTER.court,
+              created_at: DEMO_MATTER.created_at,
+              is_demo: true,
+            },
+          ]
+        : [],
+      total: matchesFilter ? 1 : 0,
       limit: 50,
       offset: 0,
       beta_preview: true,
