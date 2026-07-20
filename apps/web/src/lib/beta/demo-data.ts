@@ -18,6 +18,8 @@
  * database-backed route unchanged.
  */
 
+import { findDemoSearchItem, searchDemoLegalDataset } from './demo-search-data';
+
 export const DEMO_MATTER_ID = 'deadbeef-0000-4000-8000-000000000000';
 
 export function isBetaPreviewEnabled(): boolean {
@@ -105,12 +107,22 @@ const DEMO_TASK = {
   court_forum_display: 'Demo Commercial Court, Court 4',
 };
 
+export const DEMO_DOCUMENT_ID = 'deadbeef-0000-4000-8000-000000000007';
+
 const DEMO_DOCUMENT = {
-  id: 'deadbeef-0000-4000-8000-000000000007',
+  id: DEMO_DOCUMENT_ID,
   title: 'Sample Plaint (Demo Document)',
   document_type: 'PLAINT',
   version_count: 1,
   updated_at: '2026-06-01T00:00:00.000Z',
+  created_at: '2026-06-01T00:00:00.000Z',
+  matter_id: DEMO_MATTER_ID,
+  case_id: null,
+  // No storage_structure.content_type — this fixture has no real file
+  // bytes behind it, so the Preview/Improve actions on the document detail
+  // page correctly stay hidden (isPreviewEligible/isImproveEligible both
+  // require a content_type) rather than offering a button that would fail.
+  storage_structure: null,
 };
 
 /**
@@ -187,6 +199,83 @@ export function matchBetaPreviewRoute(
   }
   if (pathname === '/api/documents' && searchParams.get('matter_id') === DEMO_MATTER_ID) {
     return { documents: [DEMO_DOCUMENT] };
+  }
+  if (pathname === `/api/documents/${DEMO_DOCUMENT_ID}`) {
+    return { document: DEMO_DOCUMENT };
+  }
+
+  // Demo search — a separate, synthetic search path for unauthenticated
+  // Beta Preview visitors. The real Search Service (lib/search/
+  // search-service.ts) is completely unchanged and still requires a real
+  // session for every request; this only ever answers GET /api/search
+  // when there is no session cookie at all (the same condition every
+  // other Beta Preview response uses).
+  if (pathname === '/api/search') {
+    const query = searchParams.get('q') ?? '';
+    const matterId = searchParams.get('matter_id');
+    if (matterId === DEMO_MATTER_ID) {
+      // Matter-scoped ("Search this Matter") — reuses the same demo
+      // Proceeding / Document / Court Note fixtures already shown
+      // elsewhere in the demo Matter Workspace, not the general legal
+      // dataset below.
+      const q = query.trim().toLowerCase();
+      const proceedingMatches = q && DEMO_PROCEEDING.title.toLowerCase().includes(q);
+      const documentMatches = q && DEMO_DOCUMENT.title.toLowerCase().includes(q);
+      const courtNoteMatches = q && DEMO_COURT_NOTE.note.toLowerCase().includes(q);
+      return {
+        query,
+        beta_preview: true,
+        groups: [
+          {
+            type: 'PROCEEDING',
+            providerName: 'DemoProceedingProvider',
+            items: proceedingMatches
+              ? [{ id: DEMO_PROCEEDING.id, title: DEMO_PROCEEDING.title, snippet: `${DEMO_PROCEEDING.case_number} · ${DEMO_PROCEEDING.court}`, score: 1, href: `/cases/${DEMO_PROCEEDING.id}`, is_demo: true }]
+              : [],
+          },
+          {
+            type: 'DOCUMENT',
+            providerName: 'DemoDocumentProvider',
+            items: documentMatches
+              ? [{ id: DEMO_DOCUMENT.id, title: DEMO_DOCUMENT.title, snippet: 'PLAINT · v1', score: 1, href: `/documents/${DEMO_DOCUMENT.id}`, is_demo: true }]
+              : [],
+          },
+          {
+            type: 'COURT_NOTE',
+            providerName: 'DemoCourtNoteProvider',
+            items: courtNoteMatches
+              ? [{ id: DEMO_COURT_NOTE.id, title: DEMO_COURT_NOTE.case_title, snippet: DEMO_COURT_NOTE.note, score: 1, href: '', is_demo: true }]
+              : [],
+          },
+        ],
+      };
+    }
+    // General legal-research search (landing page, dashboard, or /search
+    // with no matter_id) — the small synthetic Judgments / Acts /
+    // Sections / Citations dataset, plus the same demo Document reused
+    // above so "Documents" appears here too.
+    const q = query.trim().toLowerCase();
+    const documentMatches = q && DEMO_DOCUMENT.title.toLowerCase().includes(q);
+    return {
+      query,
+      beta_preview: true,
+      groups: [
+        ...searchDemoLegalDataset(query),
+        {
+          type: 'DOCUMENT',
+          providerName: 'DemoDocumentProvider',
+          items: documentMatches
+            ? [{ id: DEMO_DOCUMENT.id, title: DEMO_DOCUMENT.title, snippet: 'PLAINT · v1', score: 1, href: `/documents/${DEMO_DOCUMENT.id}`, is_demo: true }]
+            : [],
+        },
+      ],
+    };
+  }
+
+  if (pathname.startsWith('/api/search/demo/')) {
+    const id = pathname.slice('/api/search/demo/'.length);
+    const item = findDemoSearchItem(id);
+    return item ? { result: item } : undefined;
   }
 
   return undefined;

@@ -3,7 +3,7 @@ import { middleware } from '../../middleware';
 import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { signAdminSessionToken } from '@/lib/security/admin-session';
-import { DEMO_MATTER_ID } from '@/lib/beta/demo-data';
+import { DEMO_MATTER_ID, DEMO_DOCUMENT_ID } from '@/lib/beta/demo-data';
 
 function buildDashboardRequest(cookieValue?: string, path = '/dashboard/cases'): NextRequest {
   const headers: Record<string, string> = {};
@@ -199,5 +199,96 @@ describe('middleware — Beta Preview (BETA_PREVIEW_ENABLED)', () => {
     const response = await middleware(buildApiRequest('/api/beta-status', { cookieValue: token }));
     const body = await response.json().catch(() => null);
     expect(body?.enabled).not.toBe(true);
+  });
+
+  test('disabled by default: GET /api/documents/{demo document id} is not intercepted', async () => {
+    delete process.env.BETA_PREVIEW_ENABLED;
+    const response = await middleware(buildApiRequest(`/api/documents/${DEMO_DOCUMENT_ID}`));
+    const body = await response.json().catch(() => null);
+    expect(body?.document?.is_demo).not.toBe(true);
+  });
+
+  test('enabled + no session: GET /api/documents/{demo document id} returns the static demo Document', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest(`/api/documents/${DEMO_DOCUMENT_ID}`));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.document.id).toBe(DEMO_DOCUMENT_ID);
+    expect(body.document.matter_id).toBe(DEMO_MATTER_ID);
+  });
+
+  test('disabled by default: GET /api/search is not intercepted with demo results', async () => {
+    delete process.env.BETA_PREVIEW_ENABLED;
+    const response = await middleware(buildApiRequest('/api/search?q=contract'));
+    const body = await response.json().catch(() => null);
+    expect(body?.beta_preview).not.toBe(true);
+  });
+
+  test('enabled + no session: GET /api/search (no matter_id) returns the synthetic legal dataset, matching the query', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/search?q=contract'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.beta_preview).toBe(true);
+    const allItems = body.groups.flatMap((g: { items: unknown[] }) => g.items);
+    expect(allItems.length).toBeGreaterThan(0);
+    expect(allItems.every((item: { is_demo?: boolean }) => item.is_demo)).toBe(true);
+  });
+
+  test('enabled + no session: GET /api/search with an unmatched query returns empty groups (no results), not an error', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/search?q=zzzznonexistentqueryzzzz'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    const allItems = body.groups.flatMap((g: { items: unknown[] }) => g.items);
+    expect(allItems).toHaveLength(0);
+  });
+
+  test('enabled + no session: GET /api/search scoped to the demo Matter returns the matter-scoped demo fixtures instead of the general dataset', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(
+      buildApiRequest(`/api/search?matter_id=${DEMO_MATTER_ID}&q=Acme`)
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.beta_preview).toBe(true);
+    const groupTypes = body.groups.map((g: { type: string }) => g.type);
+    expect(groupTypes).toEqual(expect.arrayContaining(['PROCEEDING', 'DOCUMENT', 'COURT_NOTE']));
+    expect(groupTypes).not.toContain('JUDGMENT');
+  });
+
+  test('enabled + WITH a valid session: GET /api/search is NOT intercepted — real, signed-in requests always reach the real Search Service', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const token = await signSessionToken({
+      sub: '00000000-0000-4000-8000-00000000000e',
+      tenantId: '00000000-0000-4000-8000-00000000000f',
+      email: 'middleware-test@nextcase.local',
+    });
+    const response = await middleware(buildApiRequest('/api/search?q=contract', { cookieValue: token }));
+    const body = await response.json().catch(() => null);
+    expect(body?.beta_preview).not.toBe(true);
+  });
+
+  test('enabled + no session: POST /api/search (hypothetical write) is never intercepted', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/search?q=contract', { method: 'POST' }));
+    const body = await response.json().catch(() => null);
+    expect(body?.beta_preview).not.toBe(true);
+  });
+
+  test('enabled + no session: GET /api/search/demo/{a real demo id} returns that item', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/search/demo/demo-act-0001'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.result.id).toBe('demo-act-0001');
+    expect(body.result.type).toBe('ACT');
+  });
+
+  test('enabled + no session: GET /api/search/demo/{unknown id} is not intercepted (falls through, no fabricated content)', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/search/demo/does-not-exist'));
+    const body = await response.json().catch(() => null);
+    expect(body?.result).toBeUndefined();
   });
 });

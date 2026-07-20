@@ -23,6 +23,12 @@ function CasesChamberContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Beta Preview is actually active right now. Governs whether the
+  // "Authentication Required" wall below uses neutral beta wording instead
+  // of the normal sign-in wording; when Beta Preview is off this never
+  // becomes true and the wall is unchanged.
+  const [betaModeActive, setBetaModeActive] = useState(false);
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -47,6 +53,12 @@ function CasesChamberContent() {
       if (res.status === 401) {
         setNeedsAuth(true);
         setCases([]);
+        fetch('/api/beta-status')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.enabled) setBetaModeActive(true);
+          })
+          .catch(() => {});
         return;
       }
       if (!res.ok) {
@@ -99,14 +111,24 @@ function CasesChamberContent() {
   if (needsAuth) {
     return (
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
-          Sign in to view and manage litigation cases under your tenant.
-        </p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {betaModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+              Sign in to view and manage litigation cases under your tenant.
+            </p>
+            <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+              Go to Login →
+            </Link>
+          </>
+        )}
       </main>
     );
   }
