@@ -164,10 +164,6 @@ export const DRAFT_TEMPLATES: DraftTemplate[] = [
   },
 ];
 
-// Ordered most-recent-first — purely illustrative, not tied to any real
-// user activity log.
-export const RECENTLY_USED_TEMPLATE_IDS = ['petition-001', 'notice-001', 'ws-001'];
-
 export interface ExistingMatterOption {
   id: string;
   label: string;
@@ -193,19 +189,10 @@ export const CASE_TYPE_OPTIONS = [
   'Other',
 ];
 
-export interface AiAssistAction {
-  id: string;
-  label: string;
-  icon: string;
-}
-
-export const AI_ASSIST_ACTIONS: AiAssistAction[] = [
-  { id: 'draft-with-ai', label: 'Draft with AI', icon: '✨' },
-  { id: 'improve-selected', label: 'Improve selected text', icon: '🪄' },
-  { id: 'rewrite-formally', label: 'Rewrite formally', icon: '🎓' },
-  { id: 'expand-section', label: 'Expand section', icon: '➕' },
-  { id: 'shorten-section', label: 'Shorten section', icon: '➖' },
-  { id: 'suggest-clause', label: 'Suggest clause', icon: '📎' },
-  { id: 'check-consistency', label: 'Check consistency', icon: '🔎' },
-  { id: 'insert-citation', label: 'Insert verified citation', icon: '⚖️' },
-];
+// A single fixed, canned suggestion — "AI Assistance" in this prototype is
+// entirely simulated. No real AI provider is called, and the same text is
+// returned every time regardless of document content or case details.
+export const CANNED_AI_SUGGESTION =
+  'It is respectfully submitted that the facts stated hereinabove disclose a clear cause of action and warrant ' +
+  'the grant of the relief prayed for by this Hon\'ble Court. [AI-suggested placeholder text — verify all facts, ' +
+  'legal grounds, and citations before relying on this content.]';
