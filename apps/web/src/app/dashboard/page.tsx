@@ -47,6 +47,11 @@ export default function DashboardPage() {
   const [query, setQuery] = React.useState('');
   const [recentMatters, setRecentMatters] = React.useState<RecentMatter[] | null>(null);
   const [activity, setActivity] = React.useState<NotificationItem[] | null>(null);
+  // Set only when GET /api/matters returns the `beta_preview` marker —
+  // i.e. an unauthenticated visitor under BETA_PREVIEW_ENABLED. Never set
+  // any other way, so this can't be spoofed into showing for a real,
+  // signed-in tenant.
+  const [betaPreview, setBetaPreview] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -55,6 +60,7 @@ export default function DashboardPage() {
       .then((data) => {
         if (cancelled || !data) return;
         setRecentMatters(data.matters);
+        if (data.beta_preview) setBetaPreview(true);
       })
       .catch(() => {});
     return () => {
@@ -88,6 +94,13 @@ export default function DashboardPage() {
           open yet; matter-scoped search lives on the Matter Workspace
           itself once one is. */}
       <div className="text-center space-y-6">
+        {betaPreview && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
+            Beta Preview — sample data ·{' '}
+            <Link href="/login" className="underline hover:no-underline">Sign in for your workspace</Link>
+          </div>
+        )}
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-[#111111]">
           Welcome back
         </h1>
