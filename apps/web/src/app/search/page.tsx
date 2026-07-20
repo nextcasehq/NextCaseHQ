@@ -11,6 +11,9 @@ interface SearchResultItem {
   snippet: string;
   score: number;
   href: string;
+  // Only ever true for Beta Preview's synthetic search results (see
+  // lib/beta/demo-search-data.ts) — never set by the real Search Service.
+  is_demo?: boolean;
 }
 
 interface SearchResultGroup {
@@ -25,6 +28,10 @@ const GROUP_LABELS: Record<string, string> = {
   PROCEEDING: 'Proceedings',
   CLIENT: 'Clients',
   COURT_NOTE: 'Court Notes',
+  JUDGMENT: 'Judgments',
+  ACT: 'Acts',
+  SECTION: 'Sections',
+  CITATION: 'Citations',
 };
 
 /**
@@ -53,6 +60,10 @@ function SearchPageContent() {
   // of the normal sign-in wording; when Beta Preview is off this never
   // becomes true and the wall is unchanged.
   const [betaModeActive, setBetaModeActive] = useState(false);
+  // Set only when a successful (200) search response carries the
+  // `beta_preview` marker — i.e. these are Beta Preview's synthetic demo
+  // search results, not the real Search Service. Never set any other way.
+  const [isDemoSearch, setIsDemoSearch] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +97,7 @@ function SearchPageContent() {
         }
         const data = await res.json();
         setGroups(data.groups);
+        setIsDemoSearch(!!data.beta_preview);
       } finally {
         setLoading(false);
       }
@@ -166,6 +178,13 @@ function SearchPageContent() {
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs font-semibold text-red-700">{error}</div>
       )}
 
+      {!loading && isDemoSearch && (
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
+          Beta Preview — sample legal-research data only
+        </div>
+      )}
+
       {loading && (
         <div className="flex justify-center py-16">
           <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
@@ -191,13 +210,20 @@ function SearchPageContent() {
               <div className="space-y-3">
                 {g.items.map((item) => (
                   <div key={item.id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm">
-                    {item.href ? (
-                      <Link href={item.href} className="text-sm font-bold text-[#3A3222] hover:text-[#8A6D2F]">
-                        {item.title}
-                      </Link>
-                    ) : (
-                      <p className="text-sm font-bold text-[#3A3222]">{item.title}</p>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {item.href ? (
+                        <Link href={item.href} className="text-sm font-bold text-[#3A3222] hover:text-[#8A6D2F]">
+                          {item.title}
+                        </Link>
+                      ) : (
+                        <p className="text-sm font-bold text-[#3A3222]">{item.title}</p>
+                      )}
+                      {item.is_demo && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#FBF6EA] text-[#8A6D2F] border border-[#C6A253]/40 uppercase tracking-wider">
+                          Demo Data
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-[#8A7A56] mt-1">{item.snippet}</p>
                   </div>
                 ))}
