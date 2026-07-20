@@ -7,8 +7,25 @@ import {
   getMockMatterById,
   SYNTHETIC_DATA_NOTICE,
   formatMockDate,
+  OFFICIAL_ECOURTS_URL,
   type MockMatter,
+  type ECourtsReference,
 } from '../mock-matters';
+import { ECourtsCompactStrip, ECourtsReferenceSection, CheckECourtsModal, AddCnrModal, useECourtsReference } from '../ecourts';
+
+const FALLBACK_ECOURTS_REF: ECourtsReference = {
+  cnrNumber: null,
+  courtType: null,
+  courtEstablishment: null,
+  district: null,
+  state: null,
+  officialSourceLink: OFFICIAL_ECOURTS_URL,
+  lastCheckedAt: null,
+  lastConfirmedAt: null,
+  confirmedBy: null,
+  verificationStatus: 'Not checked',
+  synchronisationMode: 'Manual verification',
+};
 
 type TabId = 'overview' | 'documents' | 'proceedings' | 'timeline' | 'tasks' | 'research' | 'parties' | 'arguments' | 'evidence';
 
@@ -63,7 +80,19 @@ function SyntheticBadge({ label = 'Synthetic — Demonstration Only' }: { label?
   );
 }
 
-function OverviewTab({ matter, today }: { matter: MockMatter; today: string }) {
+function OverviewTab({
+  matter,
+  today,
+  ecourtsRef,
+  onCheck,
+  onAddCnr,
+}: {
+  matter: MockMatter;
+  today: string;
+  ecourtsRef: ECourtsReference;
+  onCheck: () => void;
+  onAddCnr: () => void;
+}) {
   const remaining = daysRemaining(matter.nextHearingDate, today);
   return (
     <div className="space-y-4">
@@ -75,6 +104,8 @@ function OverviewTab({ matter, today }: { matter: MockMatter; today: string }) {
           <Field label="Advocate Reference" value={matter.advocateReferenceNumber} />
         </div>
       </SectionCard>
+
+      <ECourtsReferenceSection matterTitle={matter.title} ecourtsRef={ecourtsRef} onCheck={onCheck} onAddCnr={onAddCnr} />
 
       <SectionCard title="Parties">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -388,6 +419,9 @@ function MatterDetailContent() {
   const today = todayIso();
 
   const matter = getMockMatterById(matterId);
+  const [ecourtsRef, setEcourtsPatch] = useECourtsReference(matterId, matter?.ecourtsReference ?? FALLBACK_ECOURTS_REF);
+  const [showCheckModal, setShowCheckModal] = React.useState(false);
+  const [showAddCnrModal, setShowAddCnrModal] = React.useState(false);
 
   if (!matter) {
     return (
@@ -423,18 +457,26 @@ function MatterDetailContent() {
       )}
 
       {/* Header summary */}
-      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Field label="Case Number" value={matter.caseNumber} />
-        <Field label="Court / Bench" value={matter.court} />
-        <Field label="Represented Party" value={matter.representedParty} />
-        <Field label="Procedural Role" value={matter.procedureRole} />
-        <Field label="Matter Status" value={matter.status} />
-        <Field label="Current Stage" value={matter.stage} />
-        <Field label="Next Hearing" value={formatMockDate(matter.nextHearingDate)} />
-        <Field label="Advocate Reference" value={matter.advocateReferenceNumber} />
-        {matter.earlierCaseReference && (
-          <Field label="Earlier Case Reference" value={matter.earlierCaseReference.caseNumber} />
-        )}
+      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Field label="Case Number" value={matter.caseNumber} />
+          <Field label="Court / Bench" value={matter.court} />
+          <Field label="Represented Party" value={matter.representedParty} />
+          <Field label="Procedural Role" value={matter.procedureRole} />
+          <Field label="Matter Status" value={matter.status} />
+          <Field label="Current Stage" value={matter.stage} />
+          <Field label="Next Hearing" value={formatMockDate(matter.nextHearingDate)} />
+          <Field label="Advocate Reference" value={matter.advocateReferenceNumber} />
+          {matter.earlierCaseReference && (
+            <Field label="Earlier Case Reference" value={matter.earlierCaseReference.caseNumber} />
+          )}
+        </div>
+        <ECourtsCompactStrip
+          matterTitle={matter.title}
+          ecourtsRef={ecourtsRef}
+          onCheck={() => setShowCheckModal(true)}
+          onAddCnr={() => setShowAddCnrModal(true)}
+        />
       </div>
 
       {/* Primary actions */}
@@ -503,7 +545,13 @@ function MatterDetailContent() {
       <div>
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            <OverviewTab matter={matter} today={today} />
+            <OverviewTab
+              matter={matter}
+              today={today}
+              ecourtsRef={ecourtsRef}
+              onCheck={() => setShowCheckModal(true)}
+              onAddCnr={() => setShowAddCnrModal(true)}
+            />
             {isClosed && <ClosureSection matter={matter} />}
           </div>
         )}
@@ -516,6 +564,21 @@ function MatterDetailContent() {
         {activeTab === 'arguments' && <ArgumentsTab matter={matter} />}
         {activeTab === 'evidence' && <EvidenceTab matter={matter} />}
       </div>
+
+      {showCheckModal && ecourtsRef.cnrNumber && (
+        <CheckECourtsModal cnrNumber={ecourtsRef.cnrNumber} onClose={() => setShowCheckModal(false)} />
+      )}
+      {showAddCnrModal && (
+        <AddCnrModal
+          matterTitle={matter.title}
+          onCancel={() => setShowAddCnrModal(false)}
+          onConfirm={(cnr) => {
+            setEcourtsPatch({ cnrNumber: cnr, verificationStatus: 'Not checked', synchronisationMode: 'Manual verification' });
+            setShowAddCnrModal(false);
+            setNotice(`CNR linked (prototype only — not persisted to a database).`);
+          }}
+        />
+      )}
     </div>
   );
 }

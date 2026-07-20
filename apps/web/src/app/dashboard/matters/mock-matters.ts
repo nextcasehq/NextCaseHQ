@@ -56,10 +56,68 @@ export interface ProceedingLink {
   relationshipToEarlier: string;
 }
 
+/**
+ * Categorises timeline entries so a future eCourts integration milestone can
+ * write typed events (CNR Linked, eCourts Checked, etc.) without changing
+ * this shape. Nothing in this milestone writes those event types yet —
+ * existing entries stay 'General' — this is model readiness only.
+ */
+export type MatterEventType =
+  | 'General'
+  | 'CNR Linked'
+  | 'eCourts Checked'
+  | 'No Change Found'
+  | 'Hearing Date Updated'
+  | 'Stage Updated'
+  | 'Court Or Bench Updated'
+  | 'Disposal Status Updated'
+  | 'Advocate Confirmation Recorded';
+
 export interface TimelineEvent {
   id: string;
   date: string;
   label: string;
+  eventType?: MatterEventType;
+}
+
+export type ECourtsVerificationStatus =
+  | 'Not checked'
+  | 'Pending advocate confirmation'
+  | 'Advocate confirmed'
+  | 'Needs rechecking';
+
+export type ECourtsSyncMode =
+  | 'Manual verification'
+  | 'Authorised API sync unavailable'
+  | 'Authorised API sync pending approval'
+  | 'Authorised API sync active';
+
+/**
+ * A Matter Register's link to its official eCourts identity. cnrNumber is
+ * null until the advocate manually adds one — no automatic lookup, scraping,
+ * or CAPTCHA handling exists anywhere in this milestone. officialSourceLink
+ * always points at the public eCourts services domain (services.ecourts.gov.in),
+ * never a scraped or undocumented endpoint.
+ */
+export interface ECourtsReference {
+  cnrNumber: string | null;
+  courtType: string | null;
+  courtEstablishment: string | null;
+  district: string | null;
+  state: string | null;
+  officialSourceLink: string;
+  lastCheckedAt: string | null;
+  lastConfirmedAt: string | null;
+  confirmedBy: string | null;
+  verificationStatus: ECourtsVerificationStatus;
+  synchronisationMode: ECourtsSyncMode;
+}
+
+export const OFFICIAL_ECOURTS_URL = 'https://services.ecourts.gov.in/ecourtindia_v6/';
+
+/** A CNR is a fixed 16-character alphanumeric identifier. */
+export function isValidCnr(value: string): boolean {
+  return /^[A-Za-z0-9]{16}$/.test(value.trim());
 }
 
 export interface TaskItem {
@@ -144,6 +202,7 @@ export interface MockMatter {
   proceedingRelationship: string;
   lastUpdated: string;
   pendingTaskCount: number;
+  ecourtsReference: ECourtsReference;
   representation: RepresentationEntry[];
   documents: MatterDocumentItem[];
   proceedings: ProceedingLink[];
@@ -177,6 +236,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: 'Sole proceeding — no earlier or higher forum yet',
     lastUpdated: '2026-07-14',
     pendingTaskCount: 2,
+    ecourtsReference: {
+      cnrNumber: 'MHPU01D000882024',
+      courtType: 'Civil Court',
+      courtEstablishment: 'Civil Judge (Senior Division), Pune',
+      district: 'Pune',
+      state: 'Maharashtra',
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: '2026-07-14T10:30:00+05:30',
+      lastConfirmedAt: '2026-07-14T10:32:00+05:30',
+      confirmedBy: 'Adv. Kavita Deshmukh',
+      verificationStatus: 'Advocate confirmed',
+      synchronisationMode: 'Manual verification',
+    },
     representation: [{ advocateName: 'Adv. Kavita Deshmukh', role: 'Lead Counsel', period: 'Jan 2024 – Present', status: 'Active' }],
     documents: [
       { id: 'doc-1-1', title: 'Plaint', type: 'Pleading', date: '2024-01-18', status: 'Filed', relatedProceeding: 'O.S. No. 214/2024', reviewStatus: 'Advocate-reviewed' },
@@ -252,6 +324,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: 'Ancillary application within pending FIR/criminal case',
     lastUpdated: '2026-07-18',
     pendingTaskCount: 3,
+    ecourtsReference: {
+      cnrNumber: 'MHNG02C001192026',
+      courtType: 'Criminal Court',
+      courtEstablishment: 'Sessions Judge, Nagpur',
+      district: 'Nagpur',
+      state: 'Maharashtra',
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: '2026-07-05T09:00:00+05:30',
+      lastConfirmedAt: '2026-07-05T09:05:00+05:30',
+      confirmedBy: 'Adv. Suresh Bhonsle',
+      verificationStatus: 'Needs rechecking',
+      synchronisationMode: 'Manual verification',
+    },
     representation: [{ advocateName: 'Adv. Suresh Bhonsle', role: 'Lead Counsel', period: 'Jul 2026 – Present', status: 'Active' }],
     documents: [
       { id: 'doc-2-1', title: 'Bail Application', type: 'Pleading', date: '2026-07-10', status: 'Filed', relatedProceeding: 'Crl. M.P. No. 1187/2026', reviewStatus: 'Advocate-reviewed' },
@@ -324,6 +409,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: 'Sole proceeding — direct writ jurisdiction, no earlier forum',
     lastUpdated: '2026-07-10',
     pendingTaskCount: 1,
+    ecourtsReference: {
+      cnrNumber: 'UPAL03W008822025',
+      courtType: 'High Court',
+      courtEstablishment: 'High Court of Judicature at Allahabad',
+      district: 'Allahabad (Prayagraj)',
+      state: 'Uttar Pradesh',
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: '2026-07-10T11:15:00+05:30',
+      lastConfirmedAt: null,
+      confirmedBy: null,
+      verificationStatus: 'Pending advocate confirmation',
+      synchronisationMode: 'Manual verification',
+    },
     representation: [{ advocateName: 'Adv. Prashant Tiwari', role: 'Lead Counsel', period: 'Nov 2025 – Present', status: 'Active' }],
     documents: [
       { id: 'doc-3-1', title: 'Writ Petition', type: 'Pleading', date: '2025-11-20', status: 'Filed', relatedProceeding: 'W.P. No. 8823/2025', reviewStatus: 'Advocate-reviewed' },
@@ -389,6 +487,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: "Appeal against the trial court's decree — does not overwrite the trial record",
     lastUpdated: '2026-07-12',
     pendingTaskCount: 2,
+    ecourtsReference: {
+      cnrNumber: 'BRPA04F004422026',
+      courtType: 'High Court',
+      courtEstablishment: 'High Court of Judicature at Patna',
+      district: 'Patna',
+      state: 'Bihar',
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: null,
+      lastConfirmedAt: null,
+      confirmedBy: null,
+      verificationStatus: 'Not checked',
+      synchronisationMode: 'Authorised API sync unavailable',
+    },
     representation: [
       { advocateName: 'Adv. Vinod Sinha', role: 'Trial Counsel', period: '2019 – 2025', status: 'Previous' },
       { advocateName: 'Adv. Neha Choudhary', role: 'Appellate Counsel', period: '2026 – Present', status: 'Active' },
@@ -474,6 +585,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: "Proposed appeal against the High Court's final order",
     lastUpdated: '2026-07-16',
     pendingTaskCount: 2,
+    ecourtsReference: {
+      cnrNumber: null,
+      courtType: 'Supreme Court',
+      courtEstablishment: 'Supreme Court of India',
+      district: null,
+      state: null,
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: null,
+      lastConfirmedAt: null,
+      confirmedBy: null,
+      verificationStatus: 'Not checked',
+      synchronisationMode: 'Manual verification',
+    },
     representation: [{ advocateName: 'Adv. Meenakshi Pillai', role: 'Advocate-on-Record (proposed)', period: '2026 – Present', status: 'Active' }],
     documents: [
       { id: 'doc-5-1', title: 'High Court Judgment (Writ Appeal)', type: 'Order', date: '2025-12-11', status: 'Filed', relatedProceeding: 'W.A. No. 990/2025', reviewStatus: 'Advocate-reviewed' },
@@ -533,6 +657,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: 'Sole proceeding before the District Commission',
     lastUpdated: '2026-07-17',
     pendingTaskCount: 1,
+    ecourtsReference: {
+      cnrNumber: null,
+      courtType: 'Consumer Commission',
+      courtEstablishment: 'District Consumer Disputes Redressal Commission, Ernakulam',
+      district: 'Ernakulam',
+      state: 'Kerala',
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: null,
+      lastConfirmedAt: null,
+      confirmedBy: null,
+      verificationStatus: 'Not checked',
+      synchronisationMode: 'Manual verification',
+    },
     representation: [{ advocateName: 'Adv. Lakshmi Menon', role: 'Lead Counsel', period: 'Aug 2025 – Present', status: 'Active' }],
     documents: [
       { id: 'doc-6-1', title: 'Consumer Complaint', type: 'Pleading', date: '2025-08-14', status: 'Filed', relatedProceeding: 'CC No. 331/2025', reviewStatus: 'Advocate-reviewed' },
@@ -609,6 +746,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: "Continuation of the same legal history as the original money suit decree",
     lastUpdated: '2026-07-11',
     pendingTaskCount: 1,
+    ecourtsReference: {
+      cnrNumber: 'RJJP07E000582026',
+      courtType: 'Civil Court',
+      courtEstablishment: 'Civil Judge (Junior Division), Jaipur',
+      district: 'Jaipur',
+      state: 'Rajasthan',
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: null,
+      lastConfirmedAt: null,
+      confirmedBy: null,
+      verificationStatus: 'Not checked',
+      synchronisationMode: 'Manual verification',
+    },
     representation: [{ advocateName: 'Adv. Rohit Agarwal', role: 'Lead Counsel', period: '2022 – Present', status: 'Active' }],
     documents: [
       { id: 'doc-7-1', title: 'Money Decree', type: 'Order', date: '2025-02-19', status: 'Filed', relatedProceeding: 'O.S. No. 129/2022', reviewStatus: 'Advocate-reviewed' },
@@ -667,6 +817,19 @@ export const MOCK_MATTERS: MockMatter[] = [
     proceedingRelationship: 'Sole proceeding — concluded by mediated settlement',
     lastUpdated: '2025-09-12',
     pendingTaskCount: 0,
+    ecourtsReference: {
+      cnrNumber: 'KABL08C000552023',
+      courtType: 'Civil Court',
+      courtEstablishment: 'Civil Judge (Junior Division), Bengaluru',
+      district: 'Bengaluru',
+      state: 'Karnataka',
+      officialSourceLink: OFFICIAL_ECOURTS_URL,
+      lastCheckedAt: '2025-09-12T16:00:00+05:30',
+      lastConfirmedAt: '2025-09-12T16:05:00+05:30',
+      confirmedBy: 'Adv. Priya Ramachandran',
+      verificationStatus: 'Advocate confirmed',
+      synchronisationMode: 'Manual verification',
+    },
     representation: [{ advocateName: 'Adv. Priya Ramachandran', role: 'Lead Counsel', period: '2023 – 2025', status: 'Previous' }],
     documents: [
       { id: 'doc-8-1', title: 'Plaint', type: 'Pleading', date: '2023-03-02', status: 'Filed', relatedProceeding: 'O.S. No. 55/2023', reviewStatus: 'Advocate-reviewed' },
