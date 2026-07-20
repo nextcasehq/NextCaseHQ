@@ -5,38 +5,84 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import BrandBackground from '@/components/BrandBackground';
 
+type SignInMode = 'user' | 'admin';
+
+/**
+ * The single, unified NextCaseHQ sign-in entry point. There is no separate
+ * advocate/litigant/firm/admin login page — everyone authenticates here.
+ *
+ * Two selectable sign-in modes, not two pages: the default is a normal
+ * email/password sign-in (POST /api/auth/session), which redirects to the
+ * one real workspace, /dashboard. "Sign in as an administrator instead"
+ * reveals the platform operator secret-key field and posts to the
+ * completely separate, already-existing /api/admin/session endpoint
+ * (its own secret, its own session cookie, its own JWT signing key) — this
+ * page only relocates that credential form here from its previous home
+ * inside /admin's own page component; it does not touch, weaken, or merge
+ * the underlying server-side verification in any way.
+ */
 export default function LoginPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<SignInMode>('user');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accessKey, setAccessKey] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  function switchMode(next: SignInMode) {
+    setMode(next);
+    setError('');
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
-    if (!email.includes('@')) {
-      setError('Please enter a valid enterprise email address.');
-      setIsLoading(false);
+    if (mode === 'user') {
+      if (!email.includes('@')) {
+        setError('Please enter a valid enterprise email address.');
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        if (!response.ok) {
+          setError('Invalid email or password.');
+          setIsLoading(false);
+          return;
+        }
+        router.push('/dashboard');
+      } catch {
+        setError('Unable to reach the authentication service. Please try again.');
+        setIsLoading(false);
+      }
       return;
     }
 
+    // Admin mode — verified server-side against ADMIN_ACCESS_TOKEN by the
+    // existing POST /api/admin/session, which mints its own httpOnly
+    // session cookie. Completely separate trust boundary from the user
+    // session above; a unified login page does not mean unified permissions.
+    setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/session', {
+      const response = await fetch('/api/admin/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ accessKey }),
       });
-
       if (!response.ok) {
-        setError('Invalid email or password.');
+        setError('Invalid administrator access key.');
         setIsLoading(false);
         return;
       }
-
-      router.push('/organization');
+      router.push('/admin');
     } catch {
       setError('Unable to reach the authentication service. Please try again.');
       setIsLoading(false);
@@ -59,13 +105,14 @@ export default function LoginPage() {
 
       {/* Main Login Card — centered, generous whitespace, soft premium
           shadow; compact controls and an arrow-style primary action rather
-          than a heavy full-bleed button. */}
+          than a heavy full-bleed button. One card, one route, for every
+          authorised account type. */}
       <div className="relative w-full max-w-md bg-white border border-[#E7DFC9] rounded-2xl shadow-2xl shadow-[#8A6D2F]/10 p-10">
         <h2 className="text-center font-serif text-2xl font-black tracking-tight text-[#241E17]">
-          Welcome back
+          Sign in to NextCaseHQ
         </h2>
         <p className="mt-1.5 text-center text-xs text-[#8A7A56]">
-          Sign in to your secure chamber
+          {mode === 'user' ? 'Sign in to your secure chamber' : 'Platform administrator access'}
         </p>
 
         {error && (
@@ -75,35 +122,55 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@firm.com"
-              required
-              disabled={isLoading}
-              className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#C6A253] disabled:opacity-50 transition-all font-sans text-sm"
-            />
-          </div>
+          {mode === 'user' ? (
+            <>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@firm.com"
+                  required
+                  disabled={isLoading}
+                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#C6A253] disabled:opacity-50 transition-all font-sans text-sm"
+                />
+              </div>
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">
-              Security Key / Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              disabled={isLoading}
-              className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#C6A253] disabled:opacity-50 transition-all font-sans text-sm"
-            />
-          </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  disabled={isLoading}
+                  className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#C6A253] disabled:opacity-50 transition-all font-sans text-sm"
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#111111]/60 mb-2">
+                Administrator Access Key
+              </label>
+              <input
+                type="password"
+                value={accessKey}
+                onChange={(e) => setAccessKey(e.target.value)}
+                placeholder="••••••••"
+                required
+                disabled={isLoading}
+                autoFocus
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#C6A253] disabled:opacity-50 transition-all font-mono text-sm"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
@@ -125,6 +192,17 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => switchMode(mode === 'user' ? 'admin' : 'user')}
+            disabled={isLoading}
+            className="text-[11px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors disabled:opacity-50"
+          >
+            {mode === 'user' ? 'Sign in as an administrator instead' : '← Back to standard sign in'}
+          </button>
+        </div>
       </div>
 
       <div className="relative mt-8 text-center">

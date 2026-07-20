@@ -78,13 +78,19 @@ export default function DashboardLayout({
     setIsMobileSearchOpen(false);
   };
 
-  const handleLogOut = () => {
+  const handleLogOut = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Session cookie is short-lived even if this call fails; proceed to
+      // the single login page regardless.
+    }
     if (typeof window !== 'undefined') {
       sessionStorage.clear();
       localStorage.clear();
       document.cookie = 'NEXTCASE_CURRENT_TENANT_ID_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'NEXTCASE_CURRENT_CASE_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      window.location.href = '/';
+      window.location.href = '/login';
     }
   };
 

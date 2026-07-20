@@ -44,6 +44,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 0.6. Protect the /admin console page itself (distinct from /api/admin,
+  // handled in section 0 above) with the same server-verified admin
+  // session cookie. Previously this page had no edge-level protection at
+  // all — authorization was enforced only for its data (every /api/admin/*
+  // call), while the page shell itself was reachable by anyone; it also
+  // used to embed its own separate credential-entry form. Both gaps close
+  // together here: the page now redirects unauthenticated visitors to the
+  // single /login entry point, exactly like /dashboard does below, and
+  // /login (not this page) is the only place any credential is ever typed.
+  if (pathname.startsWith('/admin')) {
+    const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value;
+    if (!adminToken || !(await verifyAdminSessionToken(adminToken))) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    return NextResponse.next();
+  }
+
   // 0.5. Product Review Mode (PRODUCT_REVIEW_MODE=true, off by default):
   // serve a fixed set of static, non-sensitive demo GET responses to
   // unauthenticated visitors — one synthetic Matter (DEMO_MATTER_ID) plus
