@@ -198,7 +198,7 @@ export default function MattersLayout({
                 onClick={() => setIsContextDrawerOpen(!isContextDrawerOpen)}
                 aria-label="Toggle context drawer"
                 aria-expanded={isContextDrawerOpen}
-                className="relative p-1.5 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
+                className="hidden sm:inline-flex relative p-1.5 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
               >
                 <span className="text-lg">📎</span>
               </button>
