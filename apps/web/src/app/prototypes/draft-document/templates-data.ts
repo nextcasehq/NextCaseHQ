@@ -196,3 +196,115 @@ export const CANNED_AI_SUGGESTION =
   'It is respectfully submitted that the facts stated hereinabove disclose a clear cause of action and warrant ' +
   'the grant of the relief prayed for by this Hon\'ble Court. [AI-suggested placeholder text — verify all facts, ' +
   'legal grounds, and citations before relying on this content.]';
+
+export const DOCUMENT_TYPE_OPTIONS = [
+  'Petition',
+  'Plaint',
+  'Written Statement',
+  'Application',
+  'Affidavit',
+  'Legal Notice',
+  'Written Arguments',
+  'Appeal',
+  'Reply / Rejoinder',
+  'Other',
+];
+
+// Roles an advocate might represent — deliberately not defaulted to any one
+// role, since the advocate may represent either side.
+export const ADVOCATE_CAPACITY_OPTIONS = [
+  'Plaintiff',
+  'Defendant',
+  'Petitioner',
+  'Respondent',
+  'Appellant',
+  'Applicant',
+  'Opponent',
+  'Accused',
+  'Complainant',
+  'Informant',
+  'Victim',
+  'State',
+  'Other',
+];
+
+// Synthetic sample "uploaded" documents for the Upload-an-Existing-Document
+// path. There is no real file upload or OCR anywhere in this prototype —
+// selecting one of these just loads a fixed, canned extraction result to
+// demonstrate the intended UX.
+export interface ExtractedFields {
+  court: string | null;
+  caseType: string | null;
+  caseNumber: string | null;
+  year: string | null;
+  petitioner: string | null;
+  respondent: string | null;
+  documentType: string | null;
+  filingDate: string | null;
+  gist: string | null;
+}
+
+export interface SampleUploadDocument {
+  id: string;
+  fileName: string;
+  pageCount: number;
+  extraction: ExtractedFields;
+  // When true, the duplicate-check simulation reports a possible existing
+  // match (against EXISTING_MATTER_OPTIONS) — purely to demonstrate both
+  // branches of that prototype flow.
+  simulateDuplicateMatch: boolean;
+}
+
+export const SAMPLE_UPLOAD_DOCUMENTS: SampleUploadDocument[] = [
+  {
+    id: 'sample-writ-petition',
+    fileName: 'Writ_Petition_Sample.pdf',
+    pageCount: 12,
+    extraction: {
+      court: 'High Court of Karnataka',
+      caseType: 'Writ Petition',
+      caseNumber: 'WP 4521',
+      year: '2026',
+      petitioner: 'Umesh',
+      respondent: 'State of Karnataka',
+      documentType: 'Petition',
+      filingDate: 'Needs confirmation',
+      gist: 'Challenge to an administrative order refusing a trade licence renewal.',
+    },
+    simulateDuplicateMatch: false,
+  },
+  {
+    id: 'sample-trial-court-order',
+    fileName: 'Trial_Court_Order_Sample.pdf',
+    pageCount: 4,
+    extraction: {
+      court: 'City Civil Court, Bengaluru',
+      caseType: 'Partition Suit',
+      caseNumber: 'O.S. 1234',
+      year: '2026',
+      petitioner: 'Umesh',
+      respondent: 'Ramesh',
+      documentType: 'Other',
+      filingDate: 'Not detected',
+      gist: 'Interim order on an application for injunction in a partition suit.',
+    },
+    simulateDuplicateMatch: true,
+  },
+  {
+    id: 'sample-fir-copy',
+    fileName: 'FIR_Copy_Sample.pdf',
+    pageCount: 3,
+    extraction: {
+      court: null,
+      caseType: 'Criminal Complaint',
+      caseNumber: 'Crime No. 88/2026',
+      year: '2026',
+      petitioner: null,
+      respondent: null,
+      documentType: 'Other',
+      filingDate: 'Illegible',
+      gist: 'First Information Report — allegation of criminal breach of trust.',
+    },
+    simulateDuplicateMatch: false,
+  },
+];

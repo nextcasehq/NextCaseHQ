@@ -37,6 +37,39 @@ type Section = (typeof SECTIONS)[number];
 export default function RegisterReveal({ data, onContinueDrafting, onNotice }: RegisterRevealProps) {
   const [activeSection, setActiveSection] = useState<Section>('Overview');
 
+  // Case Stage & Next Hearing — local to this reveal for now (see "Known
+  // prototype limitations" in the PR: this block does not yet survive a
+  // trip back to the drafting screen and forward again).
+  const [stageSuggested, setStageSuggested] = useState(false);
+  const [currentStage, setCurrentStage] = useState('');
+  const [nextHearingDate, setNextHearingDate] = useState('');
+  const [courtBench, setCourtBench] = useState('');
+  const [hearingPurpose, setHearingPurpose] = useState('');
+  const [pendingAction, setPendingAction] = useState('');
+  const [requiredDocument, setRequiredDocument] = useState('');
+
+  const daysRemaining = (() => {
+    if (!nextHearingDate) return null;
+    const target = new Date(nextHearingDate);
+    if (Number.isNaN(target.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  })();
+
+  const handleUseAiForStage = () => {
+    setCurrentStage('Awaiting Filing');
+    setCourtBench(data.court || 'Not yet assigned');
+    setHearingPurpose('First hearing / admission');
+    setPendingAction(`File "${data.documentName}" with the court registry`);
+    setRequiredDocument(data.documentName);
+    setStageSuggested(true);
+  };
+
+  const handleDraftManually = () => {
+    setStageSuggested(false);
+  };
+
   const displayName = data.mode === 'link' && data.linkedMatterLabel ? data.linkedMatterLabel : data.matterName;
 
   const missingItems: string[] = [];
@@ -109,21 +142,119 @@ export default function RegisterReveal({ data, onContinueDrafting, onNotice }: R
           </p>
         </div>
 
-        {/* Section tabs */}
-        <div className="flex border-b border-[#111111]/10 overflow-x-auto">
-          {SECTIONS.map((section) => (
+        {/* Case Stage & Next Hearing */}
+        <div className="bg-white border border-[#E7DFC9]/80 rounded-2xl p-5 md:p-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Current Stage &amp; Next Hearing</h3>
+            {stageSuggested && (
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[#8A6D2F] bg-[#FBF6EA] border border-[#C6A253]/40 px-2 py-0.5 rounded">
+                AI Suggested — confirm or edit
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#111111]/60 mb-1">Current Stage</label>
+              <input
+                type="text"
+                value={currentStage}
+                onChange={(e) => setCurrentStage(e.target.value)}
+                placeholder="Awaiting filing"
+                className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#111111]/60 mb-1">Next Hearing Date</label>
+              <input
+                type="date"
+                value={nextHearingDate}
+                onChange={(e) => setNextHearingDate(e.target.value)}
+                className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+              />
+              <p className="text-[9px] text-[#B0A588] mt-1">
+                {nextHearingDate ? (daysRemaining !== null ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining` : '') : 'No hearing date yet'}
+              </p>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#111111]/60 mb-1">Court / Bench</label>
+              <input
+                type="text"
+                value={courtBench}
+                onChange={(e) => setCourtBench(e.target.value)}
+                placeholder="Not yet assigned"
+                className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#111111]/60 mb-1">Purpose of Hearing</label>
+              <input
+                type="text"
+                value={hearingPurpose}
+                onChange={(e) => setHearingPurpose(e.target.value)}
+                placeholder="Not yet set"
+                className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#111111]/60 mb-1">Pending Action</label>
+              <input
+                type="text"
+                value={pendingAction}
+                onChange={(e) => setPendingAction(e.target.value)}
+                placeholder="Not yet identified"
+                className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#111111]/60 mb-1">Likely Required Document</label>
+              <input
+                type="text"
+                value={requiredDocument}
+                onChange={(e) => setRequiredDocument(e.target.value)}
+                placeholder="Not yet identified"
+                className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
             <button
-              key={section}
-              onClick={() => setActiveSection(section)}
-              className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
-                activeSection === section
-                  ? 'border-[#8A6D2F] text-[#8A6D2F]'
-                  : 'border-transparent text-[#B0A588] hover:text-[#5C5340]'
-              }`}
+              onClick={handleDraftManually}
+              className="px-4 py-2 border border-[#E7DFC9] text-[#8A7A56] hover:bg-[#FBF8F1] font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all"
             >
-              {section}
+              Draft Manually
             </button>
-          ))}
+            <button
+              onClick={handleUseAiForStage}
+              className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all"
+            >
+              ✨ Use AI Assistance for this Stage
+            </button>
+          </div>
+        </div>
+
+        {/* Section tabs + permanent Upload Document action */}
+        <div className="flex items-center justify-between border-b border-[#111111]/10 overflow-x-auto gap-4">
+          <div className="flex overflow-x-auto">
+            {SECTIONS.map((section) => (
+              <button
+                key={section}
+                onClick={() => setActiveSection(section)}
+                className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
+                  activeSection === section
+                    ? 'border-[#8A6D2F] text-[#8A6D2F]'
+                    : 'border-transparent text-[#B0A588] hover:text-[#5C5340]'
+                }`}
+              >
+                {section}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => onNotice('Function available after production activation.')}
+            className="mb-2 flex-shrink-0 px-3 py-1.5 border border-[#8A6D2F] text-[#8A6D2F] hover:bg-[#FBF6EA] font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all whitespace-nowrap"
+          >
+            + Upload Document
+          </button>
         </div>
 
         {activeSection === 'Overview' && (
@@ -231,7 +362,7 @@ export default function RegisterReveal({ data, onContinueDrafting, onNotice }: R
             >
               Continue Drafting
             </button>
-            {['Add Document', 'Add Hearing / Proceeding', 'Add Task', 'Start Legal Research'].map((label) => (
+            {['Upload Document', 'Add Hearing / Proceeding', 'Add Task', 'Start Legal Research'].map((label) => (
               <button
                 key={label}
                 onClick={() => handleNextAction(label)}
