@@ -12,10 +12,16 @@ export default function HeroSection() {
     e.preventDefault();
     const trimmed = searchQuery.trim();
     if (!trimmed) return;
-    router.push(
-      `/dashboard/search?q=${encodeURIComponent(trimmed)}&query=${encodeURIComponent(trimmed)}`,
-    );
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   };
+
+  const actionCards = [
+    { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
+    { label: '🔍 Search Case Law', href: '/search' },
+    { label: '📤 Upload Documents', href: '/documents/new' },
+    { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
+    { label: '📁 Open Recent Matters', href: '/matters' },
+  ];
 
   return (
     <section className="relative overflow-hidden bg-[#0E241B]">
@@ -45,7 +51,8 @@ export default function HeroSection() {
           Zero-Knowledge · End-to-End Encrypted
         </span>
 
-        {/* Search — preserves existing /dashboard/search behavior */}
+        {/* Search — submits to the real production search (GET /search,
+            backed by GET /api/search), not the mock dashboard/search page. */}
         <form
           onSubmit={handleSearchSubmit}
           className="mt-6 flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-[#C6A253]/30 bg-[#F6F1E7] p-1.5 shadow-xl shadow-black/25 transition-all duration-300 focus-within:border-[#C6A253] focus-within:ring-4 focus-within:ring-[#C6A253]/20"
@@ -61,8 +68,8 @@ export default function HeroSection() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search matters, cases, statutes, judgments, or ask anything..."
-            aria-label="Search matters, cases, statutes, and judgments"
+            placeholder="Search cases, Acts, Sections, judgments, legal questions, or ask AI..."
+            aria-label="Search cases, Acts, Sections, judgments, or ask AI"
             className="min-w-0 flex-1 border-none bg-transparent py-2.5 text-sm font-medium text-[#241E17] outline-none placeholder:text-[#9C8C6C] md:text-base"
           />
           <button
@@ -75,6 +82,23 @@ export default function HeroSection() {
             </svg>
           </button>
         </form>
+
+        {/* Action Cards — compact workflow accelerators, not a second nav
+            (Matters/Cases/Features stay the Navbar's job). Every card links
+            to functionality that already exists in the product; none of
+            these are new routes or fabricated features. They recede below
+            the search bar rather than competing with it for attention. */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          {actionCards.map((card) => (
+            <Link
+              key={card.label}
+              href={card.href}
+              className="rounded-lg border border-[#C6A253]/30 bg-[#0B1F17]/40 px-3.5 py-1.5 text-xs font-semibold text-[#D9CBB2] backdrop-blur-sm transition-all duration-200 hover:border-[#C6A253]/60 hover:bg-[#0B1F17]/70 hover:text-[#F6F1E7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
+            >
+              {card.label}
+            </Link>
+          ))}
+        </div>
 
         <h1 className="mt-8 text-balance font-serif text-2xl font-black leading-tight tracking-tight text-[#F6F1E7] md:text-4xl lg:text-[2.75rem]">
           Your Litigation Workspace. Intelligent. Unified. Trusted.
