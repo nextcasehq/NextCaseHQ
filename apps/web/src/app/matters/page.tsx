@@ -152,7 +152,7 @@ function MattersChamberContent() {
 
   if (needsAuth) {
     return (
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
         <span className="text-3xl">🔒</span>
         <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
         <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
@@ -161,12 +161,12 @@ function MattersChamberContent() {
         <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
           Go to Login →
         </Link>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+    <div className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
       <BrandBackground />
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
@@ -460,20 +460,18 @@ function MattersChamberContent() {
           }
         />
       )}
-    </main>
+    </div>
   );
 }
 
 export default function MattersChamberPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
-      <Suspense fallback={
-        <div className="flex-1 flex justify-center items-center">
-          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
-        </div>
-      }>
-        <MattersChamberContent />
-      </Suspense>
-    </div>
+    <Suspense fallback={
+      <div className="flex-1 flex justify-center items-center py-20">
+        <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
+      </div>
+    }>
+      <MattersChamberContent />
+    </Suspense>
   );
 }
