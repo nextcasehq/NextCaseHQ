@@ -26,136 +26,28 @@ export default function HeroSection() {
 
   return (
     <section className="relative overflow-hidden bg-white">
-      {/* Premium "modern advocate's office" scene — an original vector
-          illustration (not a photo: zero licensing risk), built to the
-          Product Owner's reference: glass wall + city skyline, dark wood
-          shelving lined with law books under brass accent lighting, a
-          marble accent panel, and a desk in the foreground. Layered under
-          a warm/cool gradient mesh and a precision grid for a technology
-          feel. Every layer here is well above the near-invisible opacities
-          the first pass used — this reads immediately as a designed
-          background, not a plain page. */}
+      {/* Real photo background — a genuine advocate's-office library
+          shelf photo already in this repo (apps/web/public/landing/
+          law-library-bg.png), color-graded from its original dark/moody
+          grade into a brighter, warmer, premium tone (apps/web/public/
+          landing/hero-office-band-soft.jpg): brightened, softened with a
+          slight blur so individual spine labels read as warm texture
+          rather than literal old typography, and lightly desaturated.
+          A real photograph, not an illustration — zero licensing risk
+          since it's already a repo-owned asset, just reprocessed. */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FBF7EC] via-[#F3EAD3] to-[#E4EDEC]" />
-        <div
-          className="absolute -top-32 -left-24 h-[40rem] w-[40rem] rounded-full opacity-60 blur-[90px]"
-          style={{ background: 'radial-gradient(circle, #D9B978 0%, transparent 70%)' }}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/landing/hero-office-band-soft.jpg"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
         />
-        <div
-          className="absolute -bottom-40 -right-24 h-[38rem] w-[38rem] rounded-full opacity-50 blur-[90px]"
-          style={{ background: 'radial-gradient(circle, #9FC2C2 0%, transparent 70%)' }}
-        />
-        {/* Precision grid — technology/confidence cue */}
-        <svg className="absolute inset-0 h-full w-full opacity-[0.08]" aria-hidden="true">
-          <defs>
-            <pattern id="hero-grid" width="44" height="44" patternUnits="userSpaceOnUse">
-              <path d="M 44 0 L 0 0 0 44" fill="none" stroke="#8A6D2F" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#hero-grid)" />
-        </svg>
-        {/* Modern advocate's-office illustration — an original vector scene
-            (not a photo, so zero licensing risk), composed to the same
-            brief as the reference: floor-to-ceiling glass with a city
-            skyline on one side, dark wood-panelled shelving lined with law
-            books under warm brass accent lighting and a marble accent
-            panel on the other, a dark wood desk with a thin gold edge in
-            the foreground. Kept to a moderate opacity and anchored to the
-            bottom/sides so the search bar and Action Cards — sitting in
-            solid white/cards in the clear centre — are never competed
-            with. */}
-        <svg
-          viewBox="0 0 1440 560"
-          preserveAspectRatio="xMidYMax slice"
-          className="absolute inset-0 h-full w-full opacity-[0.38]"
-        >
-          <defs>
-            <linearGradient id="hero-sky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#EAF2F1" />
-              <stop offset="100%" stopColor="#CFE1DE" />
-            </linearGradient>
-            <linearGradient id="hero-wood" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7A5A3A" />
-              <stop offset="100%" stopColor="#4E3620" />
-            </linearGradient>
-            <linearGradient id="hero-marble" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#F4F1EA" />
-              <stop offset="100%" stopColor="#E2DDD0" />
-            </linearGradient>
-            <linearGradient id="hero-desk" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#5A4028" />
-              <stop offset="100%" stopColor="#382415" />
-            </linearGradient>
-          </defs>
-
-          {/* Left — floor-to-ceiling window onto a city skyline */}
-          <g>
-            <rect x="0" y="0" width="520" height="560" fill="url(#hero-sky)" />
-            <g fill="#9FB3B0" opacity="0.7">
-              <rect x="30" y="260" width="70" height="180" />
-              <rect x="115" y="180" width="60" height="260" />
-              <rect x="190" y="300" width="55" height="140" />
-              <rect x="260" y="220" width="65" height="220" />
-              <rect x="340" y="320" width="50" height="120" />
-              <rect x="405" y="240" width="70" height="200" />
-            </g>
-            {/* window mullions */}
-            <g stroke="#FFFFFF" strokeOpacity="0.6" strokeWidth="4">
-              <line x1="175" y1="0" x2="175" y2="560" />
-              <line x1="350" y1="0" x2="350" y2="560" />
-              <line x1="0" y1="185" x2="520" y2="185" />
-              <line x1="0" y1="370" x2="520" y2="370" />
-            </g>
-          </g>
-
-          {/* Centre — marble accent panel */}
-          <rect x="520" y="0" width="220" height="560" fill="url(#hero-marble)" />
-          <g stroke="#C9C1AE" strokeWidth="1.5" opacity="0.5" fill="none">
-            <path d="M540 40 Q 620 140 590 260 T 640 480" />
-            <path d="M700 20 Q 660 180 720 320 T 690 540" />
-          </g>
-
-          {/* Right — dark wood-panelled shelving, law books, brass accent lighting */}
-          <g>
-            <rect x="740" y="0" width="700" height="560" fill="url(#hero-wood)" />
-            <g stroke="#3A2814" strokeWidth="3">
-              <line x1="920" y1="0" x2="920" y2="560" />
-              <line x1="1100" y1="0" x2="1100" y2="560" />
-              <line x1="1280" y1="0" x2="1280" y2="560" />
-            </g>
-            {/* Book spines, three shelf rows */}
-            {[70, 210, 350].map((shelfY) => (
-              <g key={shelfY}>
-                {[760, 800, 835, 875, 960, 1000, 1040, 1120, 1160, 1200, 1300, 1340, 1380].map((x, i) => {
-                  const colors = ['#6B2737', '#1F3D2B', '#1B2A4A', '#4A3221', '#5C2A2A'];
-                  const w = 22 + (i % 3) * 6;
-                  const h = 130 + (i % 4) * 8;
-                  return (
-                    <rect
-                      key={x}
-                      x={x}
-                      y={shelfY + (150 - h)}
-                      width={w}
-                      height={h}
-                      fill={colors[i % colors.length]}
-                    />
-                  );
-                })}
-                {/* brass under-shelf accent light */}
-                <rect x="750" y={shelfY + 152} width="680" height="4" fill="#D9B978" opacity="0.85" />
-              </g>
-            ))}
-          </g>
-
-          {/* Foreground — desk with a thin gold edge, mostly faded by the
-              white overlay beneath the Action Cards/CTAs */}
-          <rect x="0" y="470" width="1440" height="90" fill="url(#hero-desk)" opacity="0.5" />
-          <rect x="0" y="470" width="1440" height="5" fill="#D9B978" opacity="0.6" />
-        </svg>
-        {/* Strong fade so the desk illustration never sits directly behind
-            the footnote text — the fade is tall enough to fully clear that
-            text's line, not just soften an edge. */}
-        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-white via-white/80 to-transparent" />
+        {/* Readability scrim — a soft warm-white gradient so the badge,
+            headline, search bar, and Action Cards stay highly legible
+            over the photo at every breakpoint. Strongest at the very
+            bottom so the footnote text never sits directly on the photo. */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/35 to-white/70" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/85 to-transparent" />
       </div>
 
       <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-10 pt-8 text-center md:px-12 md:pt-10 lg:pt-12">
