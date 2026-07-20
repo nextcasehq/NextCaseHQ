@@ -18,6 +18,7 @@ import {
   useECourtsReference,
   useMatterProceedingOverride,
 } from '../ecourts';
+import { AiAssistPanel } from '@/components/ai-credits/chargeable-action';
 
 const FALLBACK_ECOURTS_REF: ECourtsReference = {
   cnrNumber: null,
@@ -175,36 +176,53 @@ function OverviewTab({
           ))}
         </div>
       </SectionCard>
+
+      <AiAssistPanel
+        matterId={matter.id}
+        actions={[
+          { actionKey: 'generate_synopsis' },
+          { actionKey: 'suggest_legal_issues' },
+          { actionKey: 'identify_missing_information' },
+        ]}
+      />
     </div>
   );
 }
 
 function DocumentsTab({ matter, onNotice }: { matter: MockMatter; onNotice: (msg: string) => void }) {
   if (matter.documents.length === 0) {
-    return <div className="text-center py-10 bg-white border border-[#E7DFC9]/80 rounded-xl"><p className="text-xs font-semibold text-[#8A7A56]">No documents recorded for this matter yet.</p></div>;
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-10 bg-white border border-[#E7DFC9]/80 rounded-xl"><p className="text-xs font-semibold text-[#8A7A56]">No documents recorded for this matter yet.</p></div>
+        <AiAssistPanel matterId={matter.id} actions={[{ actionKey: 'compare_documents' }]} />
+      </div>
+    );
   }
   return (
-    <div className="space-y-3">
-      {matter.documents.map((doc) => (
-        <div key={doc.id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 space-y-2">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <p className="text-sm font-bold text-[#111111]">{doc.title}</p>
-              <p className="text-[10px] text-[#8A7A56] mt-0.5">{doc.type} · {formatMockDate(doc.date)} · Related to {doc.relatedProceeding}</p>
+    <div className="space-y-4">
+      <div className="space-y-3">
+        {matter.documents.map((doc) => (
+          <div key={doc.id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 space-y-2">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-sm font-bold text-[#111111]">{doc.title}</p>
+                <p className="text-[10px] text-[#8A7A56] mt-0.5">{doc.type} · {formatMockDate(doc.date)} · Related to {doc.relatedProceeding}</p>
+              </div>
+              <SyntheticBadge />
             </div>
-            <SyntheticBadge />
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
+              <span className="font-bold uppercase tracking-wider text-[#8A7A56]">Status: <span className="font-semibold text-[#3A3222] normal-case">{doc.status}</span></span>
+              <span className="font-bold uppercase tracking-wider text-[#8A7A56]">Review: <span className="font-semibold text-[#3A3222] normal-case">{doc.reviewStatus}</span></span>
+            </div>
+            <div className="flex items-center gap-4 pt-1 border-t border-[#F4EEE0]">
+              <button onClick={() => onNotice(`Viewing "${doc.title}" is a prototype action in this demonstration.`)} className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">View</button>
+              <Link href="/prototypes/draft-document" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">Draft Related Document</Link>
+              <Link href="/prototypes/draft-document" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">Upload New Version</Link>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
-            <span className="font-bold uppercase tracking-wider text-[#8A7A56]">Status: <span className="font-semibold text-[#3A3222] normal-case">{doc.status}</span></span>
-            <span className="font-bold uppercase tracking-wider text-[#8A7A56]">Review: <span className="font-semibold text-[#3A3222] normal-case">{doc.reviewStatus}</span></span>
-          </div>
-          <div className="flex items-center gap-4 pt-1 border-t border-[#F4EEE0]">
-            <button onClick={() => onNotice(`Viewing "${doc.title}" is a prototype action in this demonstration.`)} className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">View</button>
-            <Link href="/prototypes/draft-document" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">Draft Related Document</Link>
-            <Link href="/prototypes/draft-document" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">Upload New Version</Link>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <AiAssistPanel matterId={matter.id} actions={[{ actionKey: 'compare_documents' }]} />
     </div>
   );
 }
@@ -234,24 +252,31 @@ function ProceedingsTab({ matter }: { matter: MockMatter }) {
   );
 }
 
-function TimelineTab({ timeline }: { timeline: MockMatter['timeline'] }) {
+function TimelineTab({ matterId, timeline }: { matterId: string; timeline: MockMatter['timeline'] }) {
   const sorted = [...timeline].sort((a, b) => (a.date < b.date ? -1 : 1));
-  if (sorted.length === 0) {
-    return <div className="text-center py-10 bg-white border border-[#E7DFC9]/80 rounded-xl"><p className="text-xs font-semibold text-[#8A7A56]">No timeline events recorded.</p></div>;
-  }
   return (
-    <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5">
-      <ol className="space-y-4">
-        {sorted.map((ev) => (
-          <li key={ev.id} className="flex gap-3">
-            <span className="flex-none w-2 h-2 rounded-full bg-[#8A6D2F] mt-1.5" />
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A7A56]">{formatMockDate(ev.date)}</p>
-              <p className="text-xs text-[#3A3222] font-semibold">{ev.label}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+    <div className="space-y-4">
+      {sorted.length === 0 ? (
+        <div className="text-center py-10 bg-white border border-[#E7DFC9]/80 rounded-xl"><p className="text-xs font-semibold text-[#8A7A56]">No timeline events recorded.</p></div>
+      ) : (
+        <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5">
+          <ol className="space-y-4">
+            {sorted.map((ev) => (
+              <li key={ev.id} className="flex gap-3">
+                <span className="flex-none w-2 h-2 rounded-full bg-[#8A6D2F] mt-1.5" />
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A7A56]">{formatMockDate(ev.date)}</p>
+                  <p className="text-xs text-[#3A3222] font-semibold">{ev.label}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      <AiAssistPanel
+        matterId={matterId}
+        actions={[{ actionKey: 'build_chronology' }, { actionKey: 'generate_list_of_dates' }]}
+      />
     </div>
   );
 }
@@ -283,28 +308,36 @@ function TasksTab({ matter }: { matter: MockMatter }) {
 
 function ResearchTab({ matter }: { matter: MockMatter }) {
   if (matter.research.length === 0) {
-    return <div className="text-center py-10 bg-white border border-[#E7DFC9]/80 rounded-xl"><p className="text-xs font-semibold text-[#8A7A56]">No saved citations or authorities for this matter yet. Use Legal Search on the dashboard to add one.</p></div>;
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-10 bg-white border border-[#E7DFC9]/80 rounded-xl"><p className="text-xs font-semibold text-[#8A7A56]">No saved citations or authorities for this matter yet. Use Legal Search on the dashboard to add one.</p></div>
+        <AiAssistPanel matterId={matter.id} actions={[{ actionKey: 'summarise_judgment' }, { actionKey: 'analyse_citation' }]} />
+      </div>
+    );
   }
   return (
-    <div className="space-y-3">
-      {matter.research.map((r) => (
-        <div key={r.id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 space-y-2">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <p className="text-sm font-bold text-[#111111]">{r.caseTitle}</p>
-            <SyntheticBadge label="Unverified — Demonstration Data" />
+    <div className="space-y-4">
+      <div className="space-y-3">
+        {matter.research.map((r) => (
+          <div key={r.id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 space-y-2">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <p className="text-sm font-bold text-[#111111]">{r.caseTitle}</p>
+              <SyntheticBadge label="Unverified — Demonstration Data" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px]">
+              <Field label="Court" value={r.court} />
+              <Field label="Citation" value={r.citation} />
+            </div>
+            <Field label="Legal Proposition" value={r.proposition} />
+            {r.advocateNote && <Field label="Advocate Note" value={r.advocateNote} />}
+            <div className="flex items-center justify-between pt-1 border-t border-[#F4EEE0] flex-wrap gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F]">Linked Use: {r.linkedUse}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588]">{r.verificationStatus}</span>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px]">
-            <Field label="Court" value={r.court} />
-            <Field label="Citation" value={r.citation} />
-          </div>
-          <Field label="Legal Proposition" value={r.proposition} />
-          {r.advocateNote && <Field label="Advocate Note" value={r.advocateNote} />}
-          <div className="flex items-center justify-between pt-1 border-t border-[#F4EEE0] flex-wrap gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F]">Linked Use: {r.linkedUse}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588]">{r.verificationStatus}</span>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <AiAssistPanel matterId={matter.id} actions={[{ actionKey: 'summarise_judgment' }, { actionKey: 'analyse_citation' }]} />
     </div>
   );
 }
@@ -357,53 +390,59 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
 function ArgumentsTab({ matter }: { matter: MockMatter }) {
   const a = matter.arguments;
   return (
-    <SectionCard title="Arguments — this Matter Register's own record">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F]">Draft Status: {a.draftStatus}</span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ListBlock title="Issues for Determination" items={a.issuesForDetermination} />
-        <ListBlock title="Key Confirmed Facts" items={a.keyConfirmedFacts} />
-        <ListBlock title="Applicable Provisions" items={a.applicableProvisions} />
-        <ListBlock title="Supporting Authorities" items={a.supportingAuthorities} />
-        <ListBlock title="Opponent's Likely Arguments" items={a.opponentLikelyArguments} />
-        <ListBlock title="Rebuttal Points" items={a.rebuttalPoints} />
-      </div>
-      <Field label="Relief Sought" value={a.reliefSought} />
-    </SectionCard>
+    <div className="space-y-4">
+      <SectionCard title="Arguments — this Matter Register's own record">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F]">Draft Status: {a.draftStatus}</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ListBlock title="Issues for Determination" items={a.issuesForDetermination} />
+          <ListBlock title="Key Confirmed Facts" items={a.keyConfirmedFacts} />
+          <ListBlock title="Applicable Provisions" items={a.applicableProvisions} />
+          <ListBlock title="Supporting Authorities" items={a.supportingAuthorities} />
+          <ListBlock title="Opponent's Likely Arguments" items={a.opponentLikelyArguments} />
+          <ListBlock title="Rebuttal Points" items={a.rebuttalPoints} />
+        </div>
+        <Field label="Relief Sought" value={a.reliefSought} />
+      </SectionCard>
+      <AiAssistPanel matterId={matter.id} actions={[{ actionKey: 'prepare_written_arguments' }]} />
+    </div>
   );
 }
 
 function EvidenceTab({ matter }: { matter: MockMatter }) {
   const e = matter.evidence;
   return (
-    <SectionCard title="Evidence — this Matter Register's own record">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F]">Proof Status: {e.proofStatus}</span>
-        {e.proofStatus === 'AI-assisted working draft' && (
-          <span className="text-[9px] text-[#B0A588]">AI-assisted draft only — requires advocate review before use.</span>
-        )}
-      </div>
-      {e.witnesses.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A7A56]">Witnesses</p>
-          {e.witnesses.map((w, i) => (
-            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] bg-[#FBF8F1]/60 rounded-lg p-2.5">
-              <Field label={`${w.name} — ${w.role}`} value="" />
-              <div />
-              <Field label="Examination-in-Chief Prep" value={w.examinationPrep} />
-              <Field label="Cross-Examination Prep" value={w.crossExamPrep} />
-            </div>
-          ))}
+    <div className="space-y-4">
+      <SectionCard title="Evidence — this Matter Register's own record">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F]">Proof Status: {e.proofStatus}</span>
+          {e.proofStatus === 'AI-assisted working draft' && (
+            <span className="text-[9px] text-[#B0A588]">AI-assisted draft only — requires advocate review before use.</span>
+          )}
         </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ListBlock title="Documents & Exhibits" items={e.documentsAndExhibits} />
-        <ListBlock title="Facts to Prove" items={e.factsToProve} />
-        <ListBlock title="Contradictions" items={e.contradictions} />
-        <ListBlock title="Missing Evidence" items={e.missingEvidence} />
-      </div>
-    </SectionCard>
+        {e.witnesses.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A7A56]">Witnesses</p>
+            {e.witnesses.map((w, i) => (
+              <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] bg-[#FBF8F1]/60 rounded-lg p-2.5">
+                <Field label={`${w.name} — ${w.role}`} value="" />
+                <div />
+                <Field label="Examination-in-Chief Prep" value={w.examinationPrep} />
+                <Field label="Cross-Examination Prep" value={w.crossExamPrep} />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ListBlock title="Documents & Exhibits" items={e.documentsAndExhibits} />
+          <ListBlock title="Facts to Prove" items={e.factsToProve} />
+          <ListBlock title="Contradictions" items={e.contradictions} />
+          <ListBlock title="Missing Evidence" items={e.missingEvidence} />
+        </div>
+      </SectionCard>
+      <AiAssistPanel matterId={matter.id} actions={[{ actionKey: 'assist_evidence_review' }]} />
+    </div>
   );
 }
 
@@ -568,7 +607,7 @@ function MatterDetailContent() {
         )}
         {activeTab === 'documents' && <DocumentsTab matter={matter} onNotice={setNotice} />}
         {activeTab === 'proceedings' && <ProceedingsTab matter={matter} />}
-        {activeTab === 'timeline' && <TimelineTab timeline={proceeding.timeline} />}
+        {activeTab === 'timeline' && <TimelineTab matterId={matter.id} timeline={proceeding.timeline} />}
         {activeTab === 'tasks' && <TasksTab matter={matter} />}
         {activeTab === 'research' && <ResearchTab matter={matter} />}
         {activeTab === 'parties' && <PartiesTab matter={matter} />}

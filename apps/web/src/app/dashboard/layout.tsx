@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
+import { AiCreditsTopBarControl } from '@/components/ai-credits/credits-popover';
 
 interface NotificationItem {
   id: string;
@@ -160,18 +161,12 @@ export default function DashboardLayout({
         </div>
 
         <div className="flex items-center gap-2 md:gap-4 flex-none">
-          {/* AI Credits — a small account-status control, not a dashboard card. */}
-          <div
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#E7DFC9] bg-[#FBF8F1]"
-            title="Illustrative — AI credit metering is not yet connected to a production billing system."
-          >
-            <span aria-hidden="true" className="text-[11px]">✨</span>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-[#8A7A56]">AI Credits</span>
-            <span className="text-xs font-black text-[#8A6D2F]">240</span>
-            <Link href="/pricing" className="text-[9px] font-bold uppercase text-[#8A6D2F] hover:underline ml-0.5">
-              Buy More
-            </Link>
-          </div>
+          {/* AI Credits — a small account-status control, not a dashboard card.
+              Reads from the shared AI Credits commercialization store
+              (see lib/ai-credits) — demonstration balance/plan/ledger data,
+              editable from Admin → Commercialization, not yet a production
+              billing system. */}
+          <AiCreditsTopBarControl />
 
           {/* Interactive Notification Bell */}
           <button

@@ -454,7 +454,11 @@ export function reverseLedgerEntry(accountId: string, originalEntryId: string, a
   // Mark the original as Reversed in a NEW copy of the array (append-only:
   // we still never delete it, just flip its status so it's clearly linked
   // to the reversal — the underlying row/id/amount/timestamp are untouched).
-  const marked = ledger.map((e) => (e.id === originalEntryId ? { ...e, status: 'Reversed' as const } : e));
+  // Re-read the ledger here (rather than reusing the `ledger` snapshot from
+  // the top of this function) so this write includes the reversal entry
+  // appendLedgerEntry just added, instead of silently overwriting it away.
+  const currentLedger = getLedger(accountId);
+  const marked = currentLedger.map((e) => (e.id === originalEntryId ? { ...e, status: 'Reversed' as const } : e));
   writeJson(ledgerKey(accountId), marked);
 
   return reversal;

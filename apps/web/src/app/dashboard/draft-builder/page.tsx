@@ -1,6 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import {
+  useChargeableAiAction,
+  ConfirmChargeModal,
+  InsufficientCreditsModal,
+  BlockedActionNotice,
+} from '@/components/ai-credits/chargeable-action';
 
 interface DraftTemplate {
   name: string;
@@ -35,11 +41,17 @@ export default function DraftBuilderPage() {
   const [editorText, setEditorText] = useState(templates[0].body);
   const [editorHeader, setEditorHeader] = useState(templates[0].header);
   const [aiCommand, setAiCommand] = useState('');
-  // Neither "Refine Document" nor "Save Draft" is backed by a real AI call
-  // or a real save — this page has no backend of its own at all. Both
-  // actions show this neutral message instead of faking a completed
+  // "Save Draft" is not an AI action and has no backend of its own in this
+  // prototype — it shows this neutral message instead of faking a saved
   // result, per the "never silently pretend a function succeeded" rule.
+  // "Refine Document" and "Draft First Version with AI" ARE real AI actions
+  // (rewrite_document / draft_document) and go through the full Safe AI
+  // Usage Flow below instead.
   const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
+
+  const { state, notice, start, confirmAndRun, cancel, dismissNotice, dismissBlocked } = useChargeableAiAction();
+  const editorRef = React.useRef<HTMLTextAreaElement>(null);
+  const [hasSelection, setHasSelection] = useState(false);
 
   const handleSelectTemplate = (template: DraftTemplate) => {
     setSelectedTemplate(template);
@@ -50,7 +62,22 @@ export default function DraftBuilderPage() {
   const handleAiRefine = (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiCommand.trim()) return;
-    setShowUnavailablePrompt(true);
+    start('rewrite_document', null, `Refine document — ${selectedTemplate.name}: "${aiCommand.trim()}"`);
+    setAiCommand('');
+  };
+
+  const handleDraftFirstVersion = () => {
+    start('draft_document', null, `Draft first version — ${selectedTemplate.name}`);
+  };
+
+  const handleTextSelect = () => {
+    const el = editorRef.current;
+    setHasSelection(!!el && el.selectionStart !== el.selectionEnd);
+  };
+
+  const handleImproveSelectedText = () => {
+    if (!hasSelection) return;
+    start('improve_selected_text', null, `Improve selected passage — ${selectedTemplate.name}`);
   };
 
   const handleSaveDraft = () => {
@@ -80,6 +107,23 @@ export default function DraftBuilderPage() {
         </div>
       )}
 
+      {notice && (
+        <div className="p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs font-semibold text-[#5C5340]">{notice}</p>
+          <button onClick={dismissNotice} className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]" aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {state.phase === 'confirm' && (
+        <ConfirmChargeModal actionName={state.actionName} cost={state.cost} onConfirm={confirmAndRun} onCancel={cancel} />
+      )}
+      {state.phase === 'insufficient' && (
+        <InsufficientCreditsModal actionName={state.actionName} cost={state.cost} onClose={dismissBlocked} />
+      )}
+      {state.phase === 'blocked' && <BlockedActionNotice message={state.message} onClose={dismissBlocked} />}
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Left Side: Template Selector & AI Enhancer */}
         <div className="lg:col-span-1 space-y-6">
@@ -103,6 +147,12 @@ export default function DraftBuilderPage() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={handleDraftFirstVersion}
+              className="w-full py-2 border border-[#E7DFC9] text-[#8A6D2F] text-[10px] uppercase tracking-widest font-bold rounded hover:bg-[#FBF8F1] transition-all flex items-center justify-center gap-1.5"
+            >
+              ✨ Draft First Version with AI
+            </button>
           </div>
 
           <div className="p-5 border border-[#111111]/10 bg-white rounded space-y-4">
@@ -156,11 +206,26 @@ export default function DraftBuilderPage() {
 
             {/* Main Pleading Body Editor Area */}
             <textarea
+              ref={editorRef}
               value={editorText}
               onChange={(e) => setEditorText(e.target.value)}
+              onSelect={handleTextSelect}
+              onMouseUp={handleTextSelect}
+              onKeyUp={handleTextSelect}
               rows={22}
               className="w-full font-serif text-sm text-[#4A4130] leading-relaxed outline-none border-none resize-none focus:ring-0 select-text"
             />
+
+            <div className="flex justify-end border-t border-[#F4EEE0] pt-4">
+              <button
+                onClick={handleImproveSelectedText}
+                disabled={!hasSelection}
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-[#E7DFC9] text-[#8A6D2F] hover:bg-[#FBF8F1] bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                title={hasSelection ? 'Improve the highlighted passage in place' : 'Select some text in the editor first'}
+              >
+                ✨ Improve Selected Text
+              </button>
+            </div>
           </div>
         </div>
       </div>
