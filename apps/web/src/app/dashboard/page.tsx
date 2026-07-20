@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
+import LegalSearchWorkspace from './legal-search-workspace';
 
 interface RecentMatter {
   id: string;
@@ -126,8 +128,18 @@ function MatterActionsMenu({ matterId, onArgumentsEvidence }: MatterActionsMenuP
  * client-side to hearing_date === today. "Arguments & Evidence" has no
  * implementation anywhere yet (prototype or production), so it shows a
  * neutral not-yet-available message rather than a fabricated workflow.
+ *
+ * Legal Search is the primary main-workspace section, reusing the real,
+ * existing GET /api/search endpoint (see legal-search-workspace.tsx) rather
+ * than recreating the deleted /dashboard/search demo page. The top bar's
+ * search stays general matter/document navigation to the real /search page
+ * (Top-Bar Search Rule, option B) — the Legal Search workspace's own input
+ * is labelled "Search Judgments & Citations" so the two are never confused
+ * for duplicate, identical search bars.
  */
-export default function DashboardPage() {
+function DashboardPageContent() {
+  const searchParams = useSearchParams();
+  const initialLegalSearchQuery = searchParams.get('q') ?? '';
   const [recentMatters, setRecentMatters] = React.useState<RecentMatter[] | null>(null);
   const [cases, setCases] = React.useState<LegalCaseSummary[] | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -189,7 +201,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10 md:py-12 space-y-10">
+    <div className="max-w-6xl mx-auto px-6 py-10 md:py-12 space-y-8">
       <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Dashboard</h1>
 
       {notice && (
@@ -201,30 +213,41 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <section>
-        <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Link href="/prototypes/draft-document" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
-            <span className="text-2xl" aria-hidden="true">📝</span>
-            <p className="text-sm font-bold text-[#111111]">Draft a Document</p>
-            <p className="text-[10px] text-[#8A7A56]">Prototype flow — template or blank draft, linked to a Matter Register.</p>
-          </Link>
-          <Link href="/prototypes/draft-document" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
-            <span className="text-2xl" aria-hidden="true">📄</span>
-            <p className="text-sm font-bold text-[#111111]">Upload / Link a Document</p>
-            <p className="text-[10px] text-[#8A7A56]">Prototype flow — upload an existing document or link it to a matter.</p>
-          </Link>
-          <Link href="/prototypes/next-hearing-stage" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
-            <span className="text-2xl" aria-hidden="true">📅</span>
-            <p className="text-sm font-bold text-[#111111]">Next Hearing &amp; Stage</p>
-            <p className="text-[10px] text-[#8A7A56]">Prototype flow — track hearings and stage by court category.</p>
-          </Link>
-        </div>
-      </section>
+      {/* Responsive composition: mobile/tablet order is Search -> Quick
+          Actions -> Today's Cases -> Matter Registers; desktop order is
+          Quick Actions -> Legal Search (the wide, primary workspace) ->
+          Matter Registers -> Today's Cases. Using flex + order utilities
+          rather than duplicating markup per breakpoint. */}
+      <div className="flex flex-col gap-8">
+        {/* Quick Actions */}
+        <section className="order-2 lg:order-1">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Link href="/prototypes/draft-document" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
+              <span className="text-2xl" aria-hidden="true">📝</span>
+              <p className="text-sm font-bold text-[#111111]">Draft a Document</p>
+              <p className="text-[10px] text-[#8A7A56]">Prototype flow — template or blank draft, linked to a Matter Register.</p>
+            </Link>
+            <Link href="/prototypes/draft-document" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
+              <span className="text-2xl" aria-hidden="true">📄</span>
+              <p className="text-sm font-bold text-[#111111]">Upload / Link a Document</p>
+              <p className="text-[10px] text-[#8A7A56]">Prototype flow — upload an existing document or link it to a matter.</p>
+            </Link>
+            <Link href="/prototypes/next-hearing-stage" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
+              <span className="text-2xl" aria-hidden="true">📅</span>
+              <p className="text-sm font-bold text-[#111111]">Next Hearing &amp; Stage</p>
+              <p className="text-[10px] text-[#8A7A56]">Prototype flow — track hearings and stage by court category.</p>
+            </Link>
+          </div>
+        </section>
 
-      {/* Matter Registers — the primary, visually dominant section */}
-      <section>
+        {/* Legal Search — the primary, wide main workspace */}
+        <section className="order-1 lg:order-2">
+          <LegalSearchWorkspace initialQuery={initialLegalSearchQuery} onNotice={setNotice} />
+        </section>
+
+        {/* Matter Registers — supporting section, still clearly accessible */}
+        <section className="order-4 lg:order-3">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-black uppercase tracking-widest text-[#111111]">Matter Registers</h2>
           <Link href="/matters" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
@@ -317,8 +340,8 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {/* Today's Cases — compact list, real data, no charts/analytics */}
-      <section>
+        {/* Today's Cases — compact list, real data, no charts/analytics */}
+        <section className="order-3 lg:order-4">
         <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Today&apos;s Cases</h2>
         {cases === null ? (
           <div className="flex justify-center py-8">
@@ -349,7 +372,22 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-      </section>
+        </section>
+      </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center py-20">
+          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
+        </div>
+      }
+    >
+      <DashboardPageContent />
+    </Suspense>
   );
 }

@@ -66,6 +66,11 @@ export default function DashboardLayout({
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [isProfileOpen]);
 
+  // Top-bar search rule (Option B): this stays general matter/document
+  // navigation to the real /search page — its own purpose since before this
+  // milestone. The dashboard's own Legal Search workspace input is clearly
+  // labelled "Search Judgments & Citations" so the two are never confused
+  // for duplicate, identical search bars.
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
