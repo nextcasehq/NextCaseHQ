@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { ADMIN_SESSION_COOKIE_NAME, verifyAdminSessionToken } from '@/lib/security/admin-session';
+import { isBetaPreviewEnabled, matchBetaPreviewRoute } from '@/lib/beta/demo-data';
 
 /**
  * NCHQ Module 9: Secure Multi-Tenant API Gateway (Edge Middleware)
@@ -43,19 +44,48 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 0.5. Beta Preview (BETA_PREVIEW_ENABLED=true, off by default): serve a
+  // fixed set of static, non-sensitive demo GET responses to unauthenticated
+  // visitors — one synthetic Matter (DEMO_MATTER_ID) plus the /dashboard
+  // launch page's list/notifications calls — without ever reaching the
+  // database or the real route handler. Only GET, only with no session
+  // cookie at all, and only this exact reserved set of paths; every write
+  // route and every other GET (including any other matter_id) is completely
+  // untouched and falls through to the checks below exactly as before.
+  if (
+    isBetaPreviewEnabled() &&
+    request.method === 'GET' &&
+    !request.cookies.get(SESSION_COOKIE_NAME)?.value
+  ) {
+    const demoPayload = matchBetaPreviewRoute(pathname, request.nextUrl.searchParams);
+    if (demoPayload !== undefined) {
+      return NextResponse.json(demoPayload, { status: 200 });
+    }
+  }
+
   // 1. Protect authenticated dashboard pages with the real session cookie
   // minted by POST /api/auth/session. Tenant-authorization enforcement
   // (does this user's tenant match what they're accessing) is a separate,
   // later milestone — this only proves "is there a validly signed session".
   if (pathname.startsWith('/dashboard')) {
     const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (!sessionToken) {
-      return NextResponse.redirect(new URL('/login', request.url));
+    let hasValidSession = false;
+    if (sessionToken) {
+      try {
+        await jwtVerify(sessionToken, JWT_SECRET);
+        hasValidSession = true;
+      } catch {
+        hasValidSession = false;
+      }
     }
-    try {
-      await jwtVerify(sessionToken, JWT_SECRET);
-    } catch {
-      return NextResponse.redirect(new URL('/login', request.url));
+    if (!hasValidSession) {
+      // Beta Preview exemption: only the bare launch page, never any
+      // sub-route (ai-chamber, cases, search, etc. all still require a
+      // real session — this only ever renders the read-only launch shell).
+      const isBetaPreviewLaunchPage = pathname === '/dashboard' && isBetaPreviewEnabled();
+      if (!isBetaPreviewLaunchPage) {
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
     }
     return NextResponse.next();
   }

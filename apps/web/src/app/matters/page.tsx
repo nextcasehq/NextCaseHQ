@@ -31,6 +31,16 @@ function MattersChamberContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Set only when GET /api/matters returns the `beta_preview` marker —
+  // i.e. an unauthenticated visitor under BETA_PREVIEW_ENABLED. Never set
+  // any other way, so this can't be spoofed into showing for a real,
+  // signed-in tenant.
+  const [betaPreview, setBetaPreview] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — governs whether the "Authentication Required" wall below uses
+  // neutral beta wording instead of the normal sign-in wording.
+  const [betaModeActive, setBetaModeActive] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -58,6 +68,12 @@ function MattersChamberContent() {
       if (res.status === 401) {
         setNeedsAuth(true);
         setMatters([]);
+        fetch('/api/beta-status')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.enabled) setBetaModeActive(true);
+          })
+          .catch(() => {});
         return;
       }
       if (!res.ok) {
@@ -67,6 +83,7 @@ function MattersChamberContent() {
       const data = await res.json();
       setNeedsAuth(false);
       setMatters(data.matters);
+      if (data.beta_preview) setBetaPreview(true);
     } catch {
       setLoadError('Unable to reach the matter workspace service.');
     } finally {
@@ -140,6 +157,16 @@ function MattersChamberContent() {
     fetchMatters(selectedStatus);
   };
 
+  // Beta Preview is read-only — creating a Matter is a write action, so it
+  // gets a clear sign-in prompt instead of the whole page being blocked.
+  const handleNewMatterClick = () => {
+    if (betaPreview) {
+      setShowSignInPrompt(true);
+      return;
+    }
+    setShowCreateForm(!showCreateForm);
+  };
+
   const filteredMatters = matters.filter((m) => {
     const q = searchQuery.toLowerCase();
     if (!q) return true;
@@ -153,14 +180,24 @@ function MattersChamberContent() {
   if (needsAuth) {
     return (
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
-          Sign in to view and manage matters under your tenant.
-        </p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {betaModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+              Sign in to view and manage matters under your tenant.
+            </p>
+            <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+              Go to Login →
+            </Link>
+          </>
+        )}
       </main>
     );
   }
@@ -171,20 +208,47 @@ function MattersChamberContent() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
-            Matter Workspace
-          </h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
+              Matter Workspace
+            </h1>
+            {betaPreview && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
+                Beta Preview
+              </span>
+            )}
+          </div>
           <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-widest mt-1">
             Client engagements — litigation, advisory, and everything in between
           </p>
         </div>
         <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
+          onClick={handleNewMatterClick}
           className="self-start md:self-auto bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs md:text-sm px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
         >
           {showCreateForm ? 'Close Form' : 'New Matter'}
         </button>
       </div>
+
+      {/* Sign-in prompt — shown instead of blocking the page when a
+          Beta Preview visitor selects a write action. */}
+      {showSignInPrompt && (
+        <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs font-semibold text-[#5C5340]">
+            This is a read-only Beta Preview. Creating and managing your own Matters is available after beta.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowSignInPrompt(false)}
+              className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Matter Creation Form */}
       {showCreateForm && (
@@ -452,7 +516,7 @@ function MattersChamberContent() {
           description="No matters matching current query/filters exist inside your secure multi-tenant partition."
           action={
             <button
-              onClick={() => setShowCreateForm(true)}
+              onClick={handleNewMatterClick}
               className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
             >
               New Matter

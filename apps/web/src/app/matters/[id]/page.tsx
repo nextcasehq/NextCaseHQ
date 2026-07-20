@@ -26,6 +26,8 @@ interface Matter {
   closed_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Set only by the Beta Preview demo payload — never by a real Matter. */
+  is_demo?: boolean;
 }
 
 interface Proceeding {
@@ -146,6 +148,13 @@ export default function MatterDetailsChamberPage() {
   const [matterDocuments, setMatterDocuments] = useState<MatterDocument[]>([]);
   const [showFullCourtNoteHistory, setShowFullCourtNoteHistory] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Beta Preview is actually active right now. Governs whether the
+  // "Authentication Required" wall below uses neutral beta wording instead
+  // of the normal sign-in wording; when Beta Preview is off this never
+  // becomes true and the wall is unchanged.
+  const [betaModeActive, setBetaModeActive] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -165,6 +174,12 @@ export default function MatterDetailsChamberPage() {
     const res = await fetch(`/api/matters/${id}`);
     if (res.status === 401) {
       setNeedsAuth(true);
+      fetch('/api/beta-status')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.enabled) setBetaModeActive(true);
+        })
+        .catch(() => {});
       return;
     }
     if (!res.ok) {
@@ -319,12 +334,22 @@ export default function MatterDetailsChamberPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <main className="flex-1 flex flex-col justify-center items-center py-20 text-center">
-          <span className="text-3xl">🔒</span>
-          <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-          <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
-          <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Go to Login →
-          </Link>
+          {betaModeActive ? (
+            <>
+              <span className="text-3xl">👁️</span>
+              <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
+              <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+            </>
+          ) : (
+            <>
+              <span className="text-3xl">🔒</span>
+              <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+              <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
+              <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+                Go to Login →
+              </Link>
+            </>
+          )}
         </main>
       </div>
     );
@@ -352,6 +377,19 @@ export default function MatterDetailsChamberPage() {
       </div>
     );
   }
+
+  // Beta Preview's demo Matter is read-only. Every write action is guarded
+  // through this single check so selecting one shows a clear sign-in
+  // prompt instead of the whole page being blocked or the action silently
+  // failing against the real (still fully enforced) write endpoints.
+  const isDemo = matter.is_demo === true;
+  const guardWrite = (action: () => void) => {
+    if (isDemo) {
+      setShowSignInPrompt(true);
+      return;
+    }
+    action();
+  };
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
@@ -396,6 +434,12 @@ export default function MatterDetailsChamberPage() {
                   NEEDS ATTENTION
                 </span>
               )}
+              {isDemo && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#FBF6EA] text-[#8A6D2F] border border-[#C6A253]/40 uppercase tracking-wider">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
+                  Beta Preview
+                </span>
+              )}
             </div>
 
             <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">
@@ -415,12 +459,32 @@ export default function MatterDetailsChamberPage() {
           </div>
 
           <button
-            onClick={() => setIsEditing(!isEditing)}
+            onClick={() => guardWrite(() => setIsEditing(!isEditing))}
             className="self-start md:self-auto px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
           >
             {isEditing ? 'Cancel Edits' : 'Edit Matter'}
           </button>
         </div>
+
+        {/* Sign-in prompt — shown instead of blocking the page when a
+            Beta Preview visitor selects a write action on the read-only
+            demo Matter. */}
+        {showSignInPrompt && (
+          <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-xs font-semibold text-[#5C5340]">
+              This is a read-only Beta Preview Matter. Making changes to your own Matters is available after beta.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSignInPrompt(false)}
+                className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Command Center — Search Experience + Action Cards (Product
             Direction, Phase A). The search field submits to the existing,
@@ -455,19 +519,30 @@ export default function MatterDetailsChamberPage() {
 
           <div className="mt-3 flex flex-wrap gap-2.5">
             {[
-              { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note` },
-              { label: '📤 Upload Documents', href: `/documents/new?matter_id=${id}` },
-              { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
-              { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
-            ].map((card) => (
-              <Link
-                key={card.label}
-                href={card.href}
-                className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
-              >
-                {card.label}
-              </Link>
-            ))}
+              { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note`, guarded: false },
+              { label: '📤 Upload Documents', href: `/documents/new?matter_id=${id}`, guarded: true },
+              { label: '⚡ Ask AI', href: '/dashboard/ai-chamber', guarded: true },
+              { label: '✍️ Draft Document', href: '/dashboard/draft-builder', guarded: true },
+            ].map((card) =>
+              card.guarded && isDemo ? (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={() => setShowSignInPrompt(true)}
+                  className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
+                >
+                  {card.label}
+                </button>
+              ) : (
+                <Link
+                  key={card.label}
+                  href={card.href}
+                  className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
+                >
+                  {card.label}
+                </Link>
+              )
+            )}
           </div>
         </div>
 
@@ -649,7 +724,7 @@ export default function MatterDetailsChamberPage() {
                         </div>
                         <div className="flex gap-2 flex-none">
                           <button
-                            onClick={() => handleTaskStatusChange(task.id, 'COMPLETED')}
+                            onClick={() => guardWrite(() => handleTaskStatusChange(task.id, 'COMPLETED'))}
                             className="text-[10px] font-bold uppercase text-[#8A6D2F] hover:underline"
                           >
                             Complete
@@ -754,7 +829,7 @@ export default function MatterDetailsChamberPage() {
                   <span className="text-[10px] font-mono text-[#B0A588] font-bold">{proceedings.length} LINKED</span>
                 </div>
                 <button
-                  onClick={() => setShowProceedingForm(!showProceedingForm)}
+                  onClick={() => guardWrite(() => setShowProceedingForm(!showProceedingForm))}
                   className="bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs px-4 py-2 rounded-lg transition-all uppercase tracking-wider"
                 >
                   {showProceedingForm ? 'Close' : 'Add Proceeding'}
@@ -838,7 +913,7 @@ export default function MatterDetailsChamberPage() {
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Matter Timeline</h3>
                 <button
-                  onClick={() => setShowEventForm(!showEventForm)}
+                  onClick={() => guardWrite(() => setShowEventForm(!showEventForm))}
                   className="bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs px-4 py-2 rounded-lg transition-all uppercase tracking-wider"
                 >
                   {showEventForm ? 'Close' : 'Add Entry'}
@@ -901,12 +976,22 @@ export default function MatterDetailsChamberPage() {
             <div id="documents" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Documents</h3>
-                <Link
-                  href={`/documents/new?matter_id=${id}`}
-                  className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
-                >
-                  + Prepare New Document
-                </Link>
+                {isDemo ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSignInPrompt(true)}
+                    className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                  >
+                    + Prepare New Document
+                  </button>
+                ) : (
+                  <Link
+                    href={`/documents/new?matter_id=${id}`}
+                    className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                  >
+                    + Prepare New Document
+                  </Link>
+                )}
               </div>
               {matterDocuments.length > 0 ? (
                 <div className="space-y-3">
