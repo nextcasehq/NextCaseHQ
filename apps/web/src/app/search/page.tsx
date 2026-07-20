@@ -47,6 +47,12 @@ function SearchPageContent() {
 
   const [query, setQuery] = useState(initialQuery);
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Beta Preview is actually active right now. Governs whether the
+  // "Authentication Required" wall below uses neutral beta wording instead
+  // of the normal sign-in wording; when Beta Preview is off this never
+  // becomes true and the wall is unchanged.
+  const [betaModeActive, setBetaModeActive] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +71,12 @@ function SearchPageContent() {
         const res = await fetch(`/api/search?${params.toString()}`);
         if (res.status === 401) {
           setNeedsAuth(true);
+          fetch('/api/beta-status')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.enabled) setBetaModeActive(true);
+            })
+            .catch(() => {});
           return;
         }
         if (!res.ok) {
@@ -94,12 +106,22 @@ function SearchPageContent() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to search.</p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {betaModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to search.</p>
+            <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+              Go to Login →
+            </Link>
+          </>
+        )}
       </div>
     );
   }

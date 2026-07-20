@@ -33,6 +33,12 @@ export default function CaseWorkspaceDetailsPage() {
   const [cCase, setCase] = useState<LegalCase | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Beta Preview is actually active right now. Governs whether the
+  // "Authentication Required" wall below uses neutral beta wording instead
+  // of the normal sign-in wording; when Beta Preview is off this never
+  // becomes true and the wall is unchanged.
+  const [betaModeActive, setBetaModeActive] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [courtNotes, setCourtNotes] = useState<CourtNote[]>([]);
@@ -46,6 +52,12 @@ export default function CaseWorkspaceDetailsPage() {
         if (cancelled) return;
         if (res.status === 401) {
           setNeedsAuth(true);
+          fetch('/api/beta-status')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (!cancelled && data?.enabled) setBetaModeActive(true);
+            })
+            .catch(() => {});
           return;
         }
         if (!res.ok) {
@@ -102,12 +114,22 @@ export default function CaseWorkspaceDetailsPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <main className="flex-1 flex flex-col justify-center items-center py-20">
-          <span className="text-3xl">🔒</span>
-          <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
-          <p className="text-xs text-[#B0A588] mt-1">Sign in to view this case workspace.</p>
-          <Link href="/login" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Go to Login →
-          </Link>
+          {betaModeActive ? (
+            <>
+              <span className="text-3xl">👁️</span>
+              <h2 className="text-lg font-bold mt-2">Preview Mode</h2>
+              <p className="text-xs text-[#B0A588] mt-1">This action is unavailable in preview mode.</p>
+            </>
+          ) : (
+            <>
+              <span className="text-3xl">🔒</span>
+              <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
+              <p className="text-xs text-[#B0A588] mt-1">Sign in to view this case workspace.</p>
+              <Link href="/login" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+                Go to Login →
+              </Link>
+            </>
+          )}
         </main>
       </div>
     );
