@@ -46,8 +46,8 @@ function PrepareNewDocumentForm() {
   // Governs both the guard on Generate/Save below and the neutral wording
   // on the needsAuth wall (a defense-in-depth backstop in case this
   // hasn't resolved yet when a write is attempted).
-  const [betaModeActive, setBetaModeActive] = useState(false);
-  const [showPreviewPrompt, setShowPreviewPrompt] = useState(false);
+  const [reviewModeActive, setReviewModeActive] = useState(false);
+  const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
   const [step, setStep] = useState<Step>('CATEGORY');
   const [category, setCategory] = useState<DocumentCategory | null>(null);
   const [documentTypeSlug, setDocumentTypeSlug] = useState<string | null>(null);
@@ -74,7 +74,7 @@ function PrepareNewDocumentForm() {
     fetch('/api/beta-status')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.enabled) setBetaModeActive(true);
+        if (data?.enabled) setReviewModeActive(true);
       })
       .catch(() => {});
   }, []);
@@ -88,12 +88,12 @@ function PrepareNewDocumentForm() {
 
   const handleGenerate = async () => {
     if (!category || !documentTypeSlug) return;
-    // Beta Preview is read-only — draft generation is a private AI action,
+    // Product Review Mode is read-only — draft generation is a private AI action,
     // so it gets an inline prompt instead of ever attempting the real
     // (still fully protected) request, and without losing the visitor's
     // in-progress Category/Type/Matter/Facts selections.
-    if (betaModeActive) {
-      setShowPreviewPrompt(true);
+    if (reviewModeActive) {
+      setShowUnavailablePrompt(true);
       return;
     }
     setGenerating(true);
@@ -129,9 +129,9 @@ function PrepareNewDocumentForm() {
 
   const handleSave = async () => {
     if (!draftContent || !documentTypeSlug) return;
-    // Same Beta Preview guard as Generate — saving is a write action.
-    if (betaModeActive) {
-      setShowPreviewPrompt(true);
+    // Same Product Review guard as Generate — saving is a write action.
+    if (reviewModeActive) {
+      setShowUnavailablePrompt(true);
       return;
     }
     const typeDef = documentTypesByCategory(category!).find((t) => t.slug === documentTypeSlug);
@@ -169,11 +169,11 @@ function PrepareNewDocumentForm() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        {betaModeActive ? (
+        {reviewModeActive ? (
           <>
             <span className="text-3xl">👁️</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>
@@ -192,27 +192,19 @@ function PrepareNewDocumentForm() {
   return (
     <article>
       <header className="mb-6">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Prepare New Document</h1>
-          {betaModeActive && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
-              Beta Preview
-            </span>
-          )}
-        </div>
+        <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Prepare New Document</h1>
         <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mt-1">
           Step {stepIndex + 1} of {STEP_ORDER.length}
         </p>
       </header>
 
-      {showPreviewPrompt && (
+      {showUnavailablePrompt && (
         <div className="mb-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
           <p className="text-xs font-semibold text-[#5C5340]">
-            Generating and saving documents is available after beta.
+            Function available after production activation.
           </p>
           <button
-            onClick={() => setShowPreviewPrompt(false)}
+            onClick={() => setShowUnavailablePrompt(false)}
             className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
             aria-label="Dismiss"
           >

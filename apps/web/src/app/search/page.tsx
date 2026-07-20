@@ -11,8 +11,8 @@ interface SearchResultItem {
   snippet: string;
   score: number;
   href: string;
-  // Only ever true for Beta Preview's synthetic search results (see
-  // lib/beta/demo-search-data.ts) — never set by the real Search Service.
+  // Only ever true for Product Review Mode's synthetic search results
+  // (see lib/beta/demo-search-data.ts) — never set by the real Search Service.
   is_demo?: boolean;
 }
 
@@ -55,15 +55,11 @@ function SearchPageContent() {
   const [query, setQuery] = useState(initialQuery);
   const [needsAuth, setNeedsAuth] = useState(false);
   // Only ever set true by a successful, unauthenticated GET /api/beta-status
-  // — i.e. Beta Preview is actually active right now. Governs whether the
-  // "Authentication Required" wall below uses neutral beta wording instead
-  // of the normal sign-in wording; when Beta Preview is off this never
+  // — i.e. Product Review Mode is actually active right now. Governs
+  // whether the "Authentication Required" wall below uses neutral review
+  // wording instead of the normal sign-in wording; when review mode is off
   // becomes true and the wall is unchanged.
-  const [betaModeActive, setBetaModeActive] = useState(false);
-  // Set only when a successful (200) search response carries the
-  // `beta_preview` marker — i.e. these are Beta Preview's synthetic demo
-  // search results, not the real Search Service. Never set any other way.
-  const [isDemoSearch, setIsDemoSearch] = useState(false);
+  const [reviewModeActive, setReviewModeActive] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +81,7 @@ function SearchPageContent() {
           fetch('/api/beta-status')
             .then((r) => (r.ok ? r.json() : null))
             .then((data) => {
-              if (data?.enabled) setBetaModeActive(true);
+              if (data?.enabled) setReviewModeActive(true);
             })
             .catch(() => {});
           return;
@@ -97,7 +93,6 @@ function SearchPageContent() {
         }
         const data = await res.json();
         setGroups(data.groups);
-        setIsDemoSearch(!!data.beta_preview);
       } finally {
         setLoading(false);
       }
@@ -118,11 +113,11 @@ function SearchPageContent() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        {betaModeActive ? (
+        {reviewModeActive ? (
           <>
             <span className="text-3xl">👁️</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>
@@ -176,13 +171,6 @@ function SearchPageContent() {
 
       {error && (
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs font-semibold text-red-700">{error}</div>
-      )}
-
-      {!loading && isDemoSearch && (
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
-          Beta Preview — sample legal-research data only
-        </div>
       )}
 
       {loading && (

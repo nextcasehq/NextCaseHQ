@@ -31,16 +31,16 @@ function MattersChamberContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
-  // Set only when GET /api/matters returns the `beta_preview` marker —
-  // i.e. an unauthenticated visitor under BETA_PREVIEW_ENABLED. Never set
+  // Set only when GET /api/matters returns the `review_mode` marker —
+  // i.e. an unauthenticated visitor under PRODUCT_REVIEW_MODE. Never set
   // any other way, so this can't be spoofed into showing for a real,
   // signed-in tenant.
-  const [betaPreview, setBetaPreview] = useState(false);
+  const [isReviewMode, setIsReviewMode] = useState(false);
   // Only ever set true by a successful, unauthenticated GET /api/beta-status
   // — governs whether the "Authentication Required" wall below uses
-  // neutral beta wording instead of the normal sign-in wording.
-  const [betaModeActive, setBetaModeActive] = useState(false);
-  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  // neutral review-mode wording instead of the normal sign-in wording.
+  const [reviewModeActive, setReviewModeActive] = useState(false);
+  const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -71,7 +71,7 @@ function MattersChamberContent() {
         fetch('/api/beta-status')
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
-            if (data?.enabled) setBetaModeActive(true);
+            if (data?.enabled) setReviewModeActive(true);
           })
           .catch(() => {});
         return;
@@ -83,7 +83,7 @@ function MattersChamberContent() {
       const data = await res.json();
       setNeedsAuth(false);
       setMatters(data.matters);
-      if (data.beta_preview) setBetaPreview(true);
+      if (data.review_mode) setIsReviewMode(true);
     } catch {
       setLoadError('Unable to reach the matter workspace service.');
     } finally {
@@ -129,6 +129,13 @@ function MattersChamberContent() {
   const handleCreateMatter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
+    // Product Review Mode is read-only — the form itself stays fully
+    // explorable, but the actual write is guarded here at submit time
+    // instead of blocking the form from opening at all.
+    if (isReviewMode) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
 
     const res = await fetch('/api/matters', {
       method: 'POST',
@@ -157,13 +164,10 @@ function MattersChamberContent() {
     fetchMatters(selectedStatus);
   };
 
-  // Beta Preview is read-only — creating a Matter is a write action, so it
-  // gets a clear sign-in prompt instead of the whole page being blocked.
+  // Product Review Mode is read-only, but the New Matter form itself is
+  // still fully explorable — only the actual submit (handleCreateMatter)
+  // is guarded, so a reviewer can inspect the whole form's UX.
   const handleNewMatterClick = () => {
-    if (betaPreview) {
-      setShowSignInPrompt(true);
-      return;
-    }
     setShowCreateForm(!showCreateForm);
   };
 
@@ -180,11 +184,11 @@ function MattersChamberContent() {
   if (needsAuth) {
     return (
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
-        {betaModeActive ? (
+        {reviewModeActive ? (
           <>
             <span className="text-3xl">👁️</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>
@@ -212,12 +216,6 @@ function MattersChamberContent() {
             <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
               Matter Workspace
             </h1>
-            {betaPreview && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
-                Beta Preview
-              </span>
-            )}
           </div>
           <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-widest mt-1">
             Client engagements — litigation, advisory, and everything in between
@@ -231,16 +229,16 @@ function MattersChamberContent() {
         </button>
       </div>
 
-      {/* Sign-in prompt — shown instead of blocking the page when a
-          Beta Preview visitor selects a write action. */}
-      {showSignInPrompt && (
+      {/* Neutral prompt — shown when a reviewer submits the form instead of
+          silently pretending the write succeeded. */}
+      {showUnavailablePrompt && (
         <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
           <p className="text-xs font-semibold text-[#5C5340]">
-            This is a read-only Beta Preview. Creating and managing your own Matters is available after beta.
+            Function available after production activation.
           </p>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowSignInPrompt(false)}
+              onClick={() => setShowUnavailablePrompt(false)}
               className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
               aria-label="Dismiss"
             >

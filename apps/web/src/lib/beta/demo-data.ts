@@ -1,15 +1,20 @@
 /**
- * Beta Preview — a temporary, environment-flagged mode that lets an
- * unauthenticated visitor see a working `/dashboard` launch page and one
- * fixed, entirely synthetic Matter Workspace (`DEMO_MATTER_ID`) without
- * ever touching the database or weakening authorization for any real
- * tenant's data.
+ * Product Review Mode — a temporary, environment-flagged mode that lets a
+ * Product Owner (or any unauthenticated reviewer) inspect a working
+ * `/dashboard` launch page and one fixed, entirely synthetic Matter
+ * Workspace (`DEMO_MATTER_ID`) without ever touching the database or
+ * weakening authorization for any real tenant's data.
  *
- * Disabled by default. Enable with BETA_PREVIEW_ENABLED=true. This is a
+ * Disabled by default. Enable with PRODUCT_REVIEW_MODE=true. This is a
  * server-only flag (read in middleware.ts) — there is no client-exposed
- * equivalent; the client infers demo mode purely from the `is_demo` /
- * `beta_preview` markers already present in the JSON these routes return,
+ * equivalent; the client infers review mode purely from the `is_demo` /
+ * `review_mode` markers already present in the JSON these routes return,
  * so there is nothing to keep in sync.
+ *
+ * Formerly gated by BETA_PREVIEW_ENABLED — migrated to PRODUCT_REVIEW_MODE
+ * (this module, and the routes/pages that use it, no longer reads the old
+ * variable at all) so review access isn't tied to "beta" branding, which
+ * is being removed from every reviewer-facing surface.
  *
  * Every payload below is read-only, hand-written sample content. No write
  * route (POST/PATCH/PUT/DELETE) is ever short-circuited here — only GET
@@ -22,13 +27,13 @@ import { findDemoSearchItem, searchDemoLegalDataset } from './demo-search-data';
 
 export const DEMO_MATTER_ID = 'deadbeef-0000-4000-8000-000000000000';
 
-export function isBetaPreviewEnabled(): boolean {
-  return process.env.BETA_PREVIEW_ENABLED === 'true';
+export function isProductReviewModeEnabled(): boolean {
+  return process.env.PRODUCT_REVIEW_MODE === 'true';
 }
 
 const DEMO_MATTER = {
   id: DEMO_MATTER_ID,
-  title: 'Demo Matter — Beta Preview (Sample Data)',
+  title: 'Demo Matter — Product Review (Sample Data)',
   matter_number: 'DEMO-0001',
   engagement_type: 'LITIGATION',
   practice_area: 'Commercial Litigation',
@@ -41,7 +46,7 @@ const DEMO_MATTER = {
   bench: null,
   judge: null,
   description:
-    'This is a read-only sample Matter shown for Beta Preview only. No real client, document, or case data is loaded — working with your own Matters is available after beta.',
+    'This is a read-only sample Matter shown for Product Review only. No real client, document, or case data is loaded — working with your own Matters is available after production activation.',
   opened_at: '2026-05-01T00:00:00.000Z',
   closed_at: null,
   created_at: '2026-05-01T00:00:00.000Z',
@@ -107,6 +112,15 @@ const DEMO_TASK = {
   court_forum_display: 'Demo Commercial Court, Court 4',
 };
 
+const DEMO_NOTIFICATION = {
+  id: 'deadbeef-0000-4000-8000-000000000008',
+  type: 'HEARING_REMINDER',
+  title: 'Sample notification (Product Review)',
+  message: 'This is a synthetic notification shown for Product Review only — not a real alert.',
+  read_at: null,
+  created_at: '2026-07-01T00:00:00.000Z',
+};
+
 export const DEMO_DOCUMENT_ID = 'deadbeef-0000-4000-8000-000000000007';
 
 const DEMO_DOCUMENT = {
@@ -123,6 +137,7 @@ const DEMO_DOCUMENT = {
   // page correctly stay hidden (isPreviewEligible/isImproveEligible both
   // require a content_type) rather than offering a button that would fail.
   storage_structure: null,
+  is_demo: true,
 };
 
 /**
@@ -131,15 +146,16 @@ const DEMO_DOCUMENT = {
  * fixed, reserved set — every other path falls through to the real route
  * unchanged.
  */
-export function matchBetaPreviewRoute(
+export function matchProductReviewRoute(
   pathname: string,
   searchParams: URLSearchParams
 ): unknown {
-  // Lets an unauthenticated page know whether Beta Preview is actually
-  // active — e.g. to swap "Authentication Required" wording for neutral
-  // "Available after beta" wording on a real (non-demo) Matter ID. No real
-  // route backs this path; it only ever answers from here, and only for
-  // the same no-session GET case every other Beta Preview response uses.
+  // Lets an unauthenticated page know whether Product Review Mode is
+  // actually active — e.g. to swap "Authentication Required" wording for
+  // the neutral "Function available after production activation" wording
+  // on a real (non-demo) Matter ID. No real route backs this path; it
+  // only ever answers from here, and only for the same no-session GET
+  // case every other Product Review response uses.
   if (pathname === '/api/beta-status') {
     return { enabled: true };
   }
@@ -172,12 +188,12 @@ export function matchBetaPreviewRoute(
       total: matchesFilter ? 1 : 0,
       limit: 50,
       offset: 0,
-      beta_preview: true,
+      review_mode: true,
     };
   }
 
   if (pathname === '/api/notifications') {
-    return { notifications: [], unread_count: 0, beta_preview: true };
+    return { notifications: [DEMO_NOTIFICATION], unread_count: 1, review_mode: true };
   }
 
   if (pathname === `/api/matters/${DEMO_MATTER_ID}`) {
@@ -212,11 +228,11 @@ export function matchBetaPreviewRoute(
   }
 
   // Demo search — a separate, synthetic search path for unauthenticated
-  // Beta Preview visitors. The real Search Service (lib/search/
+  // Product Review Mode visitors. The real Search Service (lib/search/
   // search-service.ts) is completely unchanged and still requires a real
   // session for every request; this only ever answers GET /api/search
   // when there is no session cookie at all (the same condition every
-  // other Beta Preview response uses).
+  // other Product Review response uses).
   if (pathname === '/api/search') {
     const query = searchParams.get('q') ?? '';
     const matterId = searchParams.get('matter_id');
@@ -231,7 +247,7 @@ export function matchBetaPreviewRoute(
       const courtNoteMatches = q && DEMO_COURT_NOTE.note.toLowerCase().includes(q);
       return {
         query,
-        beta_preview: true,
+        review_mode: true,
         groups: [
           {
             type: 'PROCEEDING',
@@ -265,7 +281,7 @@ export function matchBetaPreviewRoute(
     const documentMatches = q && DEMO_DOCUMENT.title.toLowerCase().includes(q);
     return {
       query,
-      beta_preview: true,
+      review_mode: true,
       groups: [
         ...searchDemoLegalDataset(query),
         {

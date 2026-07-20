@@ -20,13 +20,13 @@ const TYPE_LABELS: Record<DemoResultDetail['type'], string> = {
 };
 
 /**
- * Read-only detail page for a single Beta Preview demo search result
- * (Judgment / Act / Section / Citation). Backed entirely by GET
+ * Read-only detail page for a single Product Review Mode demo search
+ * result (Judgment / Act / Section / Citation). Backed entirely by GET
  * /api/search/demo/[id], which is served directly from middleware (see
  * lib/beta/demo-search-data.ts) — no real route, no database, no write
- * actions here at all. Not reachable unless Beta Preview is active and
- * the visitor has no session; a 404/failed fetch just means this specific
- * demo id doesn't exist, not a real error.
+ * actions here at all. Not reachable unless Product Review Mode is active
+ * and the visitor has no session; a 404/failed fetch just means this
+ * specific demo id doesn't exist, not a real error.
  */
 export default function DemoSearchResultPage() {
   const params = useParams();
