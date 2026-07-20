@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 interface DraftTemplate {
   name: string;
@@ -35,27 +35,11 @@ export default function DraftBuilderPage() {
   const [editorText, setEditorText] = useState(templates[0].body);
   const [editorHeader, setEditorHeader] = useState(templates[0].header);
   const [aiCommand, setAiCommand] = useState('');
-  const [isAiProcessing, setIsAiProcessing] = useState(false);
-  // Only ever set true by a successful, unauthenticated GET
-  // /api/beta-status — a real, signed-in session always gets a 404 for
-  // this path, so this can't be spoofed into showing for a real tenant.
-  // This page has no backend calls of its own (templates and the AI
-  // Refiner are both local, client-side sample content), so the badge is
-  // purely informational — there's nothing else to gate here.
-  const [betaPreview, setBetaPreview] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/beta-status')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.enabled) setBetaPreview(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Neither "Refine Document" nor "Save Draft" is backed by a real AI call
+  // or a real save — this page has no backend of its own at all. Both
+  // actions show this neutral message instead of faking a completed
+  // result, per the "never silently pretend a function succeeded" rule.
+  const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
 
   const handleSelectTemplate = (template: DraftTemplate) => {
     setSelectedTemplate(template);
@@ -66,17 +50,11 @@ export default function DraftBuilderPage() {
   const handleAiRefine = (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiCommand.trim()) return;
+    setShowUnavailablePrompt(true);
+  };
 
-    setIsAiProcessing(true);
-
-    // Simulate AI Refinement and Prompt Template Expansion
-    setTimeout(() => {
-      const refinedText = `${editorText}\n\n[AI ENHANCED // SECTION Compliant]:\nIn response to "${aiCommand}", the counsel further submits that all requisite deadlines, limitation periods, and procedural timelines are certified compliant under the local rules of civil practice.`;
-
-      setEditorText(refinedText);
-      setAiCommand('');
-      setIsAiProcessing(false);
-    }, 1000);
+  const handleSaveDraft = () => {
+    setShowUnavailablePrompt(true);
   };
 
   return (
@@ -85,15 +63,22 @@ export default function DraftBuilderPage() {
       <div className="border-b border-[#111111]/10 pb-4">
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-2xl font-black uppercase tracking-widest text-[#111111]">Draft Builder & Canvas</h1>
-          {betaPreview && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
-              Beta Preview
-            </span>
-          )}
         </div>
         <p className="text-sm font-serif italic text-[#111111]/60">WYSIWYG high-fidelity litigation document editor.</p>
       </div>
+
+      {showUnavailablePrompt && (
+        <div className="p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs font-semibold text-[#5C5340]">Function available after production activation.</p>
+          <button
+            onClick={() => setShowUnavailablePrompt(false)}
+            className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Left Side: Template Selector & AI Enhancer */}
@@ -130,22 +115,14 @@ export default function DraftBuilderPage() {
                 value={aiCommand}
                 onChange={(e) => setAiCommand(e.target.value)}
                 rows={3}
-                disabled={isAiProcessing}
                 className="w-full p-3 bg-[#FDFBF7] border border-[#111111]/15 rounded outline-none focus:border-[#111111] text-xs font-sans placeholder:text-[#111111]/40"
               />
               <button
                 type="submit"
-                disabled={isAiProcessing || !aiCommand.trim()}
+                disabled={!aiCommand.trim()}
                 className="w-full py-2 bg-[#111111] text-[#FDFBF7] text-[10px] uppercase tracking-widest font-bold rounded hover:bg-[#111111]/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >
-                {isAiProcessing ? (
-                  <>
-                    <span className="w-3 h-3 border border-[#FDFBF7] border-t-transparent rounded-full animate-spin"></span>
-                    Refining...
-                  </>
-                ) : (
-                  '⚡ Refine Document'
-                )}
+                ⚡ Refine Document
               </button>
             </form>
           </div>
@@ -161,7 +138,7 @@ export default function DraftBuilderPage() {
               </span>
             </div>
             <button
-              onClick={() => alert('Legal Draft generated successfully and committed to compliance audit log.')}
+              onClick={handleSaveDraft}
               className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-bold text-[10px] uppercase tracking-widest rounded transition-colors"
             >
               💾 Save Draft

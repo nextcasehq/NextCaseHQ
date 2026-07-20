@@ -24,11 +24,11 @@ function CasesChamberContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
   // Only ever set true by a successful, unauthenticated GET /api/beta-status
-  // — i.e. Beta Preview is actually active right now. Governs whether the
-  // "Authentication Required" wall below uses neutral beta wording instead
-  // of the normal sign-in wording; when Beta Preview is off this never
-  // becomes true and the wall is unchanged.
-  const [betaModeActive, setBetaModeActive] = useState(false);
+  // — i.e. Product Review Mode is actually active right now. Governs
+  // whether the "Authentication Required" wall below uses neutral review
+  // wording instead of the normal sign-in wording; when review mode is off
+  // this never becomes true and the wall is unchanged.
+  const [reviewModeActive, setReviewModeActive] = useState(false);
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -56,7 +56,7 @@ function CasesChamberContent() {
         fetch('/api/beta-status')
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
-            if (data?.enabled) setBetaModeActive(true);
+            if (data?.enabled) setReviewModeActive(true);
           })
           .catch(() => {});
         return;
@@ -111,11 +111,11 @@ function CasesChamberContent() {
   if (needsAuth) {
     return (
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
-        {betaModeActive ? (
+        {reviewModeActive ? (
           <>
             <span className="text-3xl">👁️</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>

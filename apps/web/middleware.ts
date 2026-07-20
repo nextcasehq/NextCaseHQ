@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { ADMIN_SESSION_COOKIE_NAME, verifyAdminSessionToken } from '@/lib/security/admin-session';
-import { isBetaPreviewEnabled, matchBetaPreviewRoute } from '@/lib/beta/demo-data';
+import { isProductReviewModeEnabled, matchProductReviewRoute } from '@/lib/beta/demo-data';
 
 /**
  * NCHQ Module 9: Secure Multi-Tenant API Gateway (Edge Middleware)
@@ -44,20 +44,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 0.5. Beta Preview (BETA_PREVIEW_ENABLED=true, off by default): serve a
-  // fixed set of static, non-sensitive demo GET responses to unauthenticated
-  // visitors — one synthetic Matter (DEMO_MATTER_ID) plus the /dashboard
-  // launch page's list/notifications calls — without ever reaching the
-  // database or the real route handler. Only GET, only with no session
-  // cookie at all, and only this exact reserved set of paths; every write
-  // route and every other GET (including any other matter_id) is completely
-  // untouched and falls through to the checks below exactly as before.
+  // 0.5. Product Review Mode (PRODUCT_REVIEW_MODE=true, off by default):
+  // serve a fixed set of static, non-sensitive demo GET responses to
+  // unauthenticated visitors — one synthetic Matter (DEMO_MATTER_ID) plus
+  // the /dashboard launch page's list/notifications calls — without ever
+  // reaching the database or the real route handler. Only GET, only with
+  // no session cookie at all, and only this exact reserved set of paths;
+  // every write route and every other GET (including any other matter_id)
+  // is completely untouched and falls through to the checks below exactly
+  // as before. Formerly gated by BETA_PREVIEW_ENABLED — that variable is
+  // no longer read anywhere in this file.
   if (
-    isBetaPreviewEnabled() &&
+    isProductReviewModeEnabled() &&
     request.method === 'GET' &&
     !request.cookies.get(SESSION_COOKIE_NAME)?.value
   ) {
-    const demoPayload = matchBetaPreviewRoute(pathname, request.nextUrl.searchParams);
+    const demoPayload = matchProductReviewRoute(pathname, request.nextUrl.searchParams);
     if (demoPayload !== undefined) {
       return NextResponse.json(demoPayload, { status: 200 });
     }
@@ -79,7 +81,7 @@ export async function middleware(request: NextRequest) {
       }
     }
     if (!hasValidSession) {
-      // Beta Preview exemption: the bare launch page, plus the two
+      // Product Review Mode exemption: the bare launch page, plus the two
       // landing-page Action Card destinations under /dashboard
       // (Ask AI -> ai-chamber, Draft Document -> draft-builder). Every
       // other /dashboard/* sub-route (cases, search, audit, evidence,
@@ -89,13 +91,13 @@ export async function middleware(request: NextRequest) {
       // TriPaneChamber runs on local sample state and only gates the
       // actual Ask AI network call (still 401s, unchanged); draft-builder
       // is 100% client-side mock content with no backend calls at all.
-      const BETA_PREVIEW_DASHBOARD_PATHS = new Set([
+      const PRODUCT_REVIEW_DASHBOARD_PATHS = new Set([
         '/dashboard',
         '/dashboard/ai-chamber',
         '/dashboard/draft-builder',
       ]);
-      const isBetaPreviewExemptPage = BETA_PREVIEW_DASHBOARD_PATHS.has(pathname) && isBetaPreviewEnabled();
-      if (!isBetaPreviewExemptPage) {
+      const isProductReviewExemptPage = PRODUCT_REVIEW_DASHBOARD_PATHS.has(pathname) && isProductReviewModeEnabled();
+      if (!isProductReviewExemptPage) {
         return NextResponse.redirect(new URL('/login', request.url));
       }
     }

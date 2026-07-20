@@ -34,11 +34,11 @@ export default function CaseWorkspaceDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
   // Only ever set true by a successful, unauthenticated GET /api/beta-status
-  // — i.e. Beta Preview is actually active right now. Governs whether the
-  // "Authentication Required" wall below uses neutral beta wording instead
-  // of the normal sign-in wording; when Beta Preview is off this never
+  // — i.e. Product Review Mode is actually active right now. Governs
+  // whether the "Authentication Required" wall below uses neutral review
+  // wording instead of the normal sign-in wording; when review mode is off
   // becomes true and the wall is unchanged.
-  const [betaModeActive, setBetaModeActive] = useState(false);
+  const [reviewModeActive, setReviewModeActive] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [courtNotes, setCourtNotes] = useState<CourtNote[]>([]);
@@ -55,7 +55,7 @@ export default function CaseWorkspaceDetailsPage() {
           fetch('/api/beta-status')
             .then((r) => (r.ok ? r.json() : null))
             .then((data) => {
-              if (!cancelled && data?.enabled) setBetaModeActive(true);
+              if (!cancelled && data?.enabled) setReviewModeActive(true);
             })
             .catch(() => {});
           return;
@@ -114,11 +114,11 @@ export default function CaseWorkspaceDetailsPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <main className="flex-1 flex flex-col justify-center items-center py-20">
-          {betaModeActive ? (
+          {reviewModeActive ? (
             <>
               <span className="text-3xl">👁️</span>
-              <h2 className="text-lg font-bold mt-2">Preview Mode</h2>
-              <p className="text-xs text-[#B0A588] mt-1">This action is unavailable in preview mode.</p>
+              <h2 className="text-lg font-bold mt-2">Not Available</h2>
+              <p className="text-xs text-[#B0A588] mt-1">Function available after production activation.</p>
             </>
           ) : (
             <>

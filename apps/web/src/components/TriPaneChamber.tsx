@@ -95,7 +95,7 @@ export const TriPaneChamber = () => {
       if (response.status === 401) {
         setChatMessages(prev => [...prev, {
           role: 'assistant',
-          text: 'Ask AI is available after beta — this is a preview of the workspace only.'
+          text: 'Function available after production activation.'
         }]);
         return;
       }

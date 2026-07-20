@@ -1,11 +1,11 @@
 /**
- * Beta Preview's demo search dataset — a small, entirely synthetic set of
- * Judgments, Acts, Sections, and Citations, used only by the search-service
- * shortcut in demo-data.ts's matchBetaPreviewRoute() for GET /api/search
- * when there is no session cookie at all. Never touches the database, never
- * reads a real tenant's documents, and is completely separate from the real
- * Search Service (lib/search/search-service.ts), which is unchanged and
- * still requires a real session for every request.
+ * Product Review Mode's demo search dataset — a small, entirely synthetic
+ * set of Judgments, Acts, Sections, and Citations, used only by the
+ * search-service shortcut in demo-data.ts's matchProductReviewRoute() for
+ * GET /api/search when there is no session cookie at all. Never touches
+ * the database, never reads a real tenant's documents, and is completely
+ * separate from the real Search Service (lib/search/search-service.ts),
+ * which is unchanged and still requires a real session for every request.
  */
 
 export interface DemoSearchItem {
@@ -23,10 +23,10 @@ const DEMO_JUDGMENTS: DemoSearchItem[] = [
     title: 'Acme Textiles Pvt. Ltd. v. R96 Global Traders (Demo Judgment)',
     snippet: 'Demo Commercial Court — sample judgment summary on breach of contract and discovery timelines.',
     body:
-      'This is a sample, entirely fictional judgment summary provided for Beta Preview demonstration only. ' +
+      'This is a sample, entirely fictional judgment summary provided for Product Review demonstration only. ' +
       'It illustrates how a judgment result would appear in search — no real court record, party, or case is ' +
       'described here. The demo matter this judgment references, and the demo court note and hearing dates ' +
-      'attached to it, are the same synthetic sample data shown throughout Beta Preview.',
+      'attached to it, are the same synthetic sample data shown throughout Product Review.',
   },
   {
     id: 'demo-judgment-0002',
@@ -34,7 +34,7 @@ const DEMO_JUDGMENTS: DemoSearchItem[] = [
     title: 'Sharma Exports v. National Logistics Co. (Demo Judgment)',
     snippet: 'Sample appellate judgment on limitation and enforcement of an arbitral award.',
     body:
-      'This is a sample, entirely fictional judgment summary provided for Beta Preview demonstration only. ' +
+      'This is a sample, entirely fictional judgment summary provided for Product Review demonstration only. ' +
       'It illustrates an appellate-stage result on limitation and arbitral award enforcement — no real ' +
       'court record, party, or case is described here.',
   },
@@ -47,7 +47,7 @@ const DEMO_ACTS: DemoSearchItem[] = [
     title: 'The Indian Contract Act, 1872 (Demo Reference)',
     snippet: 'Sample statute reference entry for contract law fundamentals.',
     body:
-      'This is a sample statute reference entry provided for Beta Preview demonstration only, illustrating ' +
+      'This is a sample statute reference entry provided for Product Review demonstration only, illustrating ' +
       'how an Act would appear in search results and its own read-only reference page.',
   },
   {
@@ -56,7 +56,7 @@ const DEMO_ACTS: DemoSearchItem[] = [
     title: 'The Arbitration and Conciliation Act, 1996 (Demo Reference)',
     snippet: 'Sample statute reference entry for arbitration procedure.',
     body:
-      'This is a sample statute reference entry provided for Beta Preview demonstration only, illustrating ' +
+      'This is a sample statute reference entry provided for Product Review demonstration only, illustrating ' +
       'how an Act would appear in search results and its own read-only reference page.',
   },
 ];
@@ -68,7 +68,7 @@ const DEMO_SECTIONS: DemoSearchItem[] = [
     title: 'Section 73 — Compensation for Loss or Damage (Demo Reference)',
     snippet: 'Indian Contract Act, 1872 — sample section reference on breach-of-contract compensation.',
     body:
-      'This is a sample section reference entry provided for Beta Preview demonstration only, illustrating ' +
+      'This is a sample section reference entry provided for Product Review demonstration only, illustrating ' +
       'how a Section would appear in search results — not the actual text of any real statute.',
   },
   {
@@ -77,7 +77,7 @@ const DEMO_SECTIONS: DemoSearchItem[] = [
     title: 'Section 34 — Application for Setting Aside an Arbitral Award (Demo Reference)',
     snippet: 'Arbitration and Conciliation Act, 1996 — sample section reference on challenging an award.',
     body:
-      'This is a sample section reference entry provided for Beta Preview demonstration only, illustrating ' +
+      'This is a sample section reference entry provided for Product Review demonstration only, illustrating ' +
       'how a Section would appear in search results — not the actual text of any real statute.',
   },
 ];
@@ -87,15 +87,15 @@ const DEMO_CITATIONS: DemoSearchItem[] = [
     id: 'demo-citation-0001',
     type: 'CITATION',
     title: '(2019) 4 SCC 1 (Demo Citation)',
-    snippet: 'Sample citation entry provided for Beta Preview demonstration only.',
-    body: 'This is a sample citation reference provided for Beta Preview demonstration only — not a real reported case.',
+    snippet: 'Sample citation entry provided for Product Review demonstration only.',
+    body: 'This is a sample citation reference provided for Product Review demonstration only — not a real reported case.',
   },
   {
     id: 'demo-citation-0002',
     type: 'CITATION',
     title: 'AIR 2021 SC 123 (Demo Citation)',
-    snippet: 'Sample citation entry provided for Beta Preview demonstration only.',
-    body: 'This is a sample citation reference provided for Beta Preview demonstration only — not a real reported case.',
+    snippet: 'Sample citation entry provided for Product Review demonstration only.',
+    body: 'This is a sample citation reference provided for Product Review demonstration only — not a real reported case.',
   },
 ];
 
@@ -130,7 +130,7 @@ function toResultItem(item: DemoSearchItem) {
 /**
  * Case-insensitive substring match across the synthetic Judgments / Acts /
  * Sections / Citations dataset — deliberately simple (no similarity
- * ranking, no database) since this exists only to give Beta Preview
+ * ranking, no database) since this exists only to give Product Review
  * visitors something real to click through, not to demonstrate search
  * relevance quality.
  */
