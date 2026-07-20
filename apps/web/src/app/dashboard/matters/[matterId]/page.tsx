@@ -11,7 +11,13 @@ import {
   type MockMatter,
   type ECourtsReference,
 } from '../mock-matters';
-import { ECourtsCompactStrip, ECourtsReferenceSection, CheckECourtsModal, AddCnrModal, useECourtsReference } from '../ecourts';
+import {
+  ECourtsCompactStrip,
+  ECourtsReferenceSection,
+  CheckECourtsCaseUpdateModal,
+  useECourtsReference,
+  useMatterProceedingOverride,
+} from '../ecourts';
 
 const FALLBACK_ECOURTS_REF: ECourtsReference = {
   cnrNumber: null,
@@ -19,13 +25,23 @@ const FALLBACK_ECOURTS_REF: ECourtsReference = {
   courtEstablishment: null,
   district: null,
   state: null,
+  caseType: null,
+  year: null,
+  searchCaseNumber: null,
   officialSourceLink: OFFICIAL_ECOURTS_URL,
   lastCheckedAt: null,
   lastConfirmedAt: null,
   confirmedBy: null,
   verificationStatus: 'Not checked',
   synchronisationMode: 'Manual verification',
+  officialCaseStatus: null,
+  courtroomOrBench: null,
+  latestOrderDate: null,
+  disposalStatus: null,
+  lastVerificationNote: null,
 };
+
+const FALLBACK_PROCEEDING_BASE = { id: '', stage: '', nextHearingDate: null as string | null, timeline: [] as MockMatter['timeline'] };
 
 type TabId = 'overview' | 'documents' | 'proceedings' | 'timeline' | 'tasks' | 'research' | 'parties' | 'arguments' | 'evidence';
 
@@ -84,16 +100,16 @@ function OverviewTab({
   matter,
   today,
   ecourtsRef,
-  onCheck,
-  onAddCnr,
+  proceeding,
+  onOpenECourts,
 }: {
   matter: MockMatter;
   today: string;
   ecourtsRef: ECourtsReference;
-  onCheck: () => void;
-  onAddCnr: () => void;
+  proceeding: { stage: string; nextHearingDate: string | null };
+  onOpenECourts: () => void;
 }) {
-  const remaining = daysRemaining(matter.nextHearingDate, today);
+  const remaining = daysRemaining(proceeding.nextHearingDate, today);
   return (
     <div className="space-y-4">
       <SectionCard title="Matter Identity">
@@ -105,7 +121,7 @@ function OverviewTab({
         </div>
       </SectionCard>
 
-      <ECourtsReferenceSection matterTitle={matter.title} ecourtsRef={ecourtsRef} onCheck={onCheck} onAddCnr={onAddCnr} />
+      <ECourtsReferenceSection matterTitle={matter.title} ecourtsRef={ecourtsRef} onOpen={onOpenECourts} />
 
       <SectionCard title="Parties">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -116,8 +132,8 @@ function OverviewTab({
 
       <SectionCard title="Proceeding Status">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Current Stage" value={matter.stage} />
-          <Field label="Next Hearing" value={formatMockDate(matter.nextHearingDate)} />
+          <Field label="Current Stage" value={proceeding.stage} />
+          <Field label="Next Hearing" value={formatMockDate(proceeding.nextHearingDate)} />
           <Field label="Purpose of Next Hearing" value={matter.purposeOfNextHearing || 'Not yet recorded'} />
           <Field
             label="Days Remaining"
@@ -218,8 +234,8 @@ function ProceedingsTab({ matter }: { matter: MockMatter }) {
   );
 }
 
-function TimelineTab({ matter }: { matter: MockMatter }) {
-  const sorted = [...matter.timeline].sort((a, b) => (a.date < b.date ? -1 : 1));
+function TimelineTab({ timeline }: { timeline: MockMatter['timeline'] }) {
+  const sorted = [...timeline].sort((a, b) => (a.date < b.date ? -1 : 1));
   if (sorted.length === 0) {
     return <div className="text-center py-10 bg-white border border-[#E7DFC9]/80 rounded-xl"><p className="text-xs font-semibold text-[#8A7A56]">No timeline events recorded.</p></div>;
   }
@@ -420,8 +436,8 @@ function MatterDetailContent() {
 
   const matter = getMockMatterById(matterId);
   const [ecourtsRef, setEcourtsPatch] = useECourtsReference(matterId, matter?.ecourtsReference ?? FALLBACK_ECOURTS_REF);
-  const [showCheckModal, setShowCheckModal] = React.useState(false);
-  const [showAddCnrModal, setShowAddCnrModal] = React.useState(false);
+  const [proceeding, applyProceedingUpdate] = useMatterProceedingOverride(matter ?? FALLBACK_PROCEEDING_BASE);
+  const [showECourtsModal, setShowECourtsModal] = React.useState(false);
 
   if (!matter) {
     return (
@@ -464,19 +480,14 @@ function MatterDetailContent() {
           <Field label="Represented Party" value={matter.representedParty} />
           <Field label="Procedural Role" value={matter.procedureRole} />
           <Field label="Matter Status" value={matter.status} />
-          <Field label="Current Stage" value={matter.stage} />
-          <Field label="Next Hearing" value={formatMockDate(matter.nextHearingDate)} />
+          <Field label="Current Stage" value={proceeding.stage} />
+          <Field label="Next Hearing" value={formatMockDate(proceeding.nextHearingDate)} />
           <Field label="Advocate Reference" value={matter.advocateReferenceNumber} />
           {matter.earlierCaseReference && (
             <Field label="Earlier Case Reference" value={matter.earlierCaseReference.caseNumber} />
           )}
         </div>
-        <ECourtsCompactStrip
-          matterTitle={matter.title}
-          ecourtsRef={ecourtsRef}
-          onCheck={() => setShowCheckModal(true)}
-          onAddCnr={() => setShowAddCnrModal(true)}
-        />
+        <ECourtsCompactStrip matterTitle={matter.title} ecourtsRef={ecourtsRef} onOpen={() => setShowECourtsModal(true)} />
       </div>
 
       {/* Primary actions */}
@@ -549,15 +560,15 @@ function MatterDetailContent() {
               matter={matter}
               today={today}
               ecourtsRef={ecourtsRef}
-              onCheck={() => setShowCheckModal(true)}
-              onAddCnr={() => setShowAddCnrModal(true)}
+              proceeding={proceeding}
+              onOpenECourts={() => setShowECourtsModal(true)}
             />
             {isClosed && <ClosureSection matter={matter} />}
           </div>
         )}
         {activeTab === 'documents' && <DocumentsTab matter={matter} onNotice={setNotice} />}
         {activeTab === 'proceedings' && <ProceedingsTab matter={matter} />}
-        {activeTab === 'timeline' && <TimelineTab matter={matter} />}
+        {activeTab === 'timeline' && <TimelineTab timeline={proceeding.timeline} />}
         {activeTab === 'tasks' && <TasksTab matter={matter} />}
         {activeTab === 'research' && <ResearchTab matter={matter} />}
         {activeTab === 'parties' && <PartiesTab matter={matter} />}
@@ -565,18 +576,15 @@ function MatterDetailContent() {
         {activeTab === 'evidence' && <EvidenceTab matter={matter} />}
       </div>
 
-      {showCheckModal && ecourtsRef.cnrNumber && (
-        <CheckECourtsModal cnrNumber={ecourtsRef.cnrNumber} onClose={() => setShowCheckModal(false)} />
-      )}
-      {showAddCnrModal && (
-        <AddCnrModal
-          matterTitle={matter.title}
-          onCancel={() => setShowAddCnrModal(false)}
-          onConfirm={(cnr) => {
-            setEcourtsPatch({ cnrNumber: cnr, verificationStatus: 'Not checked', synchronisationMode: 'Manual verification' });
-            setShowAddCnrModal(false);
-            setNotice(`CNR linked (prototype only — not persisted to a database).`);
-          }}
+      {showECourtsModal && (
+        <CheckECourtsCaseUpdateModal
+          matter={matter}
+          ecourtsRef={ecourtsRef}
+          proceeding={proceeding}
+          onClose={() => setShowECourtsModal(false)}
+          onApplyEcourtsPatch={setEcourtsPatch}
+          onRecordProceedingUpdate={applyProceedingUpdate}
+          onNotice={setNotice}
         />
       )}
     </div>

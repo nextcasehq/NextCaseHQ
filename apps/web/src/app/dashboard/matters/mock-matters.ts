@@ -105,12 +105,25 @@ export interface ECourtsReference {
   courtEstablishment: string | null;
   district: string | null;
   state: string | null;
+  /** Case type as used in eCourts' Search by Case Number (e.g. "Civil Suit"). */
+  caseType: string | null;
+  /** Year of institution, for Search by Case Number. */
+  year: string | null;
+  /** The case number as entered for Search by Case Number — distinct from
+   * MockMatter.caseNumber's full display form (e.g. "214" vs "O.S. No. 214/2024"). */
+  searchCaseNumber: string | null;
   officialSourceLink: string;
   lastCheckedAt: string | null;
   lastConfirmedAt: string | null;
   confirmedBy: string | null;
   verificationStatus: ECourtsVerificationStatus;
   synchronisationMode: ECourtsSyncMode;
+  /** Fields only ever populated by an advocate-confirmed "Record an update". */
+  officialCaseStatus: string | null;
+  courtroomOrBench: string | null;
+  latestOrderDate: string | null;
+  disposalStatus: string | null;
+  lastVerificationNote: string | null;
 }
 
 export const OFFICIAL_ECOURTS_URL = 'https://services.ecourts.gov.in/ecourtindia_v6/';
@@ -242,12 +255,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'Civil Judge (Senior Division), Pune',
       district: 'Pune',
       state: 'Maharashtra',
+      caseType: 'Civil Suit',
+      year: '2024',
+      searchCaseNumber: '214',
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: '2026-07-14T10:30:00+05:30',
       lastConfirmedAt: '2026-07-14T10:32:00+05:30',
       confirmedBy: 'Adv. Kavita Deshmukh',
       verificationStatus: 'Advocate confirmed',
       synchronisationMode: 'Manual verification',
+      officialCaseStatus: 'Pending',
+      courtroomOrBench: 'Court Room 4',
+      latestOrderDate: '2026-06-18',
+      disposalStatus: 'Pending',
+      lastVerificationNote: 'Confirmed evidence stage matches the eCourts record.',
     },
     representation: [{ advocateName: 'Adv. Kavita Deshmukh', role: 'Lead Counsel', period: 'Jan 2024 – Present', status: 'Active' }],
     documents: [
@@ -330,12 +351,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'Sessions Judge, Nagpur',
       district: 'Nagpur',
       state: 'Maharashtra',
+      caseType: 'Criminal Miscellaneous Petition',
+      year: '2026',
+      searchCaseNumber: '1187',
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: '2026-07-05T09:00:00+05:30',
       lastConfirmedAt: '2026-07-05T09:05:00+05:30',
       confirmedBy: 'Adv. Suresh Bhonsle',
       verificationStatus: 'Needs rechecking',
       synchronisationMode: 'Manual verification',
+      officialCaseStatus: 'Pending',
+      courtroomOrBench: 'Court Room 2',
+      latestOrderDate: '2026-07-03',
+      disposalStatus: 'Pending',
+      lastVerificationNote: 'Needs rechecking — last checked before the bail arguments hearing.',
     },
     representation: [{ advocateName: 'Adv. Suresh Bhonsle', role: 'Lead Counsel', period: 'Jul 2026 – Present', status: 'Active' }],
     documents: [
@@ -415,12 +444,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'High Court of Judicature at Allahabad',
       district: 'Allahabad (Prayagraj)',
       state: 'Uttar Pradesh',
+      caseType: 'Writ Petition',
+      year: '2025',
+      searchCaseNumber: '8823',
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: '2026-07-10T11:15:00+05:30',
       lastConfirmedAt: null,
       confirmedBy: null,
       verificationStatus: 'Pending advocate confirmation',
       synchronisationMode: 'Manual verification',
+      officialCaseStatus: 'Pending',
+      courtroomOrBench: 'Court No. 34',
+      latestOrderDate: '2025-12-08',
+      disposalStatus: 'Pending',
+      lastVerificationNote: 'Checked once; advocate confirmation still pending.',
     },
     representation: [{ advocateName: 'Adv. Prashant Tiwari', role: 'Lead Counsel', period: 'Nov 2025 – Present', status: 'Active' }],
     documents: [
@@ -493,12 +530,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'High Court of Judicature at Patna',
       district: 'Patna',
       state: 'Bihar',
+      caseType: 'First Appeal',
+      year: '2026',
+      searchCaseNumber: '442',
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: null,
       lastConfirmedAt: null,
       confirmedBy: null,
       verificationStatus: 'Not checked',
       synchronisationMode: 'Authorised API sync unavailable',
+      officialCaseStatus: null,
+      courtroomOrBench: null,
+      latestOrderDate: null,
+      disposalStatus: null,
+      lastVerificationNote: null,
     },
     representation: [
       { advocateName: 'Adv. Vinod Sinha', role: 'Trial Counsel', period: '2019 – 2025', status: 'Previous' },
@@ -591,12 +636,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'Supreme Court of India',
       district: null,
       state: null,
+      caseType: 'Special Leave Petition',
+      year: null,
+      searchCaseNumber: null,
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: null,
       lastConfirmedAt: null,
       confirmedBy: null,
       verificationStatus: 'Not checked',
       synchronisationMode: 'Manual verification',
+      officialCaseStatus: null,
+      courtroomOrBench: null,
+      latestOrderDate: null,
+      disposalStatus: null,
+      lastVerificationNote: null,
     },
     representation: [{ advocateName: 'Adv. Meenakshi Pillai', role: 'Advocate-on-Record (proposed)', period: '2026 – Present', status: 'Active' }],
     documents: [
@@ -663,12 +716,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'District Consumer Disputes Redressal Commission, Ernakulam',
       district: 'Ernakulam',
       state: 'Kerala',
+      caseType: 'Consumer Complaint',
+      year: '2025',
+      searchCaseNumber: '331',
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: null,
       lastConfirmedAt: null,
       confirmedBy: null,
       verificationStatus: 'Not checked',
       synchronisationMode: 'Manual verification',
+      officialCaseStatus: null,
+      courtroomOrBench: null,
+      latestOrderDate: null,
+      disposalStatus: null,
+      lastVerificationNote: null,
     },
     representation: [{ advocateName: 'Adv. Lakshmi Menon', role: 'Lead Counsel', period: 'Aug 2025 – Present', status: 'Active' }],
     documents: [
@@ -752,12 +813,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'Civil Judge (Junior Division), Jaipur',
       district: 'Jaipur',
       state: 'Rajasthan',
+      caseType: 'Execution Petition',
+      year: '2026',
+      searchCaseNumber: '58',
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: null,
       lastConfirmedAt: null,
       confirmedBy: null,
       verificationStatus: 'Not checked',
       synchronisationMode: 'Manual verification',
+      officialCaseStatus: null,
+      courtroomOrBench: null,
+      latestOrderDate: null,
+      disposalStatus: null,
+      lastVerificationNote: null,
     },
     representation: [{ advocateName: 'Adv. Rohit Agarwal', role: 'Lead Counsel', period: '2022 – Present', status: 'Active' }],
     documents: [
@@ -823,12 +892,20 @@ export const MOCK_MATTERS: MockMatter[] = [
       courtEstablishment: 'Civil Judge (Junior Division), Bengaluru',
       district: 'Bengaluru',
       state: 'Karnataka',
+      caseType: 'Civil Suit',
+      year: '2023',
+      searchCaseNumber: '55',
       officialSourceLink: OFFICIAL_ECOURTS_URL,
       lastCheckedAt: '2025-09-12T16:00:00+05:30',
       lastConfirmedAt: '2025-09-12T16:05:00+05:30',
       confirmedBy: 'Adv. Priya Ramachandran',
       verificationStatus: 'Advocate confirmed',
       synchronisationMode: 'Manual verification',
+      officialCaseStatus: 'Disposed',
+      courtroomOrBench: 'Court Room 1',
+      latestOrderDate: '2025-09-12',
+      disposalStatus: 'Disposed — Settled',
+      lastVerificationNote: 'Confirmed disposal and settlement terms against the eCourts record.',
     },
     representation: [{ advocateName: 'Adv. Priya Ramachandran', role: 'Lead Counsel', period: '2023 – 2025', status: 'Previous' }],
     documents: [
