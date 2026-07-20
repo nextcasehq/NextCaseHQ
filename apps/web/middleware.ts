@@ -81,22 +81,27 @@ export async function middleware(request: NextRequest) {
       }
     }
     if (!hasValidSession) {
-      // Product Review Mode exemption: the bare launch page, plus the two
+      // Product Review Mode exemption: the bare launch page, the two
       // landing-page Action Card destinations under /dashboard
-      // (Ask AI -> ai-chamber, Draft Document -> draft-builder). Every
-      // other /dashboard/* sub-route (cases, search, audit, evidence,
-      // settings) still requires a real session and redirects as before —
-      // this is a narrow, explicit allowlist, not a blanket exemption.
-      // Neither exempted page fetches real tenant data: ai-chamber's
-      // TriPaneChamber runs on local sample state and only gates the
-      // actual Ask AI network call (still 401s, unchanged); draft-builder
-      // is 100% client-side mock content with no backend calls at all.
+      // (Ask AI -> ai-chamber, Draft Document -> draft-builder), and the
+      // Matter Register prototype (/dashboard/matters and its [matterId]
+      // detail page). Every other /dashboard/* sub-route (cases, search,
+      // audit, evidence, settings) still requires a real session and
+      // redirects as before — this is a narrow, explicit allowlist, not a
+      // blanket exemption. None of the exempted pages fetch real tenant
+      // data: ai-chamber's TriPaneChamber runs on local sample state and
+      // only gates the actual Ask AI network call (still 401s, unchanged);
+      // draft-builder and the Matter Register prototype are both 100%
+      // client-side mock content with no backend calls at all.
       const PRODUCT_REVIEW_DASHBOARD_PATHS = new Set([
         '/dashboard',
         '/dashboard/ai-chamber',
         '/dashboard/draft-builder',
+        '/dashboard/matters',
       ]);
-      const isProductReviewExemptPage = PRODUCT_REVIEW_DASHBOARD_PATHS.has(pathname) && isProductReviewModeEnabled();
+      const isProductReviewExemptPage =
+        (PRODUCT_REVIEW_DASHBOARD_PATHS.has(pathname) || pathname.startsWith('/dashboard/matters/')) &&
+        isProductReviewModeEnabled();
       if (!isProductReviewExemptPage) {
         return NextResponse.redirect(new URL('/login', request.url));
       }

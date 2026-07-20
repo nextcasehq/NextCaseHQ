@@ -248,11 +248,16 @@ function DashboardPageContent() {
 
         {/* Matter Registers — supporting section, still clearly accessible */}
         <section className="order-4 lg:order-3">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h2 className="text-sm font-black uppercase tracking-widest text-[#111111]">Matter Registers</h2>
-          <Link href="/matters" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            View All →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard/matters" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+              Explore Matter Register Workspace →
+            </Link>
+            <Link href="/matters" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+              View All →
+            </Link>
+          </div>
         </div>
         {recentMatters === null ? (
           <div className="flex justify-center py-10">

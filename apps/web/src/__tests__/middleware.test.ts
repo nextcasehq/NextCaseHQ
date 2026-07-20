@@ -162,9 +162,23 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     }
   });
 
-  test('disabled by default: /dashboard/ai-chamber and /dashboard/draft-builder still redirect to /login (exemption only applies when the flag is on)', async () => {
+  test('enabled + no session: /dashboard/matters (Matter Register prototype list) is allowed through, no redirect', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'true';
+    const response = await middleware(buildDashboardRequest(undefined, '/dashboard/matters'));
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  test('enabled + no session: /dashboard/matters/[matterId] (Matter Register prototype detail) is allowed through, no redirect', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'true';
+    const response = await middleware(buildDashboardRequest(undefined, '/dashboard/matters/mock-matter-001'));
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  test('disabled by default: /dashboard/ai-chamber, /dashboard/draft-builder, and /dashboard/matters still redirect to /login (exemption only applies when the flag is on)', async () => {
     delete process.env.PRODUCT_REVIEW_MODE;
-    for (const path of ['/dashboard/ai-chamber', '/dashboard/draft-builder']) {
+    for (const path of ['/dashboard/ai-chamber', '/dashboard/draft-builder', '/dashboard/matters', '/dashboard/matters/mock-matter-001']) {
       const response = await middleware(buildDashboardRequest(undefined, path));
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/login');
