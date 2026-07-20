@@ -117,11 +117,36 @@ describe('middleware — Beta Preview (BETA_PREVIEW_ENABLED)', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
-  test('enabled + no session: /dashboard sub-routes still redirect to /login', async () => {
+  test('enabled + no session: /dashboard/ai-chamber (Ask AI Action Card destination) is allowed through, no redirect', async () => {
     process.env.BETA_PREVIEW_ENABLED = 'true';
     const response = await middleware(buildDashboardRequest(undefined, '/dashboard/ai-chamber'));
-    expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/login');
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  test('enabled + no session: /dashboard/draft-builder (Draft Document Action Card destination) is allowed through, no redirect', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildDashboardRequest(undefined, '/dashboard/draft-builder'));
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  test('enabled + no session: every other /dashboard sub-route still redirects to /login (narrow allowlist, not a blanket exemption)', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    for (const path of ['/dashboard/cases', '/dashboard/search', '/dashboard/audit', '/dashboard/evidence', '/dashboard/settings']) {
+      const response = await middleware(buildDashboardRequest(undefined, path));
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toContain('/login');
+    }
+  });
+
+  test('disabled by default: /dashboard/ai-chamber and /dashboard/draft-builder still redirect to /login (exemption only applies when the flag is on)', async () => {
+    delete process.env.BETA_PREVIEW_ENABLED;
+    for (const path of ['/dashboard/ai-chamber', '/dashboard/draft-builder']) {
+      const response = await middleware(buildDashboardRequest(undefined, path));
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toContain('/login');
+    }
   });
 
   test('enabled + no session: GET /api/matters/{demo id} returns the static demo Matter', async () => {

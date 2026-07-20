@@ -92,6 +92,13 @@ export const TriPaneChamber = () => {
         body: JSON.stringify({ question, case_id: caseContext?.id }),
       });
 
+      if (response.status === 401) {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          text: 'Ask AI is available after beta — this is a preview of the workspace only.'
+        }]);
+        return;
+      }
       if (response.status === 422) {
         setChatMessages(prev => [...prev, {
           role: 'assistant',

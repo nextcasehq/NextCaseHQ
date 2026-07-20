@@ -40,6 +40,14 @@ function PrepareNewDocumentForm() {
   const presetMatterId = searchParams.get('matter_id');
 
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET
+  // /api/beta-status — a real, signed-in session always gets a 404 for
+  // this path, so this can't be spoofed into showing for a real tenant.
+  // Governs both the guard on Generate/Save below and the neutral wording
+  // on the needsAuth wall (a defense-in-depth backstop in case this
+  // hasn't resolved yet when a write is attempted).
+  const [betaModeActive, setBetaModeActive] = useState(false);
+  const [showPreviewPrompt, setShowPreviewPrompt] = useState(false);
   const [step, setStep] = useState<Step>('CATEGORY');
   const [category, setCategory] = useState<DocumentCategory | null>(null);
   const [documentTypeSlug, setDocumentTypeSlug] = useState<string | null>(null);
@@ -63,6 +71,12 @@ function PrepareNewDocumentForm() {
       .then((data) => {
         if (data) setMatters(data.matters);
       });
+    fetch('/api/beta-status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.enabled) setBetaModeActive(true);
+      })
+      .catch(() => {});
   }, []);
 
   const goTo = (target: Step) => {
@@ -74,6 +88,14 @@ function PrepareNewDocumentForm() {
 
   const handleGenerate = async () => {
     if (!category || !documentTypeSlug) return;
+    // Beta Preview is read-only — draft generation is a private AI action,
+    // so it gets an inline prompt instead of ever attempting the real
+    // (still fully protected) request, and without losing the visitor's
+    // in-progress Category/Type/Matter/Facts selections.
+    if (betaModeActive) {
+      setShowPreviewPrompt(true);
+      return;
+    }
     setGenerating(true);
     setError(null);
     try {
@@ -107,6 +129,11 @@ function PrepareNewDocumentForm() {
 
   const handleSave = async () => {
     if (!draftContent || !documentTypeSlug) return;
+    // Same Beta Preview guard as Generate — saving is a write action.
+    if (betaModeActive) {
+      setShowPreviewPrompt(true);
+      return;
+    }
     const typeDef = documentTypesByCategory(category!).find((t) => t.slug === documentTypeSlug);
     const fileName = `${(typeDef?.label || 'Document').replace(/\s+/g, '_')}.txt`;
     setSaving(true);
@@ -142,12 +169,22 @@ function PrepareNewDocumentForm() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to prepare a document.</p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {betaModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to prepare a document.</p>
+            <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+              Go to Login →
+            </Link>
+          </>
+        )}
       </div>
     );
   }
@@ -155,11 +192,34 @@ function PrepareNewDocumentForm() {
   return (
     <article>
       <header className="mb-6">
-        <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Prepare New Document</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Prepare New Document</h1>
+          {betaModeActive && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
+              Beta Preview
+            </span>
+          )}
+        </div>
         <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mt-1">
           Step {stepIndex + 1} of {STEP_ORDER.length}
         </p>
       </header>
+
+      {showPreviewPrompt && (
+        <div className="mb-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs font-semibold text-[#5C5340]">
+            Generating and saving documents is available after beta.
+          </p>
+          <button
+            onClick={() => setShowPreviewPrompt(false)}
+            className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs font-semibold text-red-700">{error}</div>
