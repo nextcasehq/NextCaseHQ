@@ -29,7 +29,11 @@ export default function Navbar() {
       </div>
       
       {/* Navigation Links - Desktop */}
-      <nav className="hidden md:flex items-center gap-8">
+      {/* Switches at 1120px, not the stock md (768px) breakpoint: the full
+          nav + CTA content measures ~860px, so it doesn't actually fit
+          until viewport width is ~1100px+ (verified empirically) — md:
+          left it overflowing on every tablet width (e.g. 834px). */}
+      <nav className="hidden min-[1120px]:flex items-center gap-8">
         {menuItems.map((item) => (
           <Link 
             key={item.path} 
@@ -42,7 +46,7 @@ export default function Navbar() {
       </nav>
 
       {/* CTA Section */}
-      <div className="hidden md:flex items-center gap-4">
+      <div className="hidden min-[1120px]:flex items-center gap-4">
         <Link
           href={`${baseUrl}/dashboard`}
           className="text-sm font-medium text-[#CFC3A8] hover:text-[#F6F1E7] transition-colors mr-2"
@@ -51,7 +55,7 @@ export default function Navbar() {
         </Link>
         <Link
           href={`${baseUrl}/login`}
-          className="bg-[#C6A253] text-[#241E17] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#E4C77E] transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
+          className="whitespace-nowrap bg-[#C6A253] text-[#241E17] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#E4C77E] transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
         >
           Sign In
         </Link>
@@ -60,7 +64,7 @@ export default function Navbar() {
       {/* Mobile Burger Menu Button */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="md:hidden flex flex-col justify-center items-center w-8 h-8 rounded-lg hover:bg-[#C6A253]/15 transition-colors"
+        className="min-[1120px]:hidden flex flex-col justify-center items-center w-8 h-8 rounded-lg hover:bg-[#C6A253]/15 transition-colors"
         aria-label="Toggle navigation menu"
       >
         <span className={`w-5 h-0.5 bg-[#E4C77E] rounded transition-transform ${mobileMenuOpen ? 'rotate-45 translate-y-1' : ''}`}></span>
@@ -70,7 +74,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <nav aria-label="Mobile navigation" className="absolute top-16 left-0 w-full bg-[#0E241B] border-b border-[#C6A253]/25 flex flex-col p-6 gap-4 shadow-lg md:hidden animate-fade-in">
+        <nav aria-label="Mobile navigation" className="absolute top-16 left-0 w-full bg-[#0E241B] border-b border-[#C6A253]/25 flex flex-col p-6 gap-4 shadow-lg min-[1120px]:hidden animate-fade-in">
           {menuItems.map((item) => (
             <Link
               key={item.path}
