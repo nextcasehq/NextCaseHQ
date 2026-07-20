@@ -422,6 +422,55 @@ export default function MatterDetailsChamberPage() {
           </button>
         </div>
 
+        {/* Command Center — Search Experience + Action Cards (Product
+            Direction, Phase A). The search field submits to the existing,
+            already-shipped GET /search page (backed by GET /api/search),
+            matter-scoped exactly like the "Search this Matter" link it
+            replaces — no new backend surface. Action Cards are real
+            navigational shortcuts to already-existing routes, not fabricated
+            functionality; workflow-stage-aware prioritization is Phase B. */}
+        <div className="mb-8">
+          <form
+            action="/search"
+            method="get"
+            className="relative flex items-center bg-white border border-[#E7DFC9] rounded-xl shadow-sm focus-within:border-[#8A6D2F] transition-all"
+          >
+            <input type="hidden" name="matter_id" value={id} />
+            <input
+              type="text"
+              name="q"
+              placeholder="Search cases, Acts, Sections, judgments, or ask AI about your matter..."
+              className="w-full bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-[#B0A588] px-5 py-4 md:py-5"
+            />
+            <button
+              type="submit"
+              aria-label="Search"
+              className="flex-none pr-4 md:pr-5 text-[#8A6D2F] hover:text-[#6F5624] bg-transparent border-none outline-none cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </form>
+
+          <div className="mt-3 flex flex-wrap gap-2.5">
+            {[
+              { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note` },
+              { label: '📤 Upload Documents', href: `/documents/new?matter_id=${id}` },
+              { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
+              { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
+            ].map((card) => (
+              <Link
+                key={card.label}
+                href={card.href}
+                className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
+              >
+                {card.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             {/* Prepare for Hearing — Seven-Day Case Preparation Workflow
@@ -489,7 +538,7 @@ export default function MatterDetailsChamberPage() {
 
             {/* Matter Health */}
             {health && (
-              <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <div id="health" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Matter Health</h3>
                   {health.needs_attention && (
@@ -669,7 +718,7 @@ export default function MatterDetailsChamberPage() {
                 </form>
               </div>
             ) : (
-              <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm space-y-6">
+              <div id="overview" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm space-y-6 scroll-mt-6">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Matter Overview</h3>
                   <p className="text-sm text-[#4A4130] leading-relaxed font-medium whitespace-pre-line">
@@ -698,7 +747,7 @@ export default function MatterDetailsChamberPage() {
             )}
 
             {/* Proceedings Section */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="proceedings" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Proceedings</h3>
@@ -785,7 +834,7 @@ export default function MatterDetailsChamberPage() {
                 entries (source_type='MANUAL'), same table/list since
                 Milestone 1 — this section only renames and repositions it,
                 the "Add Entry" capability is unchanged. */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="timeline" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Matter Timeline</h3>
                 <button
@@ -849,7 +898,7 @@ export default function MatterDetailsChamberPage() {
                 (extended, not duplicated, with document_type/version_count/
                 updated_at) — same reuse pattern as every other section on
                 this page. */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="documents" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Documents</h3>
                 <Link
@@ -898,7 +947,7 @@ export default function MatterDetailsChamberPage() {
 
           {/* Right Sidebar - Team */}
           <div className="space-y-6">
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="team" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Team</h3>
               {participants.length > 0 ? (
                 <div className="space-y-3">
