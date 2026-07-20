@@ -26,13 +26,14 @@ export default function HeroSection() {
 
   return (
     <section className="relative overflow-hidden bg-white">
-      {/* Premium "modern glass office" abstraction — deliberately not a
-          photo (no licensing risk, no dated-library look possible). A
-          clearly-visible warm/cool gradient mesh (gold glow top-left, glass
-          blue-grey glow bottom-right), a precision grid for a technology
-          feel, and a wide glass-skyline silhouette along the bottom edge.
-          Every layer here is well above the near-invisible opacities the
-          first pass used — this is meant to read immediately as a designed
+      {/* Premium "modern advocate's office" scene — an original vector
+          illustration (not a photo: zero licensing risk), built to the
+          Product Owner's reference: glass wall + city skyline, dark wood
+          shelving lined with law books under brass accent lighting, a
+          marble accent panel, and a desk in the foreground. Layered under
+          a warm/cool gradient mesh and a precision grid for a technology
+          feel. Every layer here is well above the near-invisible opacities
+          the first pass used — this reads immediately as a designed
           background, not a plain page. */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FBF7EC] via-[#F3EAD3] to-[#E4EDEC]" />
@@ -53,35 +54,108 @@ export default function HeroSection() {
           </defs>
           <rect width="100%" height="100%" fill="url(#hero-grid)" />
         </svg>
-        {/* Wide glass-skyline silhouette along the bottom edge — modern
-            glass-and-steel towers, not old shelving. Deliberately behind
-            the content column (opacity kept moderate) and full-width so
-            it reads clearly at every breakpoint without competing with
-            the search bar or Action Cards sitting on solid white/cards. */}
+        {/* Modern advocate's-office illustration — an original vector scene
+            (not a photo, so zero licensing risk), composed to the same
+            brief as the reference: floor-to-ceiling glass with a city
+            skyline on one side, dark wood-panelled shelving lined with law
+            books under warm brass accent lighting and a marble accent
+            panel on the other, a dark wood desk with a thin gold edge in
+            the foreground. Kept to a moderate opacity and anchored to the
+            bottom/sides so the search bar and Action Cards — sitting in
+            solid white/cards in the clear centre — are never competed
+            with. */}
         <svg
-          viewBox="0 0 1440 260"
-          preserveAspectRatio="none"
-          className="absolute inset-x-0 bottom-0 h-40 w-full opacity-[0.18] sm:h-48 md:h-56"
-          fill="none"
+          viewBox="0 0 1440 560"
+          preserveAspectRatio="xMidYMax slice"
+          className="absolute inset-0 h-full w-full opacity-[0.38]"
         >
-          <g stroke="#8A6D2F" strokeWidth="1.5">
-            <rect x="60" y="90" width="120" height="170" />
-            <rect x="210" y="40" width="100" height="220" />
-            <rect x="340" y="120" width="90" height="140" />
-            <rect x="980" y="70" width="110" height="190" />
-            <rect x="1120" y="130" width="90" height="130" />
-            <rect x="1240" y="20" width="120" height="240" />
-            {[60, 90, 120, 150, 180, 210, 240].map((y) => (
-              <line key={`l-${y}`} x1="210" y1={y} x2="310" y2={y} />
-            ))}
-            {[40, 70, 100, 130, 160, 190, 220, 250].map((y) => (
-              <line key={`r-${y}`} x1="1240" y1={y} x2="1360" y2={y} />
+          <defs>
+            <linearGradient id="hero-sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#EAF2F1" />
+              <stop offset="100%" stopColor="#CFE1DE" />
+            </linearGradient>
+            <linearGradient id="hero-wood" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7A5A3A" />
+              <stop offset="100%" stopColor="#4E3620" />
+            </linearGradient>
+            <linearGradient id="hero-marble" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#F4F1EA" />
+              <stop offset="100%" stopColor="#E2DDD0" />
+            </linearGradient>
+            <linearGradient id="hero-desk" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#5A4028" />
+              <stop offset="100%" stopColor="#382415" />
+            </linearGradient>
+          </defs>
+
+          {/* Left — floor-to-ceiling window onto a city skyline */}
+          <g>
+            <rect x="0" y="0" width="520" height="560" fill="url(#hero-sky)" />
+            <g fill="#9FB3B0" opacity="0.7">
+              <rect x="30" y="260" width="70" height="180" />
+              <rect x="115" y="180" width="60" height="260" />
+              <rect x="190" y="300" width="55" height="140" />
+              <rect x="260" y="220" width="65" height="220" />
+              <rect x="340" y="320" width="50" height="120" />
+              <rect x="405" y="240" width="70" height="200" />
+            </g>
+            {/* window mullions */}
+            <g stroke="#FFFFFF" strokeOpacity="0.6" strokeWidth="4">
+              <line x1="175" y1="0" x2="175" y2="560" />
+              <line x1="350" y1="0" x2="350" y2="560" />
+              <line x1="0" y1="185" x2="520" y2="185" />
+              <line x1="0" y1="370" x2="520" y2="370" />
+            </g>
+          </g>
+
+          {/* Centre — marble accent panel */}
+          <rect x="520" y="0" width="220" height="560" fill="url(#hero-marble)" />
+          <g stroke="#C9C1AE" strokeWidth="1.5" opacity="0.5" fill="none">
+            <path d="M540 40 Q 620 140 590 260 T 640 480" />
+            <path d="M700 20 Q 660 180 720 320 T 690 540" />
+          </g>
+
+          {/* Right — dark wood-panelled shelving, law books, brass accent lighting */}
+          <g>
+            <rect x="740" y="0" width="700" height="560" fill="url(#hero-wood)" />
+            <g stroke="#3A2814" strokeWidth="3">
+              <line x1="920" y1="0" x2="920" y2="560" />
+              <line x1="1100" y1="0" x2="1100" y2="560" />
+              <line x1="1280" y1="0" x2="1280" y2="560" />
+            </g>
+            {/* Book spines, three shelf rows */}
+            {[70, 210, 350].map((shelfY) => (
+              <g key={shelfY}>
+                {[760, 800, 835, 875, 960, 1000, 1040, 1120, 1160, 1200, 1300, 1340, 1380].map((x, i) => {
+                  const colors = ['#6B2737', '#1F3D2B', '#1B2A4A', '#4A3221', '#5C2A2A'];
+                  const w = 22 + (i % 3) * 6;
+                  const h = 130 + (i % 4) * 8;
+                  return (
+                    <rect
+                      key={x}
+                      x={x}
+                      y={shelfY + (150 - h)}
+                      width={w}
+                      height={h}
+                      fill={colors[i % colors.length]}
+                    />
+                  );
+                })}
+                {/* brass under-shelf accent light */}
+                <rect x="750" y={shelfY + 152} width="680" height="4" fill="#D9B978" opacity="0.85" />
+              </g>
             ))}
           </g>
+
+          {/* Foreground — desk with a thin gold edge, mostly faded by the
+              white overlay beneath the Action Cards/CTAs */}
+          <rect x="0" y="470" width="1440" height="90" fill="url(#hero-desk)" opacity="0.5" />
+          <rect x="0" y="470" width="1440" height="5" fill="#D9B978" opacity="0.6" />
         </svg>
-        {/* Soft fade so the skyline blends into the section below instead
-            of ending on a hard edge */}
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />
+        {/* Strong fade so the desk illustration never sits directly behind
+            the footnote text — the fade is tall enough to fully clear that
+            text's line, not just soften an edge. */}
+        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-white via-white/80 to-transparent" />
       </div>
 
       <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center px-6 pb-10 pt-8 text-center md:px-12 md:pt-10 lg:pt-12">
