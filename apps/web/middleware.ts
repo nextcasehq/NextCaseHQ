@@ -79,11 +79,23 @@ export async function middleware(request: NextRequest) {
       }
     }
     if (!hasValidSession) {
-      // Beta Preview exemption: only the bare launch page, never any
-      // sub-route (ai-chamber, cases, search, etc. all still require a
-      // real session — this only ever renders the read-only launch shell).
-      const isBetaPreviewLaunchPage = pathname === '/dashboard' && isBetaPreviewEnabled();
-      if (!isBetaPreviewLaunchPage) {
+      // Beta Preview exemption: the bare launch page, plus the two
+      // landing-page Action Card destinations under /dashboard
+      // (Ask AI -> ai-chamber, Draft Document -> draft-builder). Every
+      // other /dashboard/* sub-route (cases, search, audit, evidence,
+      // settings) still requires a real session and redirects as before —
+      // this is a narrow, explicit allowlist, not a blanket exemption.
+      // Neither exempted page fetches real tenant data: ai-chamber's
+      // TriPaneChamber runs on local sample state and only gates the
+      // actual Ask AI network call (still 401s, unchanged); draft-builder
+      // is 100% client-side mock content with no backend calls at all.
+      const BETA_PREVIEW_DASHBOARD_PATHS = new Set([
+        '/dashboard',
+        '/dashboard/ai-chamber',
+        '/dashboard/draft-builder',
+      ]);
+      const isBetaPreviewExemptPage = BETA_PREVIEW_DASHBOARD_PATHS.has(pathname) && isBetaPreviewEnabled();
+      if (!isBetaPreviewExemptPage) {
         return NextResponse.redirect(new URL('/login', request.url));
       }
     }

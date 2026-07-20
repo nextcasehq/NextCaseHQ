@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface DraftTemplate {
   name: string;
@@ -36,6 +36,26 @@ export default function DraftBuilderPage() {
   const [editorHeader, setEditorHeader] = useState(templates[0].header);
   const [aiCommand, setAiCommand] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET
+  // /api/beta-status — a real, signed-in session always gets a 404 for
+  // this path, so this can't be spoofed into showing for a real tenant.
+  // This page has no backend calls of its own (templates and the AI
+  // Refiner are both local, client-side sample content), so the badge is
+  // purely informational — there's nothing else to gate here.
+  const [betaPreview, setBetaPreview] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/beta-status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.enabled) setBetaPreview(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSelectTemplate = (template: DraftTemplate) => {
     setSelectedTemplate(template);
@@ -63,7 +83,15 @@ export default function DraftBuilderPage() {
     <div className="p-8 max-w-6xl mx-auto space-y-8 font-sans selection:bg-[#111111] selection:text-[#FDFBF7]">
       {/* Draft Builder Title */}
       <div className="border-b border-[#111111]/10 pb-4">
-        <h1 className="text-2xl font-black uppercase tracking-widest text-[#111111]">Draft Builder & Canvas</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl font-black uppercase tracking-widest text-[#111111]">Draft Builder & Canvas</h1>
+          {betaPreview && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C6A253]/40 bg-[#FBF6EA] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#C6A253]" aria-hidden="true" />
+              Beta Preview
+            </span>
+          )}
+        </div>
         <p className="text-sm font-serif italic text-[#111111]/60">WYSIWYG high-fidelity litigation document editor.</p>
       </div>
 
