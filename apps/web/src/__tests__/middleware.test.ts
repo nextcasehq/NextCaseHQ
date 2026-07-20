@@ -197,9 +197,16 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
-  test('disabled by default: /dashboard/ai-chamber, /dashboard/draft-builder, and /dashboard/matters still redirect to /login (exemption only applies when the flag is on)', async () => {
+  test('enabled + no session: /dashboard/credits (AI Credits & Usage page) is allowed through, no redirect', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'true';
+    const response = await middleware(buildDashboardRequest(undefined, '/dashboard/credits'));
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  test('disabled by default: /dashboard/ai-chamber, /dashboard/draft-builder, /dashboard/matters, and /dashboard/credits still redirect to /login (exemption only applies when the flag is on)', async () => {
     delete process.env.PRODUCT_REVIEW_MODE;
-    for (const path of ['/dashboard/ai-chamber', '/dashboard/draft-builder', '/dashboard/matters', '/dashboard/matters/mock-matter-001']) {
+    for (const path of ['/dashboard/ai-chamber', '/dashboard/draft-builder', '/dashboard/matters', '/dashboard/matters/mock-matter-001', '/dashboard/credits']) {
       const response = await middleware(buildDashboardRequest(undefined, path));
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/login');

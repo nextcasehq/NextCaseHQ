@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import LegalSearchWorkspace from './legal-search-workspace';
+import { LowBalanceBanner } from '@/components/ai-credits/credits-popover';
 
 interface RecentMatter {
   id: string;
@@ -203,6 +204,8 @@ function DashboardPageContent() {
   return (
     <div className="max-w-6xl mx-auto px-6 py-10 md:py-12 space-y-8">
       <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Dashboard</h1>
+
+      <LowBalanceBanner />
 
       {notice && (
         <div className="p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
