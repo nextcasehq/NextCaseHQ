@@ -10,7 +10,7 @@ import {
   type MockMatter,
   type MatterRegisterStatus,
 } from './mock-matters';
-import { ECourtsCompactStrip, CheckECourtsModal, AddCnrModal, useECourtsReference } from './ecourts';
+import { ECourtsCompactStrip, CheckECourtsCaseUpdateModal, useECourtsReference, useMatterProceedingOverride } from './ecourts';
 
 const FILTERS: Array<'All' | MatterRegisterStatus> = ['All', 'Active', 'Hearing Soon', 'Awaiting Filing', 'Closed'];
 
@@ -136,10 +136,10 @@ function StatusBadge({ status }: { status: MatterRegisterStatus }) {
 }
 
 function MatterCard({ matter, today, onNotice }: { matter: MockMatter; today: string; onNotice: (msg: string) => void }) {
-  const urgent = isUrgentHearing(matter.nextHearingDate, today);
   const [ecourtsRef, setEcourtsPatch] = useECourtsReference(matter.id, matter.ecourtsReference);
-  const [showCheckModal, setShowCheckModal] = React.useState(false);
-  const [showAddCnrModal, setShowAddCnrModal] = React.useState(false);
+  const [proceeding, applyProceedingUpdate] = useMatterProceedingOverride(matter);
+  const urgent = isUrgentHearing(proceeding.nextHearingDate, today);
+  const [showECourtsModal, setShowECourtsModal] = React.useState(false);
 
   return (
     <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm hover:border-[#E7DFC9] hover:shadow transition-all space-y-3 min-w-0">
@@ -177,11 +177,11 @@ function MatterCard({ matter, today, onNotice }: { matter: MockMatter; today: st
         </div>
         <div>
           <p className="font-bold uppercase tracking-wider text-[#8A7A56]">Current Stage</p>
-          <p className="text-[#3A3222] font-semibold truncate">{matter.stage}</p>
+          <p className="text-[#3A3222] font-semibold truncate">{proceeding.stage}</p>
         </div>
         <div>
           <p className="font-bold uppercase tracking-wider text-[#8A7A56]">Next Hearing</p>
-          <p className="text-[#3A3222] font-semibold truncate">{formatMockDate(matter.nextHearingDate)}</p>
+          <p className="text-[#3A3222] font-semibold truncate">{formatMockDate(proceeding.nextHearingDate)}</p>
         </div>
         <div>
           <p className="font-bold uppercase tracking-wider text-[#8A7A56]">Advocate Ref.</p>
@@ -198,12 +198,7 @@ function MatterCard({ matter, today, onNotice }: { matter: MockMatter; today: st
         </span>
       </div>
 
-      <ECourtsCompactStrip
-        matterTitle={matter.title}
-        ecourtsRef={ecourtsRef}
-        onCheck={() => setShowCheckModal(true)}
-        onAddCnr={() => setShowAddCnrModal(true)}
-      />
+      <ECourtsCompactStrip matterTitle={matter.title} ecourtsRef={ecourtsRef} onOpen={() => setShowECourtsModal(true)} />
 
       <div className="flex items-center justify-between pt-2 border-t border-[#F4EEE0]">
         <Link href={`/dashboard/matters/${matter.id}`} className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624]">
@@ -212,18 +207,15 @@ function MatterCard({ matter, today, onNotice }: { matter: MockMatter; today: st
         <MatterActionsMenu matter={matter} onNotice={onNotice} />
       </div>
 
-      {showCheckModal && ecourtsRef.cnrNumber && (
-        <CheckECourtsModal cnrNumber={ecourtsRef.cnrNumber} onClose={() => setShowCheckModal(false)} />
-      )}
-      {showAddCnrModal && (
-        <AddCnrModal
-          matterTitle={matter.title}
-          onCancel={() => setShowAddCnrModal(false)}
-          onConfirm={(cnr) => {
-            setEcourtsPatch({ cnrNumber: cnr, verificationStatus: 'Not checked', synchronisationMode: 'Manual verification' });
-            setShowAddCnrModal(false);
-            onNotice(`CNR linked for "${matter.title}" (prototype only — not persisted to a database).`);
-          }}
+      {showECourtsModal && (
+        <CheckECourtsCaseUpdateModal
+          matter={matter}
+          ecourtsRef={ecourtsRef}
+          proceeding={proceeding}
+          onClose={() => setShowECourtsModal(false)}
+          onApplyEcourtsPatch={setEcourtsPatch}
+          onRecordProceedingUpdate={applyProceedingUpdate}
+          onNotice={onNotice}
         />
       )}
     </div>
