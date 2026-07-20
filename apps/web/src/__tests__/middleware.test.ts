@@ -173,4 +173,31 @@ describe('middleware — Beta Preview (BETA_PREVIEW_ENABLED)', () => {
     const body = await response.json().catch(() => null);
     expect(body?.matter?.is_demo).not.toBe(true);
   });
+
+  test('disabled by default: GET /api/beta-status is not intercepted (no real route backs it, so it 404s downstream)', async () => {
+    delete process.env.BETA_PREVIEW_ENABLED;
+    const response = await middleware(buildApiRequest('/api/beta-status'));
+    const body = await response.json().catch(() => null);
+    expect(body?.enabled).not.toBe(true);
+  });
+
+  test('enabled + no session: GET /api/beta-status reports enabled: true, so pages can swap auth wording for neutral beta wording', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/beta-status'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.enabled).toBe(true);
+  });
+
+  test('enabled + WITH a valid session: GET /api/beta-status is NOT intercepted (irrelevant for signed-in users, who never hit the auth wall)', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const token = await signSessionToken({
+      sub: '00000000-0000-4000-8000-00000000000e',
+      tenantId: '00000000-0000-4000-8000-00000000000f',
+      email: 'middleware-test@nextcase.local',
+    });
+    const response = await middleware(buildApiRequest('/api/beta-status', { cookieValue: token }));
+    const body = await response.json().catch(() => null);
+    expect(body?.enabled).not.toBe(true);
+  });
 });

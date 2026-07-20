@@ -149,6 +149,12 @@ export default function MatterDetailsChamberPage() {
   const [showFullCourtNoteHistory, setShowFullCourtNoteHistory] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Beta Preview is actually active right now. Governs whether the
+  // "Authentication Required" wall below uses neutral beta wording instead
+  // of the normal sign-in wording; when Beta Preview is off this never
+  // becomes true and the wall is unchanged.
+  const [betaModeActive, setBetaModeActive] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -168,6 +174,12 @@ export default function MatterDetailsChamberPage() {
     const res = await fetch(`/api/matters/${id}`);
     if (res.status === 401) {
       setNeedsAuth(true);
+      fetch('/api/beta-status')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.enabled) setBetaModeActive(true);
+        })
+        .catch(() => {});
       return;
     }
     if (!res.ok) {
@@ -322,12 +334,22 @@ export default function MatterDetailsChamberPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <main className="flex-1 flex flex-col justify-center items-center py-20 text-center">
-          <span className="text-3xl">🔒</span>
-          <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-          <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
-          <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Go to Login →
-          </Link>
+          {betaModeActive ? (
+            <>
+              <span className="text-3xl">👁️</span>
+              <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
+              <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+            </>
+          ) : (
+            <>
+              <span className="text-3xl">🔒</span>
+              <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+              <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
+              <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+                Go to Login →
+              </Link>
+            </>
+          )}
         </main>
       </div>
     );

@@ -123,6 +123,15 @@ export function matchBetaPreviewRoute(
   pathname: string,
   searchParams: URLSearchParams
 ): unknown {
+  // Lets an unauthenticated page know whether Beta Preview is actually
+  // active — e.g. to swap "Authentication Required" wording for neutral
+  // "Available after beta" wording on a real (non-demo) Matter ID. No real
+  // route backs this path; it only ever answers from here, and only for
+  // the same no-session GET case every other Beta Preview response uses.
+  if (pathname === '/api/beta-status') {
+    return { enabled: true };
+  }
+
   if (pathname === '/api/matters') {
     return {
       matters: [

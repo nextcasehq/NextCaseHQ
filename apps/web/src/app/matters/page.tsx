@@ -36,6 +36,10 @@ function MattersChamberContent() {
   // any other way, so this can't be spoofed into showing for a real,
   // signed-in tenant.
   const [betaPreview, setBetaPreview] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — governs whether the "Authentication Required" wall below uses
+  // neutral beta wording instead of the normal sign-in wording.
+  const [betaModeActive, setBetaModeActive] = useState(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
   // Filters
@@ -64,6 +68,12 @@ function MattersChamberContent() {
       if (res.status === 401) {
         setNeedsAuth(true);
         setMatters([]);
+        fetch('/api/beta-status')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.enabled) setBetaModeActive(true);
+          })
+          .catch(() => {});
         return;
       }
       if (!res.ok) {
@@ -170,14 +180,24 @@ function MattersChamberContent() {
   if (needsAuth) {
     return (
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
-          Sign in to view and manage matters under your tenant.
-        </p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {betaModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Preview Mode</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">This action is unavailable in preview mode.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+              Sign in to view and manage matters under your tenant.
+            </p>
+            <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+              Go to Login →
+            </Link>
+          </>
+        )}
       </main>
     );
   }
