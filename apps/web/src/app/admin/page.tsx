@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Mock Initial Data
 const INITIAL_ORGANIZATIONS = [
@@ -39,9 +40,9 @@ const INITIAL_AI_LOGS = [
 ];
 
 export default function AdminConsolePage() {
+  const router = useRouter();
   const [isAdminAuthorized, setIsAdminAuthorized] = useState(false);
-  const [accessKeyInput, setAccessKeyInput] = useState('');
-  const [authError, setAuthError] = useState('');
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -92,22 +93,32 @@ export default function AdminConsolePage() {
   // Ask the server whether a valid admin session already exists. The
   // session cookie is httpOnly (server-verified, PR: Server-Verified Admin
   // Authentication) so the client can no longer read or forge it directly.
+  // There is no credential form on this page anymore — authentication for
+  // every account type, including administrators, happens exclusively at
+  // the single /login entry point. If no valid session is found here, this
+  // page redirects there rather than rendering its own sign-in form.
   useEffect(() => {
     const checkAdminSession = async () => {
       try {
         const res = await fetch('/api/admin/session');
         if (res.ok) {
           const data = await res.json();
-          setIsAdminAuthorized(Boolean(data.authorized));
+          if (data.authorized) {
+            setIsAdminAuthorized(true);
+            setIsCheckingSession(false);
+            return;
+          }
         }
       } catch (e) {
-        // Network failure: stay on the login gate.
+        // Network failure: fall through to the /login redirect below.
       }
+      setIsCheckingSession(false);
+      router.replace('/login');
     };
     checkAdminSession();
     // Fetch real sentinel statuses dynamically
     fetchSentinelStatuses();
-  }, []);
+  }, [router]);
 
   const fetchSentinelStatuses = async () => {
     try {
@@ -121,51 +132,15 @@ export default function AdminConsolePage() {
     }
   };
 
-  // Secure Sign In handler — verified server-side against ADMIN_ACCESS_TOKEN
-  // by POST /api/admin/session, which mints the (httpOnly) session cookie.
-  const handleAdminSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/admin/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessKey: accessKeyInput }),
-      });
-      if (res.ok) {
-        setIsAdminAuthorized(true);
-        setAuthError('');
-        // Log event
-        const newAuditLog = {
-          timestamp: new Date().toISOString(),
-          type: 'SECURITY',
-          message: 'Platform Operator logged in with valid master authentication keys.',
-          ip: '127.0.0.1'
-        };
-        setLogs([newAuditLog, ...logs]);
-      } else {
-        setAuthError('INVALID_ADMINISTRATIVE_SECRET_KEY. INCIDENT RECORDED IN AUDIT LOG.');
-        const newAuditLog = {
-          timestamp: new Date().toISOString(),
-          type: 'AUTH',
-          message: `Failed admin sign in attempt with invalid key: "${accessKeyInput}"`,
-          ip: '127.0.0.1'
-        };
-        setLogs([newAuditLog, ...logs]);
-      }
-    } catch (err) {
-      setAuthError('ADMIN_AUTH_SERVICE_UNAVAILABLE. TRY AGAIN.');
-    }
-  };
-
   const handleAdminLogout = async () => {
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
     } catch (e) {
       // Cookie is short-lived (24h) even if this call fails; proceed to
-      // clear local UI state regardless.
+      // the single login page regardless.
     }
     setIsAdminAuthorized(false);
-    setAccessKeyInput('');
+    router.push('/login');
   };
 
   // Handlers for Tenant CRUD
@@ -351,52 +326,15 @@ export default function AdminConsolePage() {
       </div>
 
       {!isAdminAuthorized ? (
-        /* Zero-Trust Authenticated Authorization Login/Gate Screen */
+        /* No credential form here — every account type, including
+         * administrators, signs in exclusively at /login. This state is
+         * only ever visible for the brief moment before the session check
+         * above resolves and either shows the console or redirects away. */
         <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 py-12 font-sans">
-          <div className="w-full max-w-md bg-white dark:bg-[#111111] border border-[#111111]/10 dark:border-[#FDFBF7]/10 rounded shadow-sm p-8 space-y-6">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-[#8A6D2F]/10 border border-[#8A6D2F] text-[#8A6D2F] rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold uppercase tracking-wider text-[#111111] dark:text-[#FDFBF7]">
-                Admin Console Gate
-              </h2>
-              <p className="mt-1 text-xs text-[#8A7A56] font-serif italic">
-                Input Platform Master Access Secret Key to verify authorization.
-              </p>
-            </div>
-
-            {authError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-700 text-[10px] font-mono font-bold rounded">
-                {authError}
-              </div>
-            )}
-
-            <form onSubmit={handleAdminSignIn} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#B0A588] mb-2">
-                  Platform Operator Secret Key
-                </label>
-                <input
-                  type="password"
-                  value={accessKeyInput}
-                  onChange={(e) => setAccessKeyInput(e.target.value)}
-                  placeholder="e.g. nchq-admin-ops-2026"
-                  required
-                  className="w-full px-4 py-3 bg-[#111111]/5 dark:bg-[#FDFBF7]/5 border border-[#111111]/10 dark:border-[#FDFBF7]/10 rounded outline-none focus:border-[#8A6D2F] dark:focus:border-[#8A6D2F] font-mono text-sm"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-[#111111] dark:bg-[#FDFBF7] text-[#FDFBF7] dark:text-[#111111] font-bold uppercase tracking-wider text-xs rounded hover:opacity-90 active:scale-[0.99] transition-all"
-              >
-                Verify Secure Access
-              </button>
-            </form>
-          </div>
+          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin" aria-hidden="true"></span>
+          <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A7A56]">
+            {isCheckingSession ? 'Verifying session…' : 'Redirecting to sign in…'}
+          </p>
         </div>
       ) : (
         /* Authorized Admin Console Main Workspace */

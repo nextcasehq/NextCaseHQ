@@ -85,6 +85,27 @@ describe('middleware — /api/admin gate', () => {
   });
 });
 
+describe('middleware — protected /admin console page (single login entry point)', () => {
+  test('redirects to /login when there is no admin session cookie', async () => {
+    const response = await middleware(buildAdminApiRequest(undefined, '/admin'));
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toContain('/login');
+  });
+
+  test('redirects to /login when the admin session cookie is invalid', async () => {
+    const response = await middleware(buildAdminApiRequest('not-a-real-admin-jwt', '/admin'));
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toContain('/login');
+  });
+
+  test('allows the request through with a validly signed admin session cookie', async () => {
+    const token = await signAdminSessionToken();
+    const response = await middleware(buildAdminApiRequest(token, '/admin'));
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+});
+
 describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
   const originalFlag = process.env.PRODUCT_REVIEW_MODE;
   const originalLegacyFlag = process.env.BETA_PREVIEW_ENABLED;
