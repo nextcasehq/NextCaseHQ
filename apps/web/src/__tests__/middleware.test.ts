@@ -168,6 +168,38 @@ describe('middleware — Beta Preview (BETA_PREVIEW_ENABLED)', () => {
     expect(body.matters[0].id).toBe(DEMO_MATTER_ID);
   });
 
+  test('enabled + no session: GET /api/matters?status=ACTIVE (matching the demo Matter\'s own status) still returns it', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/matters?status=ACTIVE'));
+    const body = await response.json();
+    expect(body.matters).toHaveLength(1);
+    expect(body.total).toBe(1);
+  });
+
+  test('enabled + no session: GET /api/matters?status=ALL still returns the demo Matter', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/matters?status=ALL'));
+    const body = await response.json();
+    expect(body.matters).toHaveLength(1);
+  });
+
+  test('enabled + no session: GET /api/matters?status=CLOSED (not the demo Matter\'s status) returns no matters, not the demo Matter under the wrong tab', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/matters?status=CLOSED'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.beta_preview).toBe(true);
+    expect(body.matters).toHaveLength(0);
+    expect(body.total).toBe(0);
+  });
+
+  test('enabled + no session: GET /api/matters?status=ON_HOLD also returns no matters', async () => {
+    process.env.BETA_PREVIEW_ENABLED = 'true';
+    const response = await middleware(buildApiRequest('/api/matters?status=ON_HOLD'));
+    const body = await response.json();
+    expect(body.matters).toHaveLength(0);
+  });
+
   test('enabled + no session: GET for any other Matter ID is NOT intercepted (falls through to the real route)', async () => {
     process.env.BETA_PREVIEW_ENABLED = 'true';
     const otherMatterId = '11111111-1111-4111-8111-111111111111';
