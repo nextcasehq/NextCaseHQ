@@ -14,6 +14,16 @@ export interface DemoSearchItem {
   title: string;
   snippet: string;
   body: string;
+  // Additional structured fields for the dashboard's Legal Search
+  // workspace — populated only for JUDGMENT/CITATION entries, since
+  // "court"/"decision date" don't apply to a statute or section. All of
+  // this remains entirely synthetic, clearly labelled "(Demo ...)", and
+  // is never mixed with real search-service results (see search-service.ts,
+  // which never produces these four types at all).
+  court?: string;
+  citation?: string;
+  decisionDate?: string;
+  legalIssue?: string;
 }
 
 const DEMO_JUDGMENTS: DemoSearchItem[] = [
@@ -27,6 +37,10 @@ const DEMO_JUDGMENTS: DemoSearchItem[] = [
       'It illustrates how a judgment result would appear in search — no real court record, party, or case is ' +
       'described here. The demo matter this judgment references, and the demo court note and hearing dates ' +
       'attached to it, are the same synthetic sample data shown throughout Product Review.',
+    court: 'Demo Commercial Court',
+    citation: '(2025) Demo LR 001 (Demo Citation)',
+    decisionDate: '2025-11-04',
+    legalIssue: 'Breach of contract — discovery-timeline obligations and adverse inference for non-disclosure.',
   },
   {
     id: 'demo-judgment-0002',
@@ -37,6 +51,10 @@ const DEMO_JUDGMENTS: DemoSearchItem[] = [
       'This is a sample, entirely fictional judgment summary provided for Product Review demonstration only. ' +
       'It illustrates an appellate-stage result on limitation and arbitral award enforcement — no real ' +
       'court record, party, or case is described here.',
+    court: 'Demo Appellate Court',
+    citation: '(2025) Demo LR 002 (Demo Citation)',
+    decisionDate: '2025-08-19',
+    legalIssue: 'Limitation-period computation and enforceability of a foreign arbitral award.',
   },
 ];
 
@@ -49,6 +67,7 @@ const DEMO_ACTS: DemoSearchItem[] = [
     body:
       'This is a sample statute reference entry provided for Product Review demonstration only, illustrating ' +
       'how an Act would appear in search results and its own read-only reference page.',
+    legalIssue: 'General principles governing formation, performance, and breach of contracts.',
   },
   {
     id: 'demo-act-0002',
@@ -58,6 +77,7 @@ const DEMO_ACTS: DemoSearchItem[] = [
     body:
       'This is a sample statute reference entry provided for Product Review demonstration only, illustrating ' +
       'how an Act would appear in search results and its own read-only reference page.',
+    legalIssue: 'Procedure for arbitral proceedings and challenge of arbitral awards.',
   },
 ];
 
@@ -70,6 +90,7 @@ const DEMO_SECTIONS: DemoSearchItem[] = [
     body:
       'This is a sample section reference entry provided for Product Review demonstration only, illustrating ' +
       'how a Section would appear in search results — not the actual text of any real statute.',
+    legalIssue: 'Measure of compensation available for loss or damage caused by breach of contract.',
   },
   {
     id: 'demo-section-0002',
@@ -79,6 +100,7 @@ const DEMO_SECTIONS: DemoSearchItem[] = [
     body:
       'This is a sample section reference entry provided for Product Review demonstration only, illustrating ' +
       'how a Section would appear in search results — not the actual text of any real statute.',
+    legalIssue: 'Grounds and procedure for setting aside an arbitral award.',
   },
 ];
 
@@ -89,6 +111,10 @@ const DEMO_CITATIONS: DemoSearchItem[] = [
     title: '(2019) 4 SCC 1 (Demo Citation)',
     snippet: 'Sample citation entry provided for Product Review demonstration only.',
     body: 'This is a sample citation reference provided for Product Review demonstration only — not a real reported case.',
+    court: 'Demo Supreme Court',
+    citation: '(2019) 4 SCC 1 (Demo Citation)',
+    decisionDate: '2019-03-12',
+    legalIssue: 'Sample proposition on admissibility of secondary evidence.',
   },
   {
     id: 'demo-citation-0002',
@@ -96,6 +122,10 @@ const DEMO_CITATIONS: DemoSearchItem[] = [
     title: 'AIR 2021 SC 123 (Demo Citation)',
     snippet: 'Sample citation entry provided for Product Review demonstration only.',
     body: 'This is a sample citation reference provided for Product Review demonstration only — not a real reported case.',
+    court: 'Demo Supreme Court',
+    citation: 'AIR 2021 SC 123 (Demo Citation)',
+    decisionDate: '2021-01-22',
+    legalIssue: 'Sample proposition on limitation and condonation of delay.',
   },
 ];
 
@@ -124,6 +154,10 @@ function toResultItem(item: DemoSearchItem) {
     score: 1,
     href: `/search/demo/${item.id}`,
     is_demo: true,
+    court: item.court,
+    citation: item.citation,
+    decision_date: item.decisionDate,
+    legal_issue: item.legalIssue,
   };
 }
 
