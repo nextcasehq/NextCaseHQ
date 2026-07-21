@@ -6,16 +6,18 @@ interface AttachedFile {
   id: string;
   name: string;
   sizeBytes: number;
-  kind: 'pdf' | 'docx' | 'image' | 'other';
+  kind: 'pdf' | 'docx' | 'image' | 'text' | 'other';
+  uploadedAt: Date;
 }
 
-const ACCEPTED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+const ACCEPTED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.txt'];
 
 function classifyFile(name: string): AttachedFile['kind'] {
   const lower = name.toLowerCase();
   if (lower.endsWith('.pdf')) return 'pdf';
   if (lower.endsWith('.doc') || lower.endsWith('.docx')) return 'docx';
   if (/\.(png|jpe?g|gif|webp)$/.test(lower)) return 'image';
+  if (lower.endsWith('.txt')) return 'text';
   return 'other';
 }
 
@@ -23,6 +25,7 @@ const FILE_ICON: Record<AttachedFile['kind'], string> = {
   pdf: '📄',
   docx: '📝',
   image: '🖼',
+  text: '📃',
   other: '📎',
 };
 
@@ -52,6 +55,7 @@ export function AttachmentsPanel() {
       name: file.name,
       sizeBytes: file.size,
       kind: classifyFile(file.name),
+      uploadedAt: new Date(),
     }));
     if (next.length > 0) setFiles((prev) => [...prev, ...next]);
   };
@@ -97,7 +101,7 @@ export function AttachmentsPanel() {
           className="hidden"
           aria-label="Upload attachment"
         />
-        <p className="text-[9px] text-[#B0A588] mt-2">PDF, DOCX, and images</p>
+        <p className="text-[9px] text-[#B0A588] mt-2">PDF, DOCX, images, and TXT</p>
       </div>
 
       {files.length > 0 && (
@@ -109,7 +113,9 @@ export function AttachmentsPanel() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold text-[#3A3222] truncate">{file.name}</p>
-                <p className="text-[9px] text-[#B0A588]">{formatSize(file.sizeBytes)}</p>
+                <p className="text-[9px] text-[#B0A588]">
+                  {formatSize(file.sizeBytes)} · {file.uploadedAt.toLocaleTimeString()}
+                </p>
               </div>
               <button
                 type="button"

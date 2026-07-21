@@ -11,12 +11,36 @@ import { DEFAULT_PAGE_SETUP } from './page-setup';
  * rather than mutating one in place.
  */
 
+/**
+ * The five primary Court Verticals templates and matters are organised
+ * under, per the UI/UX Specification's Appendix A ("Template Library and
+ * Court Organisation"). This taxonomy is shared with the Matter Register
+ * (Appendix A.6) so the same five names are used consistently across the
+ * application — it is deliberately fixed and small rather than an
+ * arbitrary free-text field.
+ */
+export type CourtVertical = 'SUPREME_COURT' | 'HIGH_COURTS' | 'DISTRICT_COURTS' | 'MAGISTRATE_COURTS' | 'OTHER_COURTS_TRIBUNALS';
+
+export const COURT_VERTICALS: { id: CourtVertical; label: string }[] = [
+  { id: 'SUPREME_COURT', label: 'Supreme Court' },
+  { id: 'HIGH_COURTS', label: 'High Courts' },
+  { id: 'DISTRICT_COURTS', label: 'District Courts' },
+  { id: 'MAGISTRATE_COURTS', label: 'Magistrate Courts' },
+  { id: 'OTHER_COURTS_TRIBUNALS', label: 'Other Courts & Tribunals' },
+];
+
 export interface LegalTemplate {
   id: string;
   name: string;
   jurisdiction: 'IN';
-  category: string;
+  courtVertical: CourtVertical;
+  /** e.g. "Delhi High Court" — the specific court, where applicable. */
+  court: string;
+  /** e.g. "Constitutional", "Civil" — Appendix A.3's card field. */
+  practiceArea: string;
   documentType: string;
+  version: string;
+  isStarterTemplate: boolean;
   defaultFontFamily: string;
   pageSetup: PageSetup;
   html: string;
@@ -30,8 +54,12 @@ export const DELHI_HC_WRIT_PETITION: LegalTemplate = {
   id: 'in-delhi-hc-writ-petition',
   name: 'Delhi High Court Writ Petition',
   jurisdiction: 'IN',
-  category: 'Writ Petition',
+  courtVertical: 'HIGH_COURTS',
+  court: 'Delhi High Court',
+  practiceArea: 'Constitutional',
   documentType: 'PETITION',
+  version: 'v1.0',
+  isStarterTemplate: true,
   defaultFontFamily: 'Times New Roman',
   pageSetup: { ...DEFAULT_PAGE_SETUP, header: 'IN THE HIGH COURT OF DELHI AT NEW DELHI' },
   html: `
@@ -78,8 +106,12 @@ export const CIVIL_SUIT_PLAINT: LegalTemplate = {
   id: 'in-civil-suit-plaint',
   name: 'Civil Suit / Plaint',
   jurisdiction: 'IN',
-  category: 'Civil Suit',
+  courtVertical: 'DISTRICT_COURTS',
+  court: 'District Court',
+  practiceArea: 'Civil',
   documentType: 'PLAINT',
+  version: 'v1.0',
+  isStarterTemplate: true,
   defaultFontFamily: 'Times New Roman',
   pageSetup: { ...DEFAULT_PAGE_SETUP, header: 'IN THE COURT OF [COURT NAME]' },
   html: `
@@ -121,8 +153,12 @@ export const AFFIDAVIT: LegalTemplate = {
   id: 'in-affidavit',
   name: 'Affidavit',
   jurisdiction: 'IN',
-  category: 'Affidavit',
+  courtVertical: 'DISTRICT_COURTS',
+  court: 'District Court',
+  practiceArea: 'Civil',
   documentType: 'AFFIDAVIT',
+  version: 'v1.0',
+  isStarterTemplate: true,
   defaultFontFamily: 'Times New Roman',
   pageSetup: { ...DEFAULT_PAGE_SETUP, header: 'IN THE COURT OF [COURT NAME]' },
   html: `

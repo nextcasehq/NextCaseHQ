@@ -286,6 +286,59 @@ export default function DraftBuilderPage() {
           hideBlankAction
         />
       </div>
+      <div className="pb-4 border-b border-[#F4EEE0] space-y-2">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Current Draft</h3>
+        <dl className="space-y-1.5 text-xs">
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Status</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{AUTOSAVE_STATUS_LABEL[autosave.status]}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Matter</dt>
+            {/* Honest by construction: this page never fetches or links a
+                Matter Register record — claiming a real link here would be
+                a fabricated connection. */}
+            <dd className="text-[#3A3222] font-bold text-right">Unlinked Draft</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Template</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.name ?? 'Blank Draft'}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Pages</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{pageCount}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Words</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{wordCount}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Characters</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{characterCount}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Created</dt>
+            {/* No server-side created_at is exposed by the autosave API
+                (an API-contract change, out of scope here), so this is
+                honestly labeled as this browser session's start time, not
+                claimed as the document's true original creation date. */}
+            <dd className="text-[#3A3222] font-bold text-right">
+              {sessionStartedAt.toLocaleTimeString()} <span className="font-normal text-[#B0A588]">(session)</span>
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Last Saved</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{lastSavedAt ? lastSavedAt.toLocaleTimeString() : '—'}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Autosave Status</dt>
+            <dd className="text-[#3A3222] font-bold text-right flex items-center gap-1.5 justify-end">
+              <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`} />
+              {AUTOSAVE_STATUS_LABEL[autosave.status]}
+            </dd>
+          </div>
+        </dl>
+      </div>
       <AttachmentsPanel />
       <div className="pt-4 border-t border-[#F4EEE0] opacity-60">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">AI Panel</h3>
@@ -314,52 +367,23 @@ export default function DraftBuilderPage() {
         isFitWidth={zoomMode === 'fit-width'}
       />
       <div className="space-y-2 pt-4 border-t border-[#F4EEE0]">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Document Information</h2>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Document Properties</h2>
         <dl className="space-y-1.5 text-xs">
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Template</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.name ?? 'Blank Draft'}</dd>
-          </div>
           <div className="flex justify-between gap-2">
             <dt className="text-[#8A7A56] font-semibold">Document Type</dt>
             <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.documentType ?? 'UNTYPED'}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Matter</dt>
-            {/* Honest by construction: this page never fetches or links a
-                Matter Register record — claiming a real link here would be
-                a fabricated connection. */}
-            <dd className="text-[#3A3222] font-bold text-right">Unlinked Draft</dd>
+            <dt className="text-[#8A7A56] font-semibold">Court</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.court ?? '—'}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Status</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{AUTOSAVE_STATUS_LABEL[autosave.status]}</dd>
+            <dt className="text-[#8A7A56] font-semibold">Practice Area</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.practiceArea ?? '—'}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Created</dt>
-            {/* No server-side created_at is exposed by the autosave API
-                (an API-contract change, out of scope here), so this is
-                honestly labeled as this browser session's start time, not
-                claimed as the document's true original creation date. */}
-            <dd className="text-[#3A3222] font-bold text-right">
-              {sessionStartedAt.toLocaleTimeString()} <span className="font-normal text-[#B0A588]">(session)</span>
-            </dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Last Saved</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{lastSavedAt ? lastSavedAt.toLocaleTimeString() : '—'}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Page Count</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{pageCount}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Word Count</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{wordCount}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Character Count</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{characterCount}</dd>
+            <dt className="text-[#8A7A56] font-semibold">Version</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.version ?? '—'}</dd>
           </div>
         </dl>
       </div>
@@ -541,9 +565,20 @@ export default function DraftBuilderPage() {
 
         {mobileDrawer !== 'none' && (
           <>
-            <div className="no-print fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setMobileDrawer('none')} />
+            {/* top-16 (not inset-0/inset-y-0): the shared dashboard shell's
+                top bar (app/dashboard/layout.tsx) sits in its own stacking
+                context (its <main isolate> wrapper always paints above
+                whatever's inside it, regardless of z-index), so a fixed
+                overlay that starts at the true viewport top would be
+                visually covered by — and have its own top strip's clicks
+                intercepted by — that shared bar. Anchoring below its fixed
+                4rem (h-16) height keeps the drawer entirely clickable. */}
             <div
-              className={`no-print fixed inset-y-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4 ${
+              className="no-print fixed top-16 inset-x-0 bottom-0 bg-black/40 z-40 md:hidden"
+              onClick={() => setMobileDrawer('none')}
+            />
+            <div
+              className={`no-print fixed top-16 bottom-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4 ${
                 mobileDrawer === 'left' ? 'left-0' : 'right-0'
               }`}
             >

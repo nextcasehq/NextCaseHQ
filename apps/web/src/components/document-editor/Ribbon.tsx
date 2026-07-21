@@ -79,13 +79,37 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
   const [activeTab, setActiveTab] = React.useState<RibbonTab>('home');
   const [textColor, setTextColor] = React.useState('#111111');
   const [styleGalleryOpen, setStyleGalleryOpen] = React.useState(false);
+  const [styleGalleryPosition, setStyleGalleryPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const styleGalleryButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!styleGalleryOpen) {
+      setStyleGalleryPosition(null);
+      return;
+    }
+    const button = styleGalleryButtonRef.current;
+    if (button) {
+      const rect = button.getBoundingClientRect();
+      setStyleGalleryPosition({ top: rect.bottom + 4, left: rect.left });
+    }
+    const close = () => setStyleGalleryOpen(false);
+    // Deferred so the click that opened the gallery doesn't immediately close it.
+    const id = window.setTimeout(() => window.addEventListener('click', close), 0);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('click', close);
+    };
+  }, [styleGalleryOpen]);
 
   if (!editor) return null;
 
   const updatePageSetup = (patch: Partial<PageSetup>) => onPageSetupChange({ ...pageSetup, ...patch });
 
   return (
-    <div role="toolbar" aria-label="Document formatting ribbon" className="bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm overflow-hidden">
+    <div role="toolbar" aria-label="Document formatting ribbon" className="bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm">
+      {/* No overflow-hidden here: the Styles gallery dropdown below is an
+          absolutely-positioned child that must be able to extend past
+          this container's bottom edge without being clipped. */}
       <div className="flex items-center justify-between border-b border-[#F4EEE0] px-2">
         <div className="flex items-center overflow-x-auto">
           {RIBBON_TABS.map((tab) => (
@@ -295,8 +319,9 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
             </Group>
             <Divider />
             <Group label="Styles">
-              <div className="relative">
+              <div>
                 <button
+                  ref={styleGalleryButtonRef}
                   type="button"
                   onClick={() => setStyleGalleryOpen((v) => !v)}
                   aria-expanded={styleGalleryOpen}
@@ -305,8 +330,16 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
                 >
                   Styles ▾
                 </button>
-                {styleGalleryOpen && (
-                  <div className="absolute z-20 mt-1 w-56 bg-white border border-[#E7DFC9] rounded-lg shadow-lg p-1.5 grid grid-cols-1 gap-0.5">
+                {styleGalleryOpen && styleGalleryPosition && (
+                  // Fixed (not absolute) positioning, anchored to the
+                  // trigger button's real on-screen coordinates: the
+                  // ribbon's own scroll/overflow containers would clip an
+                  // absolutely-positioned dropdown before it could extend
+                  // below the ribbon's fixed height.
+                  <div
+                    style={{ top: styleGalleryPosition.top, left: styleGalleryPosition.left }}
+                    className="fixed z-30 w-56 bg-white border border-[#E7DFC9] rounded-lg shadow-lg p-1.5 grid grid-cols-1 gap-0.5"
+                  >
                     {LEGAL_STYLES.map((style) => (
                       <button
                         key={style.id}
