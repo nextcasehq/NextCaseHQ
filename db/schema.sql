@@ -807,6 +807,492 @@ CREATE TABLE IF NOT EXISTS "SecurityAuditTrail" (
     "created_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- 9. Production Matter Register Foundation (Product Direction, Milestone
+-- "Production Matter Register"). Converts the demonstration Matter Register
+-- prototype (apps/web/src/app/dashboard/matters/mock-matters.ts) into a real,
+-- tenant-authorised, persistent core, built entirely on the existing
+-- Matter/LegalCase/CourtNote/MatterEvent/MatterTask graph rather than a
+-- parallel schema. Core rule carried through every table below: one Matter
+-- Register, one continuous legal history — no deletion of history, no
+-- silent overwrite, no broken proceeding chain.
+
+-- 9a. Matter — current-proceeding snapshot fields and a wider status
+-- vocabulary. Additive and nullable throughout: every existing Matter row
+-- and every existing query keeps working unchanged. The new status values
+-- are added to the existing CHECK, not replacing it — ACTIVE/ON_HOLD/
+-- CLOSED/ARCHIVED (the original four) remain valid so no existing row is
+-- ever invalidated by this migration.
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "advocate_reference_number" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "matter_category" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "state" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "district" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "court_establishment" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "case_type" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "filing_number" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "matter_year" INTEGER;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "cnr_number" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "current_stage" TEXT;
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "next_hearing_date" DATE;
+-- Nullable, RESTRICT (no ON DELETE clause): a Matter's "current proceeding"
+-- pointer must never silently vanish out from under it via cascade — the
+-- proceeding-chain instead has to be repointed or the Matter's snapshot
+-- cleared through the API before the Proceeding row itself is removed.
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "current_proceeding_id" UUID REFERENCES "LegalCase"("id");
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "created_by_user_id" UUID REFERENCES "User"("id");
+ALTER TABLE "Matter" ADD COLUMN IF NOT EXISTS "updated_by_user_id" UUID REFERENCES "User"("id");
+
+ALTER TABLE "Matter" DROP CONSTRAINT IF EXISTS matter_status_check;
+ALTER TABLE "Matter" ADD CONSTRAINT matter_status_check
+    CHECK ("status" IN (
+        'ACTIVE', 'ON_HOLD', 'CLOSED', 'ARCHIVED',
+        'DRAFT', 'AWAITING_FILING', 'HEARING_SOON', 'STAYED', 'DISPOSED', 'REOPENED'
+    ));
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matter_category_check'
+    ) THEN
+        ALTER TABLE "Matter" ADD CONSTRAINT matter_category_check
+            CHECK ("matter_category" IS NULL OR "matter_category" IN (
+                'CIVIL', 'CRIMINAL', 'FAMILY', 'COMMERCIAL', 'CONSTITUTIONAL',
+                'LABOUR', 'TAXATION', 'PROPERTY', 'CONSUMER', 'ARBITRATION', 'OTHER'
+            ));
+    END IF;
+END
+$$;
+
+-- 9b. MatterParty — parties and procedural roles. proceeding_id is nullable:
+-- a party may apply matter-wide (pre-litigation) or be scoped to one
+-- Proceeding in the chain (e.g. an Appellant only in the appeal). A role
+-- change between proceedings (Plaintiff at trial -> Respondent on appeal) is
+-- always a NEW row with its own proceeding_id, never an edit to the earlier
+-- one — earlier_procedural_role exists only as a same-row convenience
+-- caption; the authoritative history is the set of MatterParty rows across
+-- proceedings, never overwritten.
+CREATE TABLE IF NOT EXISTS "MatterParty" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "proceeding_id" UUID REFERENCES "LegalCase"("id"),
+    "display_name" TEXT NOT NULL,
+    "full_legal_name" TEXT,
+    "represented_side" TEXT NOT NULL DEFAULT 'OUR_CLIENT',
+    "procedural_role" TEXT NOT NULL,
+    "earlier_procedural_role" TEXT,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "effective_from" DATE,
+    "effective_to" DATE,
+    "created_by" UUID REFERENCES "User"("id"),
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterparty_represented_side_check'
+    ) THEN
+        ALTER TABLE "MatterParty" ADD CONSTRAINT matterparty_represented_side_check
+            CHECK ("represented_side" IN ('OUR_CLIENT', 'OPPOSING', 'THIRD_PARTY'));
+    END IF;
+END
+$$;
+
+-- 9c. EarlierCaseReference — zero, one, or multiple earlier references per
+-- Matter. linked_matter_id is populated only when the earlier proceeding
+-- also exists as a real Matter Register in NextCaseHQ; otherwise it stays
+-- NULL and reference_number/court/etc. are the only record of it.
+CREATE TABLE IF NOT EXISTS "EarlierCaseReference" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "reference_type" TEXT NOT NULL,
+    "reference_number" TEXT,
+    "court" TEXT,
+    "state" TEXT,
+    "district" TEXT,
+    "reference_year" INTEGER,
+    "relationship_to_current" TEXT,
+    "notes" TEXT,
+    "linked_matter_id" UUID REFERENCES "Matter"("id"),
+    "created_by" UUID REFERENCES "User"("id"),
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'earliercasereference_type_check'
+    ) THEN
+        ALTER TABLE "EarlierCaseReference" ADD CONSTRAINT earliercasereference_type_check
+            CHECK ("reference_type" IN (
+                'FIR_CRIME_NUMBER', 'COMPLAINT', 'TRIAL_MATTER', 'APPEAL', 'REVISION', 'REVIEW',
+                'WRIT', 'SLP', 'EXECUTION', 'REMAND', 'CONNECTED_PROCEEDING', 'OTHER'
+            ));
+    END IF;
+END
+$$;
+
+-- 9d. LegalCase (the Proceeding) — additional fields needed to preserve a
+-- real proceeding chain (trial -> appeal -> revision -> execution) as
+-- distinct, sequenced rows rather than one mutable record. Additive,
+-- nullable: identical rationale to every other LegalCase column added in
+-- section 3.
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "filing_number" TEXT;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "cnr_number" TEXT;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "proceeding_year" INTEGER;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "relationship_to_prior" TEXT;
+-- RESTRICT (no ON DELETE clause): the proceeding chain must never silently
+-- lose a link when an earlier proceeding row is removed.
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "prior_proceeding_id" UUID REFERENCES "LegalCase"("id");
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "start_date" DATE;
+ALTER TABLE "LegalCase" ADD COLUMN IF NOT EXISTS "end_date" DATE;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'legalcase_relationship_to_prior_check'
+    ) THEN
+        ALTER TABLE "LegalCase" ADD CONSTRAINT legalcase_relationship_to_prior_check
+            CHECK ("relationship_to_prior" IS NULL OR "relationship_to_prior" IN (
+                'APPEAL', 'REVISION', 'REVIEW', 'WRIT', 'SLP', 'EXECUTION', 'COMPLIANCE', 'REMAND',
+                'RESTORATION', 'RECALL', 'CONNECTED_PROCEEDING', 'OTHER'
+            ));
+    END IF;
+END
+$$;
+
+-- 9e. CourtNote — extended into the full "Hearing / Stage Record" this
+-- milestone requires, on the same immutable, append-only row (a correction
+-- is still a new Court Note, never an edit — the REVOKE UPDATE, DELETE
+-- already in force for this table is untouched and still applies to every
+-- column, old and new). previous_hearing_date/previous_stage are captured
+-- at insert time by the route handler (see POST /api/cases/[id]/
+-- court-notes) so a reader can always see what changed without a separate
+-- diff query, and so the route can detect and skip true no-op updates
+-- (identical proposed values) without creating a duplicate record.
+ALTER TABLE "CourtNote" ADD COLUMN IF NOT EXISTS "source" TEXT NOT NULL DEFAULT 'ADVOCATE_ENTRY';
+ALTER TABLE "CourtNote" ADD COLUMN IF NOT EXISTS "verification_status" TEXT NOT NULL DEFAULT 'ADVOCATE_CONFIRMED';
+ALTER TABLE "CourtNote" ADD COLUMN IF NOT EXISTS "confirmed_by" UUID REFERENCES "User"("id");
+ALTER TABLE "CourtNote" ADD COLUMN IF NOT EXISTS "confirmed_at" TIMESTAMPTZ;
+ALTER TABLE "CourtNote" ADD COLUMN IF NOT EXISTS "previous_hearing_date" TEXT;
+ALTER TABLE "CourtNote" ADD COLUMN IF NOT EXISTS "previous_stage" TEXT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'courtnote_source_check'
+    ) THEN
+        ALTER TABLE "CourtNote" ADD CONSTRAINT courtnote_source_check
+            CHECK ("source" IN ('ADVOCATE_ENTRY', 'ECOURTS_CONFIRMED', 'COURT_ORDER', 'ADMINISTRATIVE_UPDATE'));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'courtnote_verification_status_check'
+    ) THEN
+        ALTER TABLE "CourtNote" ADD CONSTRAINT courtnote_verification_status_check
+            CHECK ("verification_status" IN ('UNVERIFIED', 'ADVOCATE_CONFIRMED', 'ECOURTS_CONFIRMED'));
+    END IF;
+END
+$$;
+
+-- 9f. MatterTask — from a Court-Note-derived-only checklist entry to a full
+-- standalone task record. court_note_id is relaxed from NOT NULL to
+-- nullable so a task can now exist either way (derived, as before, or
+-- advocate-created directly); the new content check guarantees every row
+-- still has a real display text one way or the other. Additive columns
+-- only — every existing derived-task row and every existing query
+-- (GET /api/matters/[id]/tasks, PATCH .../tasks/[taskId]) keeps working
+-- unchanged, since NULL title/description simply means "read the text from
+-- the linked Court Note," exactly as today.
+-- case_id was NOT NULL (every task had to be Court-Note-derived, hence
+-- proceeding-scoped); relaxed alongside court_note_id so a standalone task
+-- may exist matter-wide with no proceeding at all. Reused directly as the
+-- "related proceeding" for a standalone task too, rather than adding a
+-- second, overlapping column for the same concept.
+ALTER TABLE "MatterTask" ALTER COLUMN "case_id" DROP NOT NULL;
+ALTER TABLE "MatterTask" ALTER COLUMN "court_note_id" DROP NOT NULL;
+ALTER TABLE "MatterTask" ADD COLUMN IF NOT EXISTS "title" TEXT;
+ALTER TABLE "MatterTask" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "MatterTask" ADD COLUMN IF NOT EXISTS "priority" TEXT NOT NULL DEFAULT 'MEDIUM';
+ALTER TABLE "MatterTask" ADD COLUMN IF NOT EXISTS "due_date" DATE;
+ALTER TABLE "MatterTask" ADD COLUMN IF NOT EXISTS "assigned_user_id" UUID REFERENCES "User"("id");
+-- related_hearing_id is distinct from court_note_id: court_note_id is the
+-- UNIQUE "this task was derived from that Court Note" link (Milestone 2);
+-- related_hearing_id lets a standalone task additionally reference a
+-- specific hearing without that one-task-per-note uniqueness constraint.
+ALTER TABLE "MatterTask" ADD COLUMN IF NOT EXISTS "related_hearing_id" UUID REFERENCES "CourtNote"("id");
+ALTER TABLE "MatterTask" ADD COLUMN IF NOT EXISTS "created_by" UUID REFERENCES "User"("id");
+
+ALTER TABLE "MatterTask" DROP CONSTRAINT IF EXISTS mattertask_status_check;
+ALTER TABLE "MatterTask" ADD CONSTRAINT mattertask_status_check
+    CHECK ("status" IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE', 'CANCELLED', 'DISMISSED'));
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'mattertask_priority_check'
+    ) THEN
+        ALTER TABLE "MatterTask" ADD CONSTRAINT mattertask_priority_check
+            CHECK ("priority" IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT'));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'mattertask_content_check'
+    ) THEN
+        ALTER TABLE "MatterTask" ADD CONSTRAINT mattertask_content_check
+            CHECK ("court_note_id" IS NOT NULL OR "title" IS NOT NULL);
+    END IF;
+END
+$$;
+
+-- 9g. MatterEvent — a wider timeline vocabulary covering every real event
+-- this milestone's API routes now produce (party/proceeding/reference
+-- creation, hearing and stage changes, task/authority/representation
+-- changes, closure/reopening), plus who performed it. Additive: MANUAL/
+-- HEARING/ORDER/DOCUMENT remain valid, so every existing row and query is
+-- unaffected.
+ALTER TABLE "MatterEvent" ADD COLUMN IF NOT EXISTS "actor_user_id" UUID REFERENCES "User"("id");
+
+ALTER TABLE "MatterEvent" DROP CONSTRAINT IF EXISTS matterevent_source_type_check;
+ALTER TABLE "MatterEvent" ADD CONSTRAINT matterevent_source_type_check
+    CHECK ("source_type" IN (
+        'MANUAL', 'HEARING', 'ORDER', 'DOCUMENT',
+        'MATTER_CREATED', 'PARTY_ADDED', 'PROCEEDING_CREATED', 'EARLIER_REFERENCE_LINKED',
+        'NEXT_HEARING_UPDATED', 'STAGE_UPDATED', 'ECOURTS_CHECK_CONFIRMED', 'TASK_CREATED',
+        'AUTHORITY_SAVED', 'REPRESENTATION_CHANGED', 'MATTER_CLOSED', 'MATTER_REOPENED'
+    ));
+
+-- 9h. MatterResearchAuthority — saved citations/authorities linked to a
+-- Matter Register. verification_status is set to 'UNVERIFIED' by the API on
+-- every insert regardless of client input, and this milestone provides no
+-- route to change it to VERIFIED_OFFICIAL — matching "do not permit
+-- synthetic or unverified authorities to be marked verified without
+-- authorised verification rules" (that governance workflow is a separate,
+-- later milestone; the column exists now so it doesn't need a later
+-- migration). A citation is reference material, never treated as factual
+-- evidence — enforced in the UI copy, not by this table.
+CREATE TABLE IF NOT EXISTS "MatterResearchAuthority" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "case_title" TEXT NOT NULL,
+    "court" TEXT,
+    "citation" TEXT,
+    "decision_date" DATE,
+    "legal_proposition" TEXT,
+    "source" TEXT,
+    "verification_status" TEXT NOT NULL DEFAULT 'UNVERIFIED',
+    "advocate_note" TEXT,
+    "intended_use" TEXT,
+    "related_issue" TEXT,
+    "added_by" UUID REFERENCES "User"("id"),
+    "added_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterresearchauthority_verification_status_check'
+    ) THEN
+        ALTER TABLE "MatterResearchAuthority" ADD CONSTRAINT matterresearchauthority_verification_status_check
+            CHECK ("verification_status" IN ('DEMONSTRATION', 'UNVERIFIED', 'VERIFIED_OFFICIAL'));
+    END IF;
+END
+$$;
+
+-- 9i. MatterRepresentation — the persistent representation-history
+-- foundation only (not the full paid change-of-advocate commercial
+-- workflow). Deliberately a NEW table rather than an extension of
+-- MatterParticipant: MatterParticipant is, and remains, a flat "current
+-- team assignment" record with a UNIQUE(matter_id, user_id) constraint that
+-- structurally cannot hold more than one row per person — changing that
+-- would alter already-shipped, already-tested behaviour for an unrelated
+-- feature. MatterRepresentation instead accumulates one row per
+-- representation stint (proceeding-scoped where relevant), never edited
+-- once effective_to is set — a change of role or handover is always a new
+-- row, with the previous one closed out via effective_to, so the full
+-- history is always reconstructable.
+CREATE TABLE IF NOT EXISTS "MatterRepresentation" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "proceeding_id" UUID REFERENCES "LegalCase"("id"),
+    "user_id" UUID NOT NULL REFERENCES "User"("id"),
+    "representation_role" TEXT NOT NULL,
+    "effective_from" DATE NOT NULL DEFAULT CURRENT_DATE,
+    "effective_to" DATE,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "handover_status" TEXT,
+    "access_status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "change_reason" TEXT,
+    "audit_reference" UUID,
+    "created_by" UUID REFERENCES "User"("id"),
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterrepresentation_role_check'
+    ) THEN
+        ALTER TABLE "MatterRepresentation" ADD CONSTRAINT matterrepresentation_role_check
+            CHECK ("representation_role" IN (
+                'LEAD_ADVOCATE', 'ASSISTING_ADVOCATE', 'SENIOR_COUNSEL', 'JUNIOR_COUNSEL',
+                'ADVOCATE_ON_RECORD', 'LOCAL_COUNSEL', 'APPEARANCE_COUNSEL', 'AUTHORISED_STAFF'
+            ));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterrepresentation_access_status_check'
+    ) THEN
+        ALTER TABLE "MatterRepresentation" ADD CONSTRAINT matterrepresentation_access_status_check
+            CHECK ("access_status" IN ('ACTIVE', 'SUSPENDED', 'REVOKED'));
+    END IF;
+END
+$$;
+
+-- 9j. MatterClosureRecord — one immutable row per closure. Append-only
+-- (REVOKE UPDATE, DELETE below), same rule as CourtNote: a closed matter
+-- reopened and closed again gets a brand-new closure row, never a rewrite
+-- of the earlier one, so the full closure history always survives.
+CREATE TABLE IF NOT EXISTS "MatterClosureRecord" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "closure_reason" TEXT NOT NULL,
+    "final_outcome" TEXT,
+    "disposal_date" DATE,
+    "final_order_reference" TEXT,
+    "pending_obligations" TEXT,
+    "appeal_review_limitation_date" DATE,
+    "execution_compliance_requirement" TEXT,
+    "original_document_status" TEXT,
+    "client_communication_status" TEXT,
+    "account_fee_status" TEXT,
+    "unresolved_warnings" JSONB DEFAULT '[]',
+    "confirming_advocate_id" UUID NOT NULL REFERENCES "User"("id"),
+    "confirmation_statement" TEXT NOT NULL,
+    "confirmation_timestamp" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterclosurerecord_reason_check'
+    ) THEN
+        ALTER TABLE "MatterClosureRecord" ADD CONSTRAINT matterclosurerecord_reason_check
+            CHECK ("closure_reason" IN (
+                'FINAL_JUDGMENT_OR_ORDER', 'SETTLEMENT_OR_COMPROMISE', 'WITHDRAWAL', 'DISMISSAL',
+                'MATTER_DISPOSED', 'DECREE_SATISFIED', 'EXECUTION_COMPLETED', 'TRANSFER',
+                'FURTHER_PROCEEDING_INITIATED', 'CLIENT_INSTRUCTION_TO_DISCONTINUE',
+                'REPRESENTATION_ENDED', 'DUPLICATE_REGISTER_MERGED', 'OTHER'
+            ));
+    END IF;
+END
+$$;
+
+-- 9k. MatterReopeningRecord — one immutable row per reopening.
+-- closure_record_id is RESTRICT (no ON DELETE clause): a reopening always
+-- points at the specific closure it reverses, and that closure record must
+-- never be removable out from under it. Append-only, same rule as
+-- MatterClosureRecord.
+CREATE TABLE IF NOT EXISTS "MatterReopeningRecord" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "closure_record_id" UUID NOT NULL REFERENCES "MatterClosureRecord"("id"),
+    "reopening_reason" TEXT NOT NULL,
+    "advocate_id" UUID NOT NULL REFERENCES "User"("id"),
+    "notes" TEXT,
+    "confirmation_timestamp" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'matterreopeningrecord_reason_check'
+    ) THEN
+        ALTER TABLE "MatterReopeningRecord" ADD CONSTRAINT matterreopeningrecord_reason_check
+            CHECK ("reopening_reason" IN (
+                'RESTORATION', 'RECALL', 'REVIEW', 'EXECUTION', 'COMPLIANCE', 'REMAND',
+                'FRESH_ORDER', 'INCORRECT_CLOSURE', 'OTHER'
+            ));
+    END IF;
+END
+$$;
+
+-- 9l. MatterAuditEvent — a dedicated, purpose-specific append-only audit
+-- ledger for the Matter Register (following the AiUsageEvent/
+-- DocumentAccessEvent precedent, not the dormant, RLS-less
+-- SecurityAuditTrail table above, which nothing in the application writes
+-- to). Every privileged/structural Matter Register change this milestone's
+-- routes perform (closure, reopening, representation change, party role
+-- change) records exactly one row here; REVOKE UPDATE, DELETE below makes
+-- "audit events cannot be deleted" a real grant restriction, not just
+-- convention.
+CREATE TABLE IF NOT EXISTS "MatterAuditEvent" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "matter_id" UUID NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
+    "actor_user_id" UUID REFERENCES "User"("id"),
+    "action" TEXT NOT NULL,
+    "target_type" TEXT,
+    "target_id" UUID,
+    "previous_value" JSONB,
+    "new_value" JSONB,
+    "reason" TEXT,
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+-- 9m. DocumentDraft — Document Creator Phase 2 (Durable Draft and
+-- Continuous Autosave, see docs/document-creator/
+-- DOCUMENT_AUTOSAVE_SPECIFICATION.md). The durable, mutable working-draft
+-- record an advocate's typed content is autosaved into before it ever
+-- becomes a permanent DocumentVersion. Deliberately NOT append-only
+-- (unlike MatterClosureRecord/MatterAuditEvent above): a draft is
+-- overwritten in place by design, "revision" guards every write for
+-- optimistic concurrency (see POST/PATCH .../drafts routes) exactly as
+-- DOCUMENT_AUTOSAVE_SPECIFICATION.md's "Concurrency Control" section
+-- specifies. envelope_id is nullable: a brand-new document has no
+-- DocumentEnvelope yet (Phase 3 is what promotes a draft into one);
+-- matter_id and document_type are nullable for the same reason drafting
+-- may begin before either is chosen.
+CREATE TABLE IF NOT EXISTS "DocumentDraft" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "user_id" UUID NOT NULL REFERENCES "User"("id"),
+    "matter_id" UUID REFERENCES "Matter"("id"),
+    "envelope_id" UUID REFERENCES "DocumentEnvelope"("id"),
+    "document_type" TEXT,
+    "title" TEXT,
+    "content" TEXT NOT NULL DEFAULT '',
+    "revision" INTEGER NOT NULL DEFAULT 1,
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentdraft_revision_positive'
+    ) THEN
+        ALTER TABLE "DocumentDraft" ADD CONSTRAINT documentdraft_revision_positive
+            CHECK ("revision" > 0);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentdraft_document_type_check'
+    ) THEN
+        ALTER TABLE "DocumentDraft" ADD CONSTRAINT documentdraft_document_type_check
+            CHECK ("document_type" IS NULL OR "document_type" IN (
+                'PLAINT', 'WRITTEN_STATEMENT', 'AFFIDAVIT', 'INTERIM_APPLICATION', 'LEGAL_NOTICE',
+                'BAIL_APPLICATION', 'ANTICIPATORY_BAIL_APPLICATION', 'CRIMINAL_COMPLAINT', 'OBJECTION_STATEMENT', 'PETITION',
+                'WRIT_PETITION', 'WRIT_APPEAL', 'REVISION_PETITION', 'REVIEW_PETITION', 'MEMO'
+            ));
+    END IF;
+END
+$$;
+
 -- Activation of RLS
 -- FORCE is required in addition to ENABLE: without it, Postgres exempts the
 -- table owner from RLS policies, and the application's runtime role is
@@ -845,6 +1331,22 @@ ALTER TABLE "DocumentVersion" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentVersion" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "MatterPreparationReminder" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterPreparationReminder" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterParty" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterParty" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "EarlierCaseReference" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "EarlierCaseReference" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterResearchAuthority" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterResearchAuthority" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterRepresentation" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterRepresentation" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterClosureRecord" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterClosureRecord" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterReopeningRecord" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterReopeningRecord" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "MatterAuditEvent" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MatterAuditEvent" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentDraft" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentDraft" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -913,6 +1415,38 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterPreparationReminder";
 CREATE POLICY tenant_isolation_policy ON "MatterPreparationReminder"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterParty";
+CREATE POLICY tenant_isolation_policy ON "MatterParty"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "EarlierCaseReference";
+CREATE POLICY tenant_isolation_policy ON "EarlierCaseReference"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterResearchAuthority";
+CREATE POLICY tenant_isolation_policy ON "MatterResearchAuthority"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterRepresentation";
+CREATE POLICY tenant_isolation_policy ON "MatterRepresentation"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterClosureRecord";
+CREATE POLICY tenant_isolation_policy ON "MatterClosureRecord"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterReopeningRecord";
+CREATE POLICY tenant_isolation_policy ON "MatterReopeningRecord"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterAuditEvent";
+CREATE POLICY tenant_isolation_policy ON "MatterAuditEvent"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentDraft";
+CREATE POLICY tenant_isolation_policy ON "DocumentDraft"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -951,6 +1485,23 @@ CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_matter ON "AiUsageEvent"("ten
 CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_envelope ON "DocumentAccessEvent"("tenant_id", "envelope_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_documentaccessevent_tenant_created ON "DocumentAccessEvent"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_matterpreparationreminder_case_hearing ON "MatterPreparationReminder"("case_id", "hearing_date");
+CREATE INDEX IF NOT EXISTS idx_matter_current_proceeding ON "Matter"("current_proceeding_id");
+CREATE INDEX IF NOT EXISTS idx_legalcase_prior_proceeding ON "LegalCase"("prior_proceeding_id");
+CREATE INDEX IF NOT EXISTS idx_matterparty_matter ON "MatterParty"("matter_id");
+CREATE INDEX IF NOT EXISTS idx_matterparty_proceeding ON "MatterParty"("proceeding_id");
+CREATE INDEX IF NOT EXISTS idx_earliercasereference_matter ON "EarlierCaseReference"("matter_id");
+CREATE INDEX IF NOT EXISTS idx_earliercasereference_linked_matter ON "EarlierCaseReference"("linked_matter_id");
+CREATE INDEX IF NOT EXISTS idx_matterresearchauthority_matter ON "MatterResearchAuthority"("matter_id");
+CREATE INDEX IF NOT EXISTS idx_matterrepresentation_matter ON "MatterRepresentation"("matter_id", "is_active");
+CREATE INDEX IF NOT EXISTS idx_matterrepresentation_proceeding ON "MatterRepresentation"("proceeding_id");
+CREATE INDEX IF NOT EXISTS idx_matterrepresentation_user ON "MatterRepresentation"("user_id");
+CREATE INDEX IF NOT EXISTS idx_matterclosurerecord_matter ON "MatterClosureRecord"("matter_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_matterreopeningrecord_matter ON "MatterReopeningRecord"("matter_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_matterreopeningrecord_closure ON "MatterReopeningRecord"("closure_record_id");
+CREATE INDEX IF NOT EXISTS idx_matterauditevent_matter_created ON "MatterAuditEvent"("matter_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_matterauditevent_tenant_created ON "MatterAuditEvent"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_documentdraft_user_updated ON "DocumentDraft"("user_id", "updated_at");
+CREATE INDEX IF NOT EXISTS idx_documentdraft_matter ON "DocumentDraft"("matter_id");
 
 -- Universal Search — Milestone 5 (Product Direction, Milestone 5). pg_trgm
 -- backs EntitySearchProvider's structured-field search (Matter/Proceeding/
@@ -993,3 +1544,19 @@ REVOKE UPDATE, DELETE ON "CourtNote" FROM nextcase_app;
 -- a hearing has been reminded-for, that fact never changes (Product
 -- Direction, Milestone 3).
 REVOKE UPDATE, DELETE ON "MatterPreparationReminder" FROM nextcase_app;
+
+-- MatterClosureRecord, MatterReopeningRecord, and MatterAuditEvent are the
+-- same kind of append-only ledger (Production Matter Register Foundation):
+-- a Matter's closure/reopening/audit history must never be silently
+-- rewritten or deleted — a correction is always a new row.
+REVOKE UPDATE, DELETE ON "MatterClosureRecord" FROM nextcase_app;
+REVOKE UPDATE, DELETE ON "MatterReopeningRecord" FROM nextcase_app;
+REVOKE UPDATE, DELETE ON "MatterAuditEvent" FROM nextcase_app;
+
+-- WalletTransactionRecord is the real financial transaction ledger behind
+-- AI Credits / wallet top-ups (Stripe webhook-credited) — the same kind of
+-- append-only ledger as the others above, and was missing this REVOKE
+-- entirely (Security & Vulnerability Hardening milestone). A completed
+-- transaction must never be silently altered or removed; corrections are
+-- new rows, never edits to history.
+REVOKE UPDATE, DELETE ON "WalletTransactionRecord" FROM nextcase_app;
