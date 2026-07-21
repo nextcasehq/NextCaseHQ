@@ -326,12 +326,35 @@ export function useDurableAutosave({
             }
             return;
           }
-          // The pointer no longer resolves (deleted, or belonged to a
-          // different user/tenant session) — fall through and create a
-          // fresh draft rather than getting stuck.
+          // The pointer no longer resolves — either genuinely deleted, or
+          // (the Phone OTP Authentication case) existingId was a
+          // client-generated local-only id from an earlier unauthenticated
+          // visit that was never a real server draft to begin with, and
+          // this reload now has a session (the advocate just completed
+          // /verify-phone and was redirected back here). Recover whatever
+          // is in IndexedDB under that id first, so a local draft migrates
+          // to a real server draft instead of silently vanishing the
+          // moment the pointer stops resolving.
         }
 
-        await createDraft({ title: latestRef.current.title, content: latestRef.current.content }, cancelledFlag);
+        const localBeforeCreate = existingId ? await loadLocalDraft(existingId) : null;
+        const initial = localBeforeCreate
+          ? { title: localBeforeCreate.title || '', content: localBeforeCreate.content }
+          : { title: latestRef.current.title, content: latestRef.current.content };
+
+        await createDraft(initial, cancelledFlag);
+
+        // The page always mounts with its own fresh-default title/content —
+        // if a local draft just migrated (or re-migrated, if still
+        // unauthenticated), the editor must be pointed at it explicitly,
+        // exactly like the two recovery branches above already do.
+        if (
+          localBeforeCreate &&
+          !cancelledFlag.current &&
+          (initial.content !== latestRef.current.content || initial.title !== latestRef.current.title)
+        ) {
+          onRecovered?.({ content: initial.content, title: initial.title || null });
+        }
       } catch {
         if (!cancelledFlag.current) setStatus('offline');
       }

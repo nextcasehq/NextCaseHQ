@@ -62,6 +62,17 @@ describe('Document Creator Phase 2 — Durable Draft and Continuous Autosave', (
     expect(page).toContain('Local draft — phone verification required for permanent saving.');
   });
 
+  test('Phone OTP Authentication: a local-only draft recovered from IndexedDB migrates to a real server draft once a session exists, instead of silently vanishing', () => {
+    // Regression: the pointer-doesn't-resolve fallthrough used to call
+    // createDraft with only the page's fresh-default title/content,
+    // discarding whatever was in IndexedDB under the stale local-only id —
+    // meaning an advocate who verified their phone and got redirected back
+    // here would see a blank draft instead of what they'd already typed.
+    expect(hook).toContain('const localBeforeCreate = existingId ? await loadLocalDraft(existingId) : null;');
+    expect(hook).toMatch(/localBeforeCreate[\s\S]*createDraft\(initial, cancelledFlag\)/);
+    expect(hook).toMatch(/createDraft\(initial, cancelledFlag\)[\s\S]*onRecovered\?\.\(/);
+  });
+
   test('the hook exposes startNewDraft for template selection\'s "always an independent draft" requirement', () => {
     expect(hook).toContain('startNewDraft');
     // startNewDraft must actually go through the same create-draft path
