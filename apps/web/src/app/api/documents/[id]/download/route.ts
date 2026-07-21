@@ -8,6 +8,8 @@ interface DocumentEnvelopeRow {
   id: string;
   title: string;
   storage_structure: { object_key?: string; content_type?: string };
+  current_object_key: string | null;
+  current_content_type: string | null;
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -38,16 +40,32 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // RLS scopes this to the caller's own tenant, exactly like every
     // other document/case route — a document belonging to a different
     // tenant returns zero rows here, and storage is never even touched.
+    //
+    // Downloads always serve the CURRENT version (Sprint 3, PR 3A) — the
+    // one with the highest version_number, via a LATERAL join — not the
+    // legacy storage_structure JSONB, which only ever describes the
+    // original v1 upload and would otherwise silently keep serving stale
+    // content forever once a second version exists. The JSONB fields
+    // remain a fallback only for a row that somehow has no version at all.
     const rows = await db.execute<DocumentEnvelopeRow>(
       session.tenantId,
-      `SELECT id, title, storage_structure FROM "DocumentEnvelope" WHERE id = $1`,
+      `SELECT de.id, de.title, de.storage_structure,
+              dv.object_key AS current_object_key, dv.content_type AS current_content_type
+       FROM "DocumentEnvelope" de
+       LEFT JOIN LATERAL (
+         SELECT object_key, content_type FROM "DocumentVersion"
+         WHERE document_id = de.id
+         ORDER BY version_number DESC
+         LIMIT 1
+       ) dv ON true
+       WHERE de.id = $1`,
       [id]
     );
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
     const envelope = rows[0];
-    const objectKey = envelope.storage_structure?.object_key;
+    const objectKey = envelope.current_object_key ?? envelope.storage_structure?.object_key;
     if (!objectKey) {
       return NextResponse.json(
         { error: 'NOT_FOUND', message: 'This document has no stored file content.' },
@@ -66,7 +84,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return new NextResponse(new Uint8Array(object.buffer), {
       status: 200,
       headers: {
-        'Content-Type': object.contentType || envelope.storage_structure.content_type || 'application/octet-stream',
+        'Content-Type':
+          object.contentType || envelope.current_content_type || envelope.storage_structure?.content_type || 'application/octet-stream',
         'Content-Disposition': `attachment; filename="${envelope.title.replace(/"/g, '')}"`,
         'Content-Length': String(object.buffer.length),
       },

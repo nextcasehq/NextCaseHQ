@@ -141,4 +141,70 @@ describe('GET/DELETE /api/documents/[id]', () => {
 
     await expect(getObject(objectKey)).rejects.toThrow();
   });
+
+  test('DELETE removes every version\'s underlying object, not just the current one', async () => {
+    if (!process.env.S3_ENDPOINT) return; // requires `pnpm test:start-s3rver` running
+
+    const documentId = crypto.randomUUID();
+    const v1Key = `${TENANT_A}/${documentId}/v1/multi.txt`;
+    const v2Key = `${TENANT_A}/${documentId}/v2/multi.txt`;
+    await putObject(v1Key, Buffer.from('version one'), 'text/plain');
+    await putObject(v2Key, Buffer.from('version two'), 'text/plain');
+
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (id, tenant_id, title, storage_structure) VALUES ($1, $2, $3, $4)`,
+      [documentId, TENANT_A, 'multi.txt', { object_key: v1Key }]
+    );
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentVersion" (tenant_id, document_id, version_number, object_key, content_type, size_bytes)
+       VALUES ($1, $2, 1, $3, $4, $5)`,
+      [TENANT_A, documentId, v1Key, 'text/plain', 11]
+    );
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentVersion" (tenant_id, document_id, version_number, object_key, content_type, size_bytes)
+       VALUES ($1, $2, 2, $3, $4, $5)`,
+      [TENANT_A, documentId, v2Key, 'text/plain', 11]
+    );
+
+    const res = await DELETE(
+      buildRequest('DELETE', { cookie: await sessionCookieHeader(TENANT_A) }),
+      routeParams(documentId)
+    );
+    expect(res.status).toBe(200);
+
+    await expect(getObject(v1Key)).rejects.toThrow();
+    await expect(getObject(v2Key)).rejects.toThrow();
+
+    const remainingVersions = await db.execute<{ id: string }>(
+      TENANT_A,
+      `SELECT id FROM "DocumentVersion" WHERE document_id = $1`,
+      [documentId]
+    );
+    expect(remainingVersions).toHaveLength(0);
+  });
+
+  test('GET includes matter_id, category, and status on the returned document', async () => {
+    const matterRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'Detail Field Test Matter']
+    );
+    const rows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, title, matter_id) VALUES ($1, $2, $3) RETURNING id`,
+      [TENANT_A, 'Field Test Doc', matterRows[0].id]
+    );
+    const res = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(rows[0].id));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.document.matter_id).toBe(matterRows[0].id);
+    expect(body.document.category).toBe('OTHER');
+    expect(body.document.status).toBe('ACTIVE');
+
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE id = $1`, [rows[0].id]);
+    await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE id = $1`, [matterRows[0].id]);
+  });
 });

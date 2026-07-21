@@ -4,8 +4,8 @@ import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { DatabaseClient, closePool } from '@/lib/db/db-client';
 
-const TENANT_A = '00000000-0000-4000-8000-0000000000e1';
-const TENANT_B = '00000000-0000-4000-8000-0000000000e2';
+const TENANT_A = '00000000-0000-4000-8000-0000000001a1';
+const TENANT_B = '00000000-0000-4000-8000-0000000001a2';
 const USER_ID = '00000000-0000-4000-8000-00000000009d';
 
 async function sessionCookieHeader(tenantId: string): Promise<string> {
@@ -35,12 +35,14 @@ describe('GET /api/documents — real DocumentEnvelope listing', () => {
     await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
   });
 
   afterAll(async () => {
     await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
     await closePool();
   });
 
@@ -82,6 +84,64 @@ describe('GET /api/documents — real DocumentEnvelope listing', () => {
     const body = await res.json();
     expect(body.documents).toHaveLength(1);
     expect(body.documents[0].title).toBe('Linked Doc');
+  });
+
+  test('filters by matter_id', async () => {
+    const matterRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'Filter Test Matter']
+    );
+    const matterId = matterRows[0].id;
+
+    await db.execute(TENANT_A, `INSERT INTO "DocumentEnvelope" (tenant_id, matter_id, title) VALUES ($1, $2, $3)`, [
+      TENANT_A,
+      matterId,
+      'Matter-Linked Doc',
+    ]);
+    await db.execute(TENANT_A, `INSERT INTO "DocumentEnvelope" (tenant_id, title) VALUES ($1, $2)`, [
+      TENANT_A,
+      'Unlinked Doc',
+    ]);
+
+    const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, `?matter_id=${matterId}`));
+    const body = await res.json();
+    expect(body.documents).toHaveLength(1);
+    expect(body.documents[0].title).toBe('Matter-Linked Doc');
+    expect(body.documents[0].matter_id).toBe(matterId);
+  });
+
+  test('filters by case_id AND matter_id together', async () => {
+    const matterRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'Combined Filter Matter']
+    );
+    const matterId = matterRows[0].id;
+    const caseRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "LegalCase" (tenant_id, title, country_code, matter_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [TENANT_A, 'Combined Filter Case', 'US', matterId]
+    );
+    const caseId = caseRows[0].id;
+
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, matter_id, case_id, title) VALUES ($1, $2, $3, $4)`,
+      [TENANT_A, matterId, caseId, 'Both-Linked Doc']
+    );
+    await db.execute(TENANT_A, `INSERT INTO "DocumentEnvelope" (tenant_id, matter_id, title) VALUES ($1, $2, $3)`, [
+      TENANT_A,
+      matterId,
+      'Matter-Only Doc',
+    ]);
+
+    const res = await GET(
+      buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, `?matter_id=${matterId}&case_id=${caseId}`)
+    );
+    const body = await res.json();
+    expect(body.documents).toHaveLength(1);
+    expect(body.documents[0].title).toBe('Both-Linked Doc');
   });
 
   test('rejects an out-of-range limit (400)', async () => {

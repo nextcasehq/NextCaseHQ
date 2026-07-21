@@ -230,11 +230,64 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const db = new DatabaseClient();
-    const rows = await db.execute<{ id: string; matter_id: string | null }>(
+
+    // RLS scopes this to the caller's own tenant — a case belonging to
+    // another tenant is indistinguishable from a nonexistent one.
+    const caseRows = await db.execute<{ id: string }>(
       session.tenantId,
-      `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id, matter_id`,
+      `SELECT id FROM "LegalCase" WHERE id = $1`,
       [id]
     );
+    if (caseRows.length === 0) {
+      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+
+    // Sprint 3, PR 3A: case_id -> LegalCase is no longer ON DELETE CASCADE
+    // (see db/schema.sql) — a Proceeding with attached Documents is now
+    // blocked from deletion, the same way a Matter with linked records is,
+    // rather than silently cascade-deleting those Documents' rows and
+    // orphaning their storage objects.
+    const documentRows = await db.execute<{ count: number }>(
+      session.tenantId,
+      `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE case_id = $1`,
+      [id]
+    );
+    if (documentRows[0].count > 0) {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'PROCEEDING_HAS_LINKED_DOCUMENTS',
+          message: 'This case still has linked documents. Remove or reassign them before deleting this case.',
+          linked: { documents: documentRows[0].count },
+        },
+        { status: 409 }
+      );
+    }
+
+    let rows: { id: string; matter_id: string | null }[];
+    try {
+      rows = await db.execute<{ id: string; matter_id: string | null }>(
+        session.tenantId,
+        `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id, matter_id`,
+        [id]
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('foreign key constraint')) {
+        // Defense in depth against a document attached in the narrow window
+        // between the check above and this delete — still a deterministic
+        // 409, never a raw 500 leaking a Postgres error.
+        return NextResponse.json(
+          {
+            error: 'CONFLICT',
+            code: 'PROCEEDING_HAS_LINKED_DOCUMENTS',
+            message: 'This case still has linked documents. Remove or reassign them before deleting this case.',
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });

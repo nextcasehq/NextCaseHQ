@@ -75,6 +75,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'Invalid x-case-id.' }, { status: 400 });
     }
 
+    const rawMatterId = request.headers.get('x-matter-id');
+    if (rawMatterId && !UUID_PATTERN.test(rawMatterId)) {
+      return NextResponse.json({ error: 'BAD_REQUEST', message: 'Invalid x-matter-id.' }, { status: 400 });
+    }
+
     const rawFileName = request.headers.get('x-file-name') || '';
     if (!rawFileName) {
       return NextResponse.json({ error: 'BAD_REQUEST', message: 'x-file-name is required.' }, { status: 400 });
@@ -137,10 +142,11 @@ export async function POST(request: NextRequest) {
     // real cross-tenant case_id in testing: the FK let it through. This
     // explicit, RLS-scoped SELECT is what actually enforces tenant
     // ownership of case_id before the insert is allowed to proceed.
+    let caseMatterId: string | null = null;
     if (rawCaseId) {
-      const caseRows = await db.execute<{ id: string }>(
+      const caseRows = await db.execute<{ id: string; matter_id: string | null }>(
         tenantId,
-        `SELECT id FROM "LegalCase" WHERE id = $1`,
+        `SELECT id, matter_id FROM "LegalCase" WHERE id = $1`,
         [rawCaseId]
       );
       if (caseRows.length === 0) {
@@ -149,27 +155,81 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      caseMatterId = caseRows[0].matter_id;
     }
+
+    // Same FK-bypasses-RLS reasoning as case_id above, re-verified
+    // independently of whatever a linked Proceeding's own matter_id says.
+    if (rawMatterId) {
+      const matterRows = await db.execute<{ id: string }>(
+        tenantId,
+        `SELECT id FROM "Matter" WHERE id = $1`,
+        [rawMatterId]
+      );
+      if (matterRows.length === 0) {
+        return NextResponse.json(
+          { error: 'BAD_REQUEST', message: 'x-matter-id does not reference an accessible matter.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Sprint 3, Decision 1 (confirmed): a Proceeding is an optional,
+    // additional tag on top of a Document's primary Matter ownership — the
+    // two must agree. If the caller gives both, the Proceeding must belong
+    // to that same Matter (a Proceeding with no Matter of its own does not
+    // "belong" to any Matter, so an explicit matter_id together with it is
+    // rejected too, not silently accepted). If the caller gives only
+    // case_id, the Document inherits whatever Matter that Proceeding
+    // already belongs to (including none) — exact prior behavior when the
+    // Proceeding has no Matter, matching Milestone 1's LegalCase.matter_id
+    // backward-compatibility guarantee.
+    if (rawCaseId && rawMatterId && caseMatterId !== rawMatterId) {
+      return NextResponse.json(
+        {
+          error: 'BAD_REQUEST',
+          code: 'MATTER_CASE_MISMATCH',
+          message: 'x-matter-id does not match the Matter that x-case-id belongs to.',
+        },
+        { status: 400 }
+      );
+    }
+    const resolvedMatterId = rawMatterId ?? (rawCaseId ? caseMatterId : null);
 
     // Generated up front (rather than letting Postgres's gen_random_uuid()
     // default assign it) so the object key can incorporate the real
     // DocumentEnvelope id, keeping storage and metadata identifiers in sync.
     const documentId = crypto.randomUUID();
-    const objectKey = buildObjectKey(tenantId, documentId, scrubbedFileName);
+    const objectKey = buildObjectKey(tenantId, documentId, scrubbedFileName, 1);
 
     const uploadResult = await putObject(objectKey, fileBuffer, fileTypeResult.contentType!);
 
-    let envelope;
     try {
-      const rows = await db.execute<{ id: string; tenant_id: string; case_id: string | null; created_at: string }>(
+      // A single atomic statement: DocumentEnvelope and its first
+      // DocumentVersion are created together — never a DocumentEnvelope row
+      // with no version. There is no current_version_id pointer to update
+      // afterward (the current version is simply whichever has the highest
+      // version_number for this document_id — see db/schema.sql), so this
+      // is the entire write, not a first step of one. Every value in the
+      // response below is already known from the request itself
+      // (documentId, tenantId, rawCaseId, resolvedMatterId were all
+      // computed above) — there is no need to read anything back from the
+      // RETURNING clause, only to confirm the write actually happened.
+      const rows = await db.execute<{ document_id: string }>(
         tenantId,
-        `INSERT INTO "DocumentEnvelope" (id, tenant_id, case_id, title, storage_structure)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, tenant_id, case_id, created_at`,
+        `WITH new_envelope AS (
+           INSERT INTO "DocumentEnvelope" (id, tenant_id, case_id, matter_id, title, storage_structure)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id
+         )
+         INSERT INTO "DocumentVersion" (tenant_id, document_id, version_number, object_key, content_type, size_bytes, etag, uploaded_by)
+         SELECT $2, new_envelope.id, 1, $7, $8, $9, $10, $11 FROM new_envelope
+         RETURNING document_id`,
         [
           documentId,
           tenantId,
           rawCaseId ?? null,
+          resolvedMatterId,
           scrubbedFileName,
           {
             storage_provider: 's3',
@@ -178,9 +238,16 @@ export async function POST(request: NextRequest) {
             bytes_stored: fileBuffer.length,
             etag: uploadResult.etag,
           },
+          objectKey,
+          fileTypeResult.contentType,
+          fileBuffer.length,
+          uploadResult.etag ?? null,
+          session.sub,
         ]
       );
-      envelope = rows[0];
+      if (rows.length === 0) {
+        throw new Error('Failed to persist the document envelope and its first version.');
+      }
     } catch (dbError) {
       // The object is already durably stored — if the metadata row fails
       // to save, clean up the now-orphaned object rather than leaking
@@ -191,9 +258,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       status: 'ACCEPTED',
-      id: envelope.id,
-      tenant_id: envelope.tenant_id,
-      case_id: envelope.case_id,
+      id: documentId,
+      tenant_id: tenantId,
+      case_id: rawCaseId ?? null,
+      matter_id: resolvedMatterId,
       bytes_received: totalBytesReceived,
       scrubbed_metadata: {
         file_name: scrubbedFileName,

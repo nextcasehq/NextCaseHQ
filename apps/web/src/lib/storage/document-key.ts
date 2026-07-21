@@ -41,7 +41,15 @@ export function sanitizeFileName(fileName: string): string {
   return cleaned || 'document';
 }
 
-/** Tenant-namespaced key: defense-in-depth even though DocumentEnvelope rows are already RLS-scoped by tenant_id — a leaked/misrouted key still can't be confused with another tenant's object. */
-export function buildObjectKey(tenantId: string, documentId: string, fileName: string): string {
-  return `${tenantId}/${documentId}/${sanitizeFileName(fileName)}`;
+/**
+ * Tenant-namespaced key: defense-in-depth even though DocumentEnvelope rows
+ * are already RLS-scoped by tenant_id — a leaked/misrouted key still can't
+ * be confused with another tenant's object.
+ *
+ * The version segment (Sprint 3, PR 3A) means every version of a Document
+ * lives at its own key — uploading version 2 can never clobber version 1's
+ * bytes, even before either database row exists.
+ */
+export function buildObjectKey(tenantId: string, documentId: string, fileName: string, versionNumber: number): string {
+  return `${tenantId}/${documentId}/v${versionNumber}/${sanitizeFileName(fileName)}`;
 }

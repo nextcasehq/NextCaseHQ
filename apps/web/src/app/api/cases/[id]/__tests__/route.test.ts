@@ -4,8 +4,8 @@ import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { DatabaseClient, closePool } from '@/lib/db/db-client';
 
-const TENANT_A = '00000000-0000-4000-8000-0000000000d1';
-const TENANT_B = '00000000-0000-4000-8000-0000000000d2';
+const TENANT_A = '00000000-0000-4000-8000-0000000001b1';
+const TENANT_B = '00000000-0000-4000-8000-0000000001b2';
 const USER_ID = '00000000-0000-4000-8000-00000000009c';
 const NON_EXISTENT_ID = '00000000-0000-4000-8000-000000000000';
 
@@ -41,11 +41,16 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
   });
 
   beforeEach(async () => {
+    // Sprint 3, PR 3A: case_id -> LegalCase is no longer ON DELETE CASCADE,
+    // so any Document created by these tests must be cleared before the
+    // LegalCase it references, or that delete would now correctly fail.
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
   });
 
   afterAll(async () => {
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
     await closePool();
@@ -203,5 +208,44 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
 
     const verify = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
     expect(verify.status).toBe(200);
+  });
+
+  test('DELETE returns 409 PROCEEDING_HAS_LINKED_DOCUMENTS when a Document is attached (Sprint 3, PR 3A) — no more silent cascade', async () => {
+    const id = await createCase(TENANT_A, 'Case With Document');
+    await db.execute(TENANT_A, `INSERT INTO "DocumentEnvelope" (tenant_id, case_id, title) VALUES ($1, $2, $3)`, [
+      TENANT_A,
+      id,
+      'Filed Document',
+    ]);
+
+    const res = await DELETE(buildRequest('DELETE', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('PROCEEDING_HAS_LINKED_DOCUMENTS');
+    expect(body.linked.documents).toBe(1);
+
+    // The case must still exist — the delete was refused, not partially
+    // applied, and the Document row was never silently cascade-deleted.
+    const verify = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(verify.status).toBe(200);
+    const docRows = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "DocumentEnvelope" WHERE case_id = $1`, [id]);
+    expect(docRows).toHaveLength(1);
+  });
+
+  test('DELETE succeeds once the linked Document is removed first', async () => {
+    const id = await createCase(TENANT_A, 'Case With Document, Then Removed');
+    const docRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, case_id, title) VALUES ($1, $2, $3) RETURNING id`,
+      [TENANT_A, id, 'Filed Document']
+    );
+
+    const blocked = await DELETE(buildRequest('DELETE', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(blocked.status).toBe(409);
+
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE id = $1`, [docRows[0].id]);
+
+    const res = await DELETE(buildRequest('DELETE', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(res.status).toBe(200);
   });
 });

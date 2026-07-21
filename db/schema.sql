@@ -439,6 +439,119 @@ BEGIN
 END
 $$;
 
+-- 7d. Document Workspace Foundation (Sprint 3, PR 3A). DocumentEnvelope
+-- remains the durable Document identity (Milestone 1's DocumentEnvelope);
+-- DocumentVersion is new and holds one immutable row per uploaded file —
+-- append-only by construction, matching AiUsageEvent's ledger discipline
+-- (see the REVOKE at the bottom of this file). Uploading a new version
+-- never overwrites or deletes a prior version's row or its underlying
+-- stored object.
+--
+-- Deliberately NOT a stored current_version_id pointer column on
+-- DocumentEnvelope: that would require inserting the Envelope row and then
+-- UPDATE-ing it again in a later statement to point at its first Version —
+-- but a data-modifying CTE and the statement that contains it always share
+-- one snapshot, so a subsequent UPDATE in the SAME statement can never see
+-- a row a preceding CTE in that statement just inserted into the same
+-- table (this is documented PostgreSQL behavior, confirmed the hard way
+-- while building this migration). The "current version" is instead simply
+-- the one with the highest version_number for a document_id — computed at
+-- read time via the documentversion_document_version_unique index, which
+-- is already exactly the right shape for that query, and needs no second
+-- write at all.
+CREATE TABLE IF NOT EXISTS "DocumentVersion" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "document_id" UUID NOT NULL REFERENCES "DocumentEnvelope"("id") ON DELETE CASCADE,
+    "version_number" INT NOT NULL,
+    "object_key" TEXT NOT NULL,
+    "content_type" TEXT NOT NULL,
+    "size_bytes" BIGINT NOT NULL,
+    "etag" TEXT,
+    "uploaded_by" UUID REFERENCES "User"("id"),
+    "created_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentversion_document_version_unique'
+    ) THEN
+        ALTER TABLE "DocumentVersion" ADD CONSTRAINT documentversion_document_version_unique
+            UNIQUE ("document_id", "version_number");
+    END IF;
+END
+$$;
+
+-- Additive Document Workspace columns on the existing DocumentEnvelope
+-- table. matter_id mirrors LegalCase.matter_id from Milestone 1 exactly
+-- (nullable, no ON DELETE clause — a Matter with attached Documents is
+-- blocked from deletion at the application layer, same as it already is
+-- for linked Proceedings/Participants/Events).
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "matter_id" UUID REFERENCES "Matter"("id");
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "category" TEXT NOT NULL DEFAULT 'OTHER';
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "folder_path" TEXT;
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "tags" TEXT[];
+ALTER TABLE "DocumentEnvelope" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'ACTIVE';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentenvelope_category_check'
+    ) THEN
+        -- Frozen-but-appendable, same discipline as operation_type and
+        -- engagement_type: safe to append a new value later (e.g. TEMPLATE,
+        -- once a Templates milestone exists), never rename one already in use.
+        ALTER TABLE "DocumentEnvelope" ADD CONSTRAINT documentenvelope_category_check
+            CHECK ("category" IN (
+                'PLEADING', 'EVIDENCE', 'CORRESPONDENCE', 'CONTRACT',
+                'ORDER', 'RESEARCH', 'OTHER'
+            ));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentenvelope_status_check'
+    ) THEN
+        ALTER TABLE "DocumentEnvelope" ADD CONSTRAINT documentenvelope_status_check
+            CHECK ("status" IN ('ACTIVE', 'ARCHIVED'));
+    END IF;
+END
+$$;
+
+-- One-time backfill: every DocumentEnvelope row that predates DocumentVersion
+-- gets exactly one version-1 row sourced from its existing storage_structure
+-- JSONB. After this runs, every Document — pre-migration or newly uploaded —
+-- has a uniform shape, and no code path needs to branch on "does this row
+-- have versions yet?".
+INSERT INTO "DocumentVersion" (tenant_id, document_id, version_number, object_key, content_type, size_bytes, etag, created_at)
+SELECT
+    de."tenant_id",
+    de."id",
+    1,
+    de."storage_structure"->>'object_key',
+    COALESCE(de."storage_structure"->>'content_type', 'application/octet-stream'),
+    COALESCE((de."storage_structure"->>'bytes_stored')::BIGINT, 0),
+    de."storage_structure"->>'etag',
+    de."created_at"
+FROM "DocumentEnvelope" de
+WHERE de."storage_structure"->>'object_key' IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM "DocumentVersion" dv WHERE dv."document_id" = de."id");
+
+-- Replace the unsafe case_id -> LegalCase ON DELETE CASCADE. Today, deleting
+-- a Proceeding silently cascade-deletes any Documents linked to it — and
+-- because no application code runs on a database-level cascade, their
+-- underlying storage objects are never cleaned up and are orphaned in the
+-- bucket forever. The application-level 409 check on DELETE /api/cases/[id]
+-- (see the route itself) is the primary defense; this constraint change is
+-- the backstop that makes a race between that check and a concurrent upload
+-- fail safely (a blocked delete) rather than silently (a lost document).
+-- Constraint name is Postgres's own auto-generated default for an inline
+-- REFERENCES clause with no explicit CONSTRAINT name, confirmed against a
+-- live database rather than assumed.
+ALTER TABLE "DocumentEnvelope" DROP CONSTRAINT IF EXISTS "DocumentEnvelope_case_id_fkey";
+ALTER TABLE "DocumentEnvelope" ADD CONSTRAINT "DocumentEnvelope_case_id_fkey"
+    FOREIGN KEY ("case_id") REFERENCES "LegalCase"("id");
+
 -- 8. SecurityAuditTrail
 CREATE TABLE IF NOT EXISTS "SecurityAuditTrail" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -479,6 +592,8 @@ ALTER TABLE "MatterParticipant" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterParticipant" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "MatterEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterEvent" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentVersion" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentVersion" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -527,6 +642,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "AiUsageEvent";
 CREATE POLICY tenant_isolation_policy ON "AiUsageEvent"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentVersion";
+CREATE POLICY tenant_isolation_policy ON "DocumentVersion"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -553,6 +672,9 @@ CREATE INDEX IF NOT EXISTS idx_matterparticipant_user ON "MatterParticipant"("us
 CREATE INDEX IF NOT EXISTS idx_matterevent_matter_date ON "MatterEvent"("matter_id", "event_date");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_created ON "AiUsageEvent"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_aiusageevent_tenant_matter ON "AiUsageEvent"("tenant_id", "matter_id");
+CREATE INDEX IF NOT EXISTS idx_documentenvelope_matter ON "DocumentEnvelope"("matter_id");
+CREATE INDEX IF NOT EXISTS idx_documentversion_document ON "DocumentVersion"("document_id");
+CREATE INDEX IF NOT EXISTS idx_documentversion_tenant ON "DocumentVersion"("tenant_id");
 
 -- Application Role Privileges (least privilege: DML only, no DDL, no BYPASSRLS)
 GRANT USAGE ON SCHEMA public TO nextcase_app;
@@ -566,3 +688,12 @@ GRANT EXECUTE ON FUNCTION get_active_session_tenant() TO nextcase_app;
 -- re-grant UPDATE/DELETE on every table including this one; REVOKE is
 -- always safe to re-run regardless of what was previously granted.
 REVOKE UPDATE, DELETE ON "AiUsageEvent" FROM nextcase_app;
+
+-- DocumentVersion is likewise meant to be immutable once created — a new
+-- version is a new row, never an edit to a prior one. DELETE is revoked at
+-- the role level too: the only legitimate way a DocumentVersion row
+-- disappears is the ON DELETE CASCADE from its parent DocumentEnvelope
+-- being hard-deleted, which Postgres enforces via the FK's own referential-
+-- integrity trigger rather than the connecting role's own DELETE grant, so
+-- this revoke does not block that cascade.
+REVOKE UPDATE, DELETE ON "DocumentVersion" FROM nextcase_app;

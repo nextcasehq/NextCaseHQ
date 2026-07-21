@@ -34,13 +34,20 @@ describe('sanitizeFileName', () => {
 });
 
 describe('buildObjectKey', () => {
-  test('namespaces the key by tenant and document id', () => {
-    const key = buildObjectKey('tenant-a', 'doc-123', 'contract.pdf');
-    expect(key).toBe('tenant-a/doc-123/contract.pdf');
+  test('namespaces the key by tenant, document id, and version', () => {
+    const key = buildObjectKey('tenant-a', 'doc-123', 'contract.pdf', 1);
+    expect(key).toBe('tenant-a/doc-123/v1/contract.pdf');
   });
 
   test('sanitizes the file name within the key', () => {
-    const key = buildObjectKey('tenant-a', 'doc-123', '../../evil.pdf');
-    expect(key).toBe('tenant-a/doc-123/evil.pdf');
+    const key = buildObjectKey('tenant-a', 'doc-123', '../../evil.pdf', 1);
+    expect(key).toBe('tenant-a/doc-123/v1/evil.pdf');
+  });
+
+  test('a later version never collides with an earlier version\'s key', () => {
+    const v1 = buildObjectKey('tenant-a', 'doc-123', 'contract.pdf', 1);
+    const v2 = buildObjectKey('tenant-a', 'doc-123', 'contract.pdf', 2);
+    expect(v1).not.toBe(v2);
+    expect(v2).toBe('tenant-a/doc-123/v2/contract.pdf');
   });
 });

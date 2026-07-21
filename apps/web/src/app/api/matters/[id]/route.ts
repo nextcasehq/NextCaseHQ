@@ -237,7 +237,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // blocks deletion if any exist, so a Matter is never deleted out from
     // under linked Proceedings/participants/chronology without an explicit,
     // separate action to remove them first.
-    const [proceedingRows, participantRows, eventRows] = await Promise.all([
+    const [proceedingRows, participantRows, eventRows, documentRows] = await Promise.all([
       db.execute<{ count: number }>(
         session.tenantId,
         `SELECT COUNT(*)::int AS count FROM "LegalCase" WHERE matter_id = $1`,
@@ -253,21 +253,32 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         `SELECT COUNT(*)::int AS count FROM "MatterEvent" WHERE matter_id = $1`,
         [id]
       ),
+      // Sprint 3, PR 3A: a Matter with attached Documents is blocked from
+      // deletion the same way a Matter with linked Proceedings is —
+      // matter_id has no ON DELETE clause (see db/schema.sql), so without
+      // this check a delete attempt would surface as a raw FK-violation
+      // 500 rather than a clean, expected 409.
+      db.execute<{ count: number }>(
+        session.tenantId,
+        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE matter_id = $1`,
+        [id]
+      ),
     ]);
 
     const linked = {
       proceedings: proceedingRows[0].count,
       participants: participantRows[0].count,
       events: eventRows[0].count,
+      documents: documentRows[0].count,
     };
 
-    if (linked.proceedings > 0 || linked.participants > 0 || linked.events > 0) {
+    if (linked.proceedings > 0 || linked.participants > 0 || linked.events > 0 || linked.documents > 0) {
       return NextResponse.json(
         {
           error: 'CONFLICT',
           code: 'MATTER_HAS_LINKED_RECORDS',
           message:
-            'This matter still has linked proceedings, participants, or chronology entries. Remove, reassign, or archive them before deleting this matter.',
+            'This matter still has linked proceedings, participants, chronology entries, or documents. Remove, reassign, or archive them before deleting this matter.',
           linked,
         },
         { status: 409 }

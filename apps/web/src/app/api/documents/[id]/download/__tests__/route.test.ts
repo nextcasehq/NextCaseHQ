@@ -101,4 +101,46 @@ describe('GET /api/documents/[id]/download', () => {
     const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }), routeParams(documentId));
     expect(res.status).toBe(404);
   });
+
+  test('serves the CURRENT version after a second version is uploaded — never stale v1 content', async () => {
+    if (!hasS3()) return;
+    const documentId = crypto.randomUUID();
+    const v1Key = `${TENANT_A}/${documentId}/v1/versioned.txt`;
+    const v2Key = `${TENANT_A}/${documentId}/v2/versioned.txt`;
+    await putObject(v1Key, Buffer.from('version one content'), 'text/plain');
+    await putObject(v2Key, Buffer.from('version TWO content, newer'), 'text/plain');
+    uploadedObjectKeys.push(v1Key, v2Key);
+
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (id, tenant_id, title, storage_structure) VALUES ($1, $2, $3, $4)`,
+      [documentId, TENANT_A, 'versioned.txt', { object_key: v1Key, content_type: 'text/plain' }]
+    );
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentVersion" (tenant_id, document_id, version_number, object_key, content_type, size_bytes)
+       VALUES ($1, $2, 1, $3, $4, $5)`,
+      [TENANT_A, documentId, v1Key, 'text/plain', 20]
+    );
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentVersion" (tenant_id, document_id, version_number, object_key, content_type, size_bytes)
+       VALUES ($1, $2, 2, $3, $4, $5)`,
+      [TENANT_A, documentId, v2Key, 'text/plain', 27]
+    );
+
+    const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }), routeParams(documentId));
+    expect(res.status).toBe(200);
+    const bodyText = await res.text();
+    expect(bodyText).toBe('version TWO content, newer');
+  });
+
+  test('falls back to the legacy storage_structure object_key for a row with no DocumentVersion at all', async () => {
+    if (!hasS3()) return;
+    const id = await createDocumentWithRealObject(TENANT_A, 'pre-versioning fallback content');
+    const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(res.status).toBe(200);
+    const bodyText = await res.text();
+    expect(bodyText).toBe('pre-versioning fallback content');
+  });
 });

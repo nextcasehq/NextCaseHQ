@@ -2,9 +2,9 @@ import { DatabaseClient, closePool } from '../db-client';
 
 describe('High-Priority Verification: Cross-Tenant RLS Isolation — Matter Workspace tables', () => {
   let db: DatabaseClient;
-  const TENANT_A = '00000000-0000-4000-8000-0000000000d1';
-  const TENANT_B = '00000000-0000-4000-8000-0000000000d2';
-  const USER_A = '00000000-0000-4000-8000-0000000000d3';
+  const TENANT_A = '00000000-0000-4000-8000-0000000001c1';
+  const TENANT_B = '00000000-0000-4000-8000-0000000001c2';
+  const USER_A = '00000000-0000-4000-8000-0000000001c3';
 
   async function seedTenant(tenantId: string) {
     await db.execute(
