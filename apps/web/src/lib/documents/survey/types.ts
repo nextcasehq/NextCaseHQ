@@ -34,6 +34,34 @@ export interface ListFieldConfig {
  */
 export type BlockFieldMap = Record<string, (answers: Record<string, unknown>) => string>;
 
+/**
+ * Structured, descriptive metadata about an interview — not consumed by
+ * the wizard, fill-template, or registry today (none of them read this
+ * field), and not shown in the current UI. It exists purely so future
+ * work — template/interview filtering and search, analytics, permissions,
+ * AI drafting eligibility, Matter Register linkage, Clause Assembly — has
+ * a place to read structured facts about an interview without requiring
+ * an engine change to add them. Every field is optional so existing and
+ * future interviews remain valid without it; the index signature means an
+ * interview can carry additional forward-looking keys the engine doesn't
+ * know about yet, and they are simply ignored rather than rejected.
+ */
+export interface InterviewMetadata {
+  courtVertical?: string;
+  courtType?: string;
+  practiceArea?: string;
+  documentType?: string;
+  category?: string;
+  version?: string;
+  jurisdictionScope?: string;
+  applicableCourts?: string[];
+  requiredAttachments?: string[];
+  supportedLanguages?: string[];
+  aiCompatible?: boolean;
+  clauseAssemblyCompatible?: boolean;
+  [key: string]: unknown;
+}
+
 export interface InterviewConfig {
   /** Unique id for this interview, used as the localStorage save/resume key. */
   id: string;
@@ -44,4 +72,6 @@ export interface InterviewConfig {
   scalarFields: ScalarFieldMap;
   listFields: Record<string, ListFieldConfig>;
   blockFields: BlockFieldMap;
+  /** Optional — see `InterviewMetadata`. Absent on an interview that predates this field. */
+  metadata?: InterviewMetadata;
 }

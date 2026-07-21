@@ -5,11 +5,14 @@ import { WRIT_PETITION_INTERVIEW } from './schemas/writ-petition';
  * The Legal Interview Engine's single extension point. A future interview
  * for any court vertical — Supreme Court SLPs, District Court plaints,
  * Magistrate Court complaints, tribunal filings, and so on — is added by
- * writing one schema file (see schemas/writ-petition.ts for the pattern)
- * and adding it here. Nothing else in the Document Creator changes: the
- * wizard component, the fill-template engine, and the page that hosts
- * them are all driven entirely by whichever `InterviewConfig` a template
- * resolves to.
+ * writing one schema file (see schemas/writ-petition.ts for the pattern:
+ * surveyJson + scalarFields/listFields/blockFields + an optional
+ * `metadata` object describing it) and adding it here. Nothing else in
+ * the Document Creator changes: the wizard component and the
+ * fill-template engine only ever read surveyJson/scalarFields/
+ * listFields/blockFields — `metadata` is carried but never inspected by
+ * either, so any interview's descriptive metadata (or lack of it) has no
+ * effect on how it renders or generates a draft today.
  */
 const INTERVIEWS: InterviewConfig[] = [WRIT_PETITION_INTERVIEW];
 

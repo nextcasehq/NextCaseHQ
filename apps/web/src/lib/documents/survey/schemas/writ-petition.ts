@@ -275,4 +275,22 @@ export const WRIT_PETITION_INTERVIEW: InterviewConfig = {
         ? `<h3>INTERIM RELIEF</h3><p>${esc(answers.interimReliefDetails)}</p>`
         : '',
   },
+  // Descriptive only — see InterviewMetadata. Nothing in this file's
+  // surveyJson/scalarFields/listFields/blockFields reads these values;
+  // they're here for future filtering/search/analytics/permissions/AI/
+  // Matter Register/Clause Assembly consumers.
+  metadata: {
+    courtVertical: 'HIGH_COURTS',
+    courtType: 'High Court',
+    practiceArea: 'Constitutional',
+    documentType: 'PETITION',
+    category: 'Writ Petition',
+    version: 'v1.0',
+    jurisdictionScope: 'STATE',
+    applicableCourts: ['All High Courts (court name supplied as an interview answer)'],
+    requiredAttachments: ['Vakalatnama', 'Affidavit in support', 'Annexures as listed in the petition'],
+    supportedLanguages: ['en'],
+    aiCompatible: false,
+    clauseAssemblyCompatible: false,
+  },
 };
