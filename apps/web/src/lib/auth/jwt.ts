@@ -1,10 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose';
 
 /**
- * Shared with apps/web/middleware.ts — both must sign/verify with the same
+ * Shared with apps/web/src/proxy.ts — both must sign/verify with the same
  * secret and algorithm for session cookies minted here to be accepted
- * there. Pure `jose` + Web Crypto, no Node-only APIs, so this module is
- * safe to import from Edge runtime code (middleware.ts) as well as
+ * there. Pure `jose` + Web Crypto, no Node-only APIs, so this module works
+ * equally well from proxy.ts (always nodejs runtime) and from ordinary
  * Node-runtime route handlers.
  */
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');

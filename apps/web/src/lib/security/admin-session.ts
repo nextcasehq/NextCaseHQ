@@ -5,7 +5,7 @@ import { SignJWT, jwtVerify } from 'jose';
  * admin console is a distinct trust boundary with its own secret, so a
  * compromise of one signing key doesn't compromise the other, and this
  * milestone never has to touch the regular user auth code path. Shared
- * with apps/web/middleware.ts, which verifies this same token at the Edge.
+ * with apps/web/src/proxy.ts, which verifies this same token.
  */
 const ADMIN_SESSION_SECRET = new TextEncoder().encode(
   process.env.ADMIN_SESSION_SECRET || 'nchq-admin-session-secret-placeholder'

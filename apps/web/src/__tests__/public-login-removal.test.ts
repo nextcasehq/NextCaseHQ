@@ -45,9 +45,9 @@ describe('Public /login removal', () => {
 });
 
 describe('Backend authentication infrastructure preserved (not modified by the /login removal)', () => {
-  test('protected-route middleware still redirects unauthenticated visitors to /login', () => {
-    const middlewareSource = fs.readFileSync(path.join(__dirname, '../../middleware.ts'), 'utf8');
-    expect(middlewareSource).toContain('/login');
+  test('protected-route proxy (formerly middleware) still redirects unauthenticated visitors to /login', () => {
+    const proxySource = fs.readFileSync(path.join(__dirname, '../proxy.ts'), 'utf8');
+    expect(proxySource).toContain('/login');
   });
 
   test('dashboard and admin logout still route back to /login', () => {
