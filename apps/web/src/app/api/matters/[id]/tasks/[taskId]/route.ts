@@ -104,14 +104,28 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // RLS-scoped re-verification that this task belongs to this matter,
     // in this tenant, before updating — same FK-bypasses-RLS defense used
-    // throughout the codebase.
-    const existingRows = await db.execute<{ id: string }>(
+    // throughout the codebase. Also carries the parent Matter's status so a
+    // closed matter's tasks can't be marked done/dismissed/reopened either.
+    const existingRows = await db.execute<{ id: string; matter_status: string }>(
       session.tenantId,
-      `SELECT id FROM "MatterTask" WHERE id = $1 AND matter_id = $2`,
+      `SELECT mt.id, m.status AS matter_status
+       FROM "MatterTask" mt
+       JOIN "Matter" m ON m.id = mt.matter_id
+       WHERE mt.id = $1 AND mt.matter_id = $2`,
       [taskId, id]
     );
     if (existingRows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+    if (existingRows[0].matter_status === 'CLOSED') {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'MATTER_CLOSED_READ_ONLY',
+          message: 'This matter is closed and its tasks can no longer be updated.',
+        },
+        { status: 409 }
+      );
     }
 
     if (result.data.assigned_user_id) {

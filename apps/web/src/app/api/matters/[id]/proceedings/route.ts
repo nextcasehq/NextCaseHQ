@@ -168,11 +168,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (matterRows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND', message: 'Matter not found.' }, { status: 404 });
     }
-    // Closing one proceeding must not prevent recording a further one — a
-    // Matter Register itself must be reopened first, but a Further
-    // Proceeding is exactly how that reopening is usually followed up, so
-    // this route intentionally does not block on CLOSED the way ordinary
-    // field edits do; the reopen flow governs the matter status separately.
+    // A closed Matter Register is read-only for every mutation type,
+    // proceedings included — the only sanctioned way to add a further
+    // proceeding after closure is to reopen the matter first via the
+    // dedicated POST /api/matters/[id]/reopen flow, same as every other
+    // route in this milestone.
+    if (matterRows[0].status === 'CLOSED') {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'MATTER_CLOSED_READ_ONLY',
+          message: 'This Matter Register is closed and read-only. Reopen it first via POST /api/matters/[id]/reopen.',
+        },
+        { status: 409 }
+      );
+    }
 
     if (input.prior_proceeding_id) {
       const priorRows = await db.execute<{ id: string }>(

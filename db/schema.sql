@@ -1496,3 +1496,11 @@ REVOKE UPDATE, DELETE ON "MatterPreparationReminder" FROM nextcase_app;
 REVOKE UPDATE, DELETE ON "MatterClosureRecord" FROM nextcase_app;
 REVOKE UPDATE, DELETE ON "MatterReopeningRecord" FROM nextcase_app;
 REVOKE UPDATE, DELETE ON "MatterAuditEvent" FROM nextcase_app;
+
+-- WalletTransactionRecord is the real financial transaction ledger behind
+-- AI Credits / wallet top-ups (Stripe webhook-credited) — the same kind of
+-- append-only ledger as the others above, and was missing this REVOKE
+-- entirely (Security & Vulnerability Hardening milestone). A completed
+-- transaction must never be silently altered or removed; corrections are
+-- new rows, never edits to history.
+REVOKE UPDATE, DELETE ON "WalletTransactionRecord" FROM nextcase_app;

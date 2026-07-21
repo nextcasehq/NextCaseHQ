@@ -176,4 +176,24 @@ describe('POST/GET /api/matters/[id]/proceedings — proceeding chain and Furthe
     );
     expect(res.status).toBe(404);
   });
+
+  test('rejects creating a proceeding on a closed matter (409), and inserts nothing — reopen first via POST /reopen', async () => {
+    const matterId = await createMatter(TENANT_A);
+    await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [matterId]);
+
+    const res = await POST(
+      buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, 'POST', { title: 'Too Late Proceeding' }),
+      routeParams(matterId)
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_CLOSED_READ_ONLY');
+
+    const proceedingRows = await db.execute<{ count: number }>(
+      TENANT_A,
+      `SELECT COUNT(*)::int AS count FROM "LegalCase" WHERE matter_id = $1`,
+      [matterId]
+    );
+    expect(proceedingRows[0].count).toBe(0);
+  });
 });
