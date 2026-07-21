@@ -38,6 +38,15 @@ describe('POST/GET /api/matters — real Matter persistence', () => {
       TENANT_B,
       'Matters Route Test Tenant B',
     ]);
+    // POST/PATCH /api/matters now stamp created_by_user_id/updated_by_user_id
+    // (Production Matter Register Foundation) — a real FK to "User", so the
+    // session subject must exist as a real row, same as every other route's
+    // test fixture in this codebase.
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "User" (id, tenant_id, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+      [USER_ID, TENANT_A, 'matters-test-author@nextcase.local']
+    );
   });
 
   beforeEach(async () => {

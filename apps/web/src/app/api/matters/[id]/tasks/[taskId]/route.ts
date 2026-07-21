@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
-import { MATTER_TASK_STATUSES } from '@/lib/domain/matter-task';
+import { MATTER_TASK_STATUSES, MATTER_TASK_PRIORITIES } from '@/lib/domain/matter-task';
 
 /**
  * Marking a structured pending action done/dismissed (Product Direction,
@@ -17,25 +17,41 @@ import { MATTER_TASK_STATUSES } from '@/lib/domain/matter-task';
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const StatusSchema = z.enum(MATTER_TASK_STATUSES);
+const PrioritySchema = z.enum(MATTER_TASK_PRIORITIES);
 
-const UpdateTaskSchema = z.object({
-  status: StatusSchema,
-});
+const UpdateTaskSchema = z
+  .object({
+    status: StatusSchema,
+    title: z.string().min(1).max(300),
+    description: z.string().max(5000).nullable(),
+    priority: PrioritySchema,
+    due_date: z.string().regex(DATE_PATTERN, 'Expected YYYY-MM-DD').nullable(),
+    assigned_user_id: z.string().regex(UUID_PATTERN, 'Invalid user id').nullable(),
+  })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, { message: 'At least one field must be provided.' });
 
 interface MatterTaskRow {
   id: string;
   matter_id: string;
-  case_id: string;
-  court_note_id: string;
+  case_id: string | null;
+  court_note_id: string | null;
   status: string;
+  priority: string;
+  title: string | null;
+  description: string | null;
+  due_date: string | null;
+  assigned_user_id: string | null;
   completed_at: string | null;
   completed_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
-const TASK_COLUMNS = `id, matter_id, case_id, court_note_id, status, completed_at, completed_by, created_at, updated_at`;
+const TASK_COLUMNS = `id, matter_id, case_id, court_note_id, status, priority, title, description,
+                      due_date, assigned_user_id, completed_at, completed_by, created_at, updated_at`;
 
 async function resolveSession(request: NextRequest) {
   try {
@@ -98,17 +114,52 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
 
-    const isCompleted = result.data.status === 'COMPLETED';
+    if (result.data.assigned_user_id) {
+      const userRows = await db.execute<{ id: string }>(
+        session.tenantId,
+        `SELECT id FROM "User" WHERE id = $1 AND tenant_id = $2`,
+        [result.data.assigned_user_id, session.tenantId]
+      );
+      if (userRows.length === 0) {
+        return NextResponse.json(
+          { error: 'BAD_REQUEST', message: 'assigned_user_id does not refer to a user in this tenant.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const fields = result.data;
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let paramIndex = 1;
+
+    for (const [key, value] of Object.entries(fields)) {
+      setClauses.push(`"${key}" = $${paramIndex}`);
+      values.push(value);
+      paramIndex += 1;
+    }
+    // Completing a task always stamps who/when; changing status away from
+    // COMPLETED always clears both, matching the pre-existing behaviour this
+    // route already had for the status-only case.
+    if (Object.prototype.hasOwnProperty.call(fields, 'status')) {
+      const isCompleted = fields.status === 'COMPLETED';
+      setClauses.push(`"completed_at" = CASE WHEN $${paramIndex} THEN now() ELSE NULL END`);
+      values.push(isCompleted);
+      paramIndex += 1;
+      setClauses.push(`"completed_by" = CASE WHEN $${paramIndex - 1} THEN $${paramIndex}::uuid ELSE NULL END`);
+      values.push(session.sub);
+      paramIndex += 1;
+    }
+    setClauses.push(`"updated_at" = now()`);
+    values.push(taskId, id);
+
     const rows = await db.execute<MatterTaskRow>(
       session.tenantId,
       `UPDATE "MatterTask"
-       SET status = $1,
-           completed_at = CASE WHEN $2 THEN now() ELSE NULL END,
-           completed_by = CASE WHEN $2 THEN $3::uuid ELSE NULL END,
-           updated_at = now()
-       WHERE id = $4 AND matter_id = $5
+       SET ${setClauses.join(', ')}
+       WHERE id = $${paramIndex} AND matter_id = $${paramIndex + 1}
        RETURNING ${TASK_COLUMNS}`,
-      [result.data.status, isCompleted, session.sub, taskId, id]
+      values
     );
 
     if (rows.length === 0) {

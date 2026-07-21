@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
-import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES } from '@/lib/domain/matter';
+import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES } from '@/lib/domain/matter';
 
 /**
  * Real Matter Workspace API — the parent client engagement / "digital case
@@ -19,7 +19,9 @@ import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES } from '@/lib/domain/matter';
 
 const MatterStatusSchema = z.enum(MATTER_STATUSES);
 const MatterEngagementTypeSchema = z.enum(MATTER_ENGAGEMENT_TYPES);
+const MatterCategorySchema = z.enum(MATTER_CATEGORIES);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 interface MatterRow {
   id: string;
@@ -41,12 +43,29 @@ interface MatterRow {
   created_at: string;
   updated_at: string;
   client_name: string | null;
+  advocate_reference_number: string | null;
+  matter_category: string | null;
+  state: string | null;
+  district: string | null;
+  court_establishment: string | null;
+  case_type: string | null;
+  filing_number: string | null;
+  matter_year: number | null;
+  cnr_number: string | null;
+  current_stage: string | null;
+  next_hearing_date: string | null;
+  current_proceeding_id: string | null;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
 }
 
 const MATTER_COLUMNS = `m.id, m.tenant_id, m.title, m.matter_number, m.engagement_type, m.practice_area,
                         m.status, m.client_id, m.opposing_party_name, m.opposing_counsel, m.court,
                         m.bench, m.judge, m.description, m.opened_at, m.closed_at, m.created_at,
-                        m.updated_at, c.name AS client_name`;
+                        m.updated_at, c.name AS client_name, m.advocate_reference_number, m.matter_category,
+                        m.state, m.district, m.court_establishment, m.case_type, m.filing_number,
+                        m.matter_year, m.cnr_number, m.current_stage, m.next_hearing_date,
+                        m.current_proceeding_id, m.created_by_user_id, m.updated_by_user_id`;
 const MATTER_FROM = `"Matter" m LEFT JOIN "Client" c ON c.id = m.client_id`;
 
 const CreateMatterSchema = z.object({
@@ -62,6 +81,17 @@ const CreateMatterSchema = z.object({
   bench: z.string().max(300).optional(),
   judge: z.string().max(300).optional(),
   description: z.string().max(10000).optional(),
+  advocate_reference_number: z.string().max(200).optional(),
+  matter_category: MatterCategorySchema.optional(),
+  state: z.string().max(200).optional(),
+  district: z.string().max(200).optional(),
+  court_establishment: z.string().max(300).optional(),
+  case_type: z.string().max(200).optional(),
+  filing_number: z.string().max(200).optional(),
+  matter_year: z.number().int().min(1900).max(2100).optional(),
+  cnr_number: z.string().max(50).optional(),
+  current_stage: z.string().max(300).optional(),
+  next_hearing_date: z.string().regex(DATE_PATTERN, 'Expected YYYY-MM-DD').optional(),
 });
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -207,11 +237,18 @@ export async function POST(request: NextRequest) {
       `WITH inserted AS (
          INSERT INTO "Matter"
            (tenant_id, title, matter_number, engagement_type, practice_area, status, client_id,
-            opposing_party_name, opposing_counsel, court, bench, judge, description)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            opposing_party_name, opposing_counsel, court, bench, judge, description,
+            advocate_reference_number, matter_category, state, district, court_establishment,
+            case_type, filing_number, matter_year, cnr_number, current_stage, next_hearing_date,
+            created_by_user_id, updated_by_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+                 $19, $20, $21, $22, $23, $24, $25, $25)
          RETURNING id, tenant_id, title, matter_number, engagement_type, practice_area, status,
                    client_id, opposing_party_name, opposing_counsel, court, bench, judge,
-                   description, opened_at, closed_at, created_at, updated_at
+                   description, opened_at, closed_at, created_at, updated_at,
+                   advocate_reference_number, matter_category, state, district, court_establishment,
+                   case_type, filing_number, matter_year, cnr_number, current_stage, next_hearing_date,
+                   current_proceeding_id, created_by_user_id, updated_by_user_id
        )
        SELECT ${MATTER_COLUMNS} FROM inserted m LEFT JOIN "Client" c ON c.id = m.client_id`,
       [
@@ -228,6 +265,18 @@ export async function POST(request: NextRequest) {
         input.bench ?? null,
         input.judge ?? null,
         input.description ?? null,
+        input.advocate_reference_number ?? null,
+        input.matter_category ?? null,
+        input.state ?? null,
+        input.district ?? null,
+        input.court_establishment ?? null,
+        input.case_type ?? null,
+        input.filing_number ?? null,
+        input.matter_year ?? null,
+        input.cnr_number ?? null,
+        input.current_stage ?? null,
+        input.next_hearing_date ?? null,
+        session.sub,
       ]
     );
 
