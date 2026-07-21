@@ -27,7 +27,7 @@
     "23": "COMPLETE — Milestone 2 (Matter Intelligence Layer): PR 2A + 2B + 2C all landed"
   },
   "sprint_b_data_locking": "ACTIVE",
-  "last_updated": "2026-07-19T10:35:00Z",
+  "last_updated": "2026-07-19T16:15:00Z",
   "git_status": "AUTOMATED_TRACKING_ACTIVE",
   "production_security_status": "PARTIAL — the admin console's client-side authentication (formerly the sole CRITICAL blocker) is resolved as of PR #65: admin login is now server-verified with a signed httpOnly session. Production security as a whole is still NOT fully complete — see known_limitations below before treating this system as production-ready.",
   "critical_production_blockers": [],
@@ -506,6 +506,78 @@
     "product_direction_hearing_driven_matter_record_m2": {
       "status": "COMPLETE — Product Direction Implementation Plan, Milestone 2 of 6 (Hearing-Driven Matter Record Building)",
       "description": "Second milestone of the approved Product Direction. Transforms Court Notes from isolated Proceeding-level records into the structured engine that builds and maintains a Matter's record, per docs/MILESTONE_2_HEARING_DRIVEN_MATTER_RECORD_PLAN.md. Read-only audit found no reusable task entity existed, MatterEvent already correctly handled chronology (no change needed), and CourtNote.matter_id (denormalized since Milestone 1) already supported pure query-based Matter-level Court Note aggregation with no new table. The one genuinely necessary schema addition is MatterTask — append-only CourtNote stays untouched; MatterTask is the first correctable entity in this lineage, but deliberately has no text/content column of its own, always reading its display text back from the CourtNote it derives from via court_note_id (UNIQUE), so a task can never drift from or duplicate the immutable record. POST /api/cases/[id]/court-notes gained one more conditional CTE insert (mirroring the existing MatterEvent one exactly): a MatterTask row only when the Proceeding is matter-linked and next_actions is non-empty. New endpoints: GET /api/matters/[id]/court-notes (aggregation across every linked Proceeding), GET /api/matters/[id]/tasks and PATCH .../tasks/[taskId] (mark done/dismissed — never touches the originating Court Note), and GET /api/matters/[id]/health (Matter Health: current stage, next hearing date, last activity, pending action count, and a needs-attention flag — all derived live on every read from CourtNote/LegalCase/MatterTask, nothing persisted, so there is no stale-snapshot risk and no invalidation step to forget). DELETE /api/matters/[id] gained one more linked-records check (tasks count) alongside its existing checks. Matter detail page (/matters/[id]) gained three new read-only sections — Matter Health, Court Note History, Pending Actions (replacing its prior 'Tasks' coming-soon placeholder) — extending, not replacing, the existing Title/Overview/Proceedings/Chronology/Team hierarchy, per the approved UX Blueprint's Matter Health recommendation. One real bug caught and fixed during verification: an ambiguous CASE WHEN ... THEN $param ELSE NULL expression left completed_by's parameter type under-specified against its UUID column; fixed with an explicit ::uuid cast. Verified: full 519-test suite (484 pre-existing + 35 net new/changed) passing against a real local PostgreSQL 16 + pgvector instance matching CI, pnpm typecheck (all 15 workspace projects) and a real production pnpm build both pass, and a real Playwright browser run (mobile viewport) through login → record a Court Note with next_actions → open the linked Matter → confirmed Matter Health/Court Note History/Pending Actions all render correctly, then marked the task done and confirmed the pending count updated live and the task's own Court Note was unchanged. Milestones 3-6 remain sequenced, not started. No navigation, Prepare Document, Universal Search, Typist Collaboration, or commercial UI work included, per approved scope."
+    },
+    "seo_geo_foundation_sprint": {
+      "status": "COMPLETE — Product Owner-directed sprint, sequenced ahead of Product Direction Milestone 6",
+      "description": "Sitemap/metadata/robots/JSON-LD technical SEO fixes on existing public marketing pages: removed a dangling /blog sitemap entry; added unique title/description/canonical/OpenGraph/Twitter metadata to all 8 public marketing pages that previously inherited the homepage's generic metadata; converted 3 client-only pages (resources/privacy/terms) with zero real interactivity to server components so they could export metadata, now prerendering statically; reframed robots.txt as crawler guidance rather than access control, adding previously-missing disallow entries for /matters/, /documents/, /admin, /docs, /system; expanded JSON-LD support (LegalService/FAQPage/Article builders, added for future use only and not wired to any page) and closed a gap where the home page rendered WebSite/SoftwareApplication but not Organization. docs/SEO_GEO_FOUNDATION_REPORT.md records the completed/gap inventory plus two Product-Owner-requested, read-only architectural investigations added as documentation only: Legal Dictionary / ~15,000-keyword-programme readiness, and a Dynamic Legal Discovery Layer / keyword-placement architecture (blank-space audit, reusable module designs, keyword-to-page clustering model, Entity Coverage Matrix, publication gates) — neither implemented in code.",
+      "pr": 103,
+      "merge_commit": "3dbedb8",
+      "verification": "pnpm --filter web build succeeds cleanly, all 8 changed pages prerender as static. Typecheck/test failures present are byte-for-byte identical to unmodified main (confirmed via git stash diff — a pre-existing tsconfig.json deprecation flag and missing DATABASE_URL/Redis in the verification sandbox), zero regressions. Manual dev-server verification confirmed correct rendered title/canonical/OG/Twitter per page, correct robots.txt/sitemap.xml output, correct JSON-LD @types on the home page, noindex intact on /search and /documents/new, and /blog now 404s. All 7 CI checks green (Vercel deploy, typecheck, lint, build, Compiler Validation x2, test), zero review comments.",
+      "out_of_scope_next": [
+        "legal_dictionary_implementation",
+        "legal_knowledge_graph_implementation",
+        "dynamic_legal_discovery_layer_modules",
+        "ai_geo_optimisation",
+        "product_direction_milestone_6"
+      ]
+    },
+    "ui_ux_validation_audit": {
+      "status": "COMPLETE — Product Owner-directed read-only audit, no code changed",
+      "description": "Read-only Production Validation & UI/UX Audit against a real local PostgreSQL 16 + pgvector + Redis instance (schema migrated, seeded, real login session) rather than static code review alone: 33 routes x 4 viewports (1920x1080, 1366x768, 768x1024, 390x844) = 132 page loads, capturing full-page screenshots, console/network errors, and an axe-core accessibility scan per page. docs/UI_UX_VALIDATION_REPORT.md records 9 findings with Issue/Location/Severity/User Impact/Root Cause/Recommended Fix/Estimated Effort/Screenshot per finding, most severe first: (1) Critical — authenticated /dashboard/* shell has no mobile/tablet responsiveness (fixed 264px sidebar, no collapse pattern); (2) High — home page's Organization JSON-LD (added in PR #103) referenced a missing logo asset (404) — a self-flagged regression from this same session's prior SEO sprint, since fixed by UX-0 (see below); (3) High — GET /api/admin/sentinels doesn't exist, called by both /admin and /system, fails silently; (4) High — nested <main> landmarks on 26 pages (root layout.tsx wraps children in <main>, and nearly every page independently wraps its own content in a second <main>); (5) High — color contrast violations sitewide, heaviest on /admin (47 nodes) and /cases/[id] (24 nodes); (6) High — critical-severity missing form labels/accessible names on 3 dashboard pages; (7) Medium — heading hierarchy issues (missing or skipped <h1>) on 18 pages; (8) Medium — no favicon configured anywhere; (9) Low — a <dl> structure violation on the home page. Also records positive findings for balance: empty-state handling, the auth flow, /documents/new, and the Matter detail page's mobile layout are all well-implemented. Screenshots committed to docs/ui-ux-audit-screenshots/.",
+      "pr": 105,
+      "merge_commit": "d62a4cf",
+      "verification": "No automated verification applicable — documentation and screenshot assets only, no code changed. Evidence for each finding is the captured axe-core/console/network data (raw results not committed) and the corresponding screenshot.",
+      "out_of_scope_next": [
+        "ux_1_dashboard_mobile_tablet_responsiveness",
+        "ux_2_accessibility_remediation",
+        "ux_3_admin_system_sentinels_backend_validation"
+      ]
+    },
+    "ux_0_organization_logo_fix": {
+      "status": "COMPLETE — isolated fix, Product Owner-approved milestone UX-0",
+      "description": "Fixes Finding #2 from ui_ux_validation_audit (above): components/seo/JsonLd.tsx's Organization schema has referenced ${baseUrl}/assets/logo.png since PR #103 (seo_geo_foundation_sprint), but no file existed at that path, so the URL 404'd. Adds apps/web/public/assets/logo.png (512x512, transparent background), rendered directly from the exact existing Logo.tsx brand mark (same shield, scales-of-justice emblem, brand colors used everywhere else in the app) — not a new design, just materializing the already-approved mark as a static asset at the path the schema already expected. Single isolated change, per approved scope: no other SEO changes, no UI redesign, no accessibility changes, no backend changes.",
+      "pr": 106,
+      "merge_commit": "92e5dcc",
+      "verification": "pnpm --filter web build succeeds cleanly. Verified against a real production server (next start): home page returns 200, GET /assets/logo.png returns 200 (was 404 before this fix), and the rendered JSON-LD payload's Organization.logo field resolves to a real image end to end.",
+      "out_of_scope_next": [
+        "ux_1_dashboard_mobile_tablet_responsiveness",
+        "ux_2_accessibility_remediation",
+        "ux_3_admin_system_sentinels_backend_validation"
+      ]
+    },
+    "ux_1_dashboard_responsive_shell": {
+      "status": "COMPLETE — isolated fix, Product Owner-approved milestone UX-1",
+      "description": "Fixes Finding #1 (Critical) from ui_ux_validation_audit: apps/web/src/app/dashboard/layout.tsx's sidebar was a fixed w-64 block with no responsive breakpoint at all, overflowing horizontally on any viewport below 768px across all 8 /dashboard/* routes. Below the md breakpoint, the sidebar is now an off-canvas panel (translate-x slide in/out, matching the visual language of this same file's existing Sliding Notifications Drawer), toggled by a new hamburger button in the header and closed via its own close button, the backdrop, Escape, or navigating to a new route. At md and above, desktop/tablet-static behavior is unchanged — no hamburger, no backdrop, sidebar remains static and always visible exactly as before. Reuses the same state-driven show/hide-by-breakpoint technique TriPaneChamber's own panels already use internally, adapted to an off-canvas drawer rather than a bottom tab bar since a 7-item sidebar nav doesn't fit a tab bar the way TriPaneChamber's 3 panels do. TriPaneChamber.tsx itself was left untouched. Scope: dashboard/layout.tsx only, per approved UX-1 boundaries — no accessibility bundle, no backend changes, no SEO changes, no redesign, no feature additions.",
+      "pr": 108,
+      "merge_commit": "2b3b4df",
+      "verification": "pnpm typecheck (all 15 workspace projects), pnpm --filter web build, and the full Jest suite all pass — test failure count byte-for-byte identical to main (356 failed/221 passed, pre-existing environment-dependent failures unrelated to this change). Focused Playwright regression against a real seeded Postgres/Redis instance: all 8 /dashboard/* routes x 4 viewports (1920x1080, 1366x768, 768x1024, 390x844) = 32 combinations, zero horizontal overflow on every combination with the mobile nav both closed and open. Hamburger control correctly hidden at >=768px and shown only <768px. Keyboard accessibility confirmed via actual element position tracking (bounding-box x: -256 -> 0 on Tab+Enter open, 0 -> -256 on Escape close) rather than DOM visibility alone, which false-negatives on transform-based hiding. Desktop screenshot confirmed visually unchanged from the pre-fix baseline.",
+      "known_residual_issue": "At exactly 768px (tablet), the 2 routes that render TriPaneChamber (/dashboard, /dashboard/ai-chamber) still show visually tight/overlapping panel content — TriPaneChamber's own internal 3-panel md: breakpoint design, unchanged by this fix (the sidebar was already md:-visible at 768px before this PR too, so this condition pre-dates it and isn't introduced or worsened here). No DOM-level horizontal overflow results from it. Logged separately as tripane_chamber_768px_tightness (below) as its own focused component-level responsiveness task — explicitly not folded into ux_2_accessibility_remediation, per Product Owner instruction.",
+      "out_of_scope_next": [
+        "ux_2_accessibility_remediation",
+        "ux_3_admin_system_sentinels_backend_validation",
+        "tripane_chamber_768px_tightness"
+      ]
+    },
+    "tripane_chamber_768px_tightness": {
+      "status": "NOT STARTED — logged for future, separately-scoped validation; not mixed into UX-2 accessibility work, per explicit Product Owner instruction",
+      "description": "Residual visual-quality issue identified during ux_1_dashboard_responsive_shell verification (not introduced by it): at exactly 768px viewport width, TriPaneChamber.tsx's own internal 3-panel layout (used only by /dashboard and /dashboard/ai-chamber) renders its full desktop-style 3-column view (its md: breakpoint is also 768px), which is a tight fit and produces visually crowded/overlapping panel content at that specific width. No DOM-level horizontal overflow results — content is clipped/contained via TriPaneChamber's own overflow-hidden containers, not pushing the page wider — but the visual crowding is real and worth a dedicated look.",
+      "pr": null,
+      "merge_commit": null,
+      "verification": "N/A — not yet implemented.",
+      "out_of_scope_next": [
+        "component_level_responsiveness_fix_for_tripane_chamber_at_768px"
+      ]
+    },
+    "ux_4_dashboard_experience_redesign": {
+      "status": "NOT STARTED — logged as a backlog item per explicit Product Owner direction; not part of the UX-1/UX-2/UX-3 remediation series and not to be implemented without separate approval",
+      "description": "Product Owner-identified architectural redesign milestone (also referenceable as PRODUCT-1), distinct from the UX-1/UX-2/UX-3 remediation series: although UX-1 made the dashboard shell responsive, the underlying three-vertical-column TriPaneChamber workspace is difficult to read and does not provide the best experience for legal research and case intelligence work, independent of any responsiveness fix. Objectives for the eventual proposal: re-evaluate the dashboard information architecture; improve readability of AI responses, legal research, and case data; reduce visual clutter; optimize content density; improve navigation between panels; design for lawyers' actual workflows rather than preserving the current three-column layout; consider whether a two-panel, adaptive, or progressive-disclosure layout provides a better experience. This explicitly supersedes/absorbs tripane_chamber_768px_tightness (above) as a narrower symptom of the same underlying layout, once this milestone is scoped.",
+      "pr": null,
+      "merge_commit": null,
+      "verification": "N/A — not yet implemented. No code changes authorized under this entry.",
+      "out_of_scope_next": [
+        "dashboard_ux_architecture_proposal_readonly",
+        "dashboard_information_architecture_redesign_implementation"
+      ]
     },
     "product_direction_seven_day_preparation_m3": {
       "status": "COMPLETE — Product Direction Implementation Plan, Milestone 3 of 6 (Seven-Day Case Preparation Workflow)",

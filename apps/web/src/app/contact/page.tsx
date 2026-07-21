@@ -1,7 +1,32 @@
 import React from "react";
-import Link from "next/link";
+import type { Metadata } from "next";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/Badge";
+
+const title = "Contact | NextCaseHQ";
+const description =
+  "Get in touch with the NextCaseHQ engineering and compliance team about our secure litigation operating system.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/contact" },
+  openGraph: {
+    title,
+    description,
+    url: "/contact",
+    siteName: "NextCaseHQ",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/landing/product-preview.png", width: 1200, height: 900, alt: "NextCaseHQ product preview" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/landing/product-preview.png"],
+  },
+};
 
 export default function ContactPage() {
   return (
@@ -40,14 +65,6 @@ export default function ContactPage() {
           </div>
         </div>
 
-        <div className="text-center">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-3 text-sm font-bold text-[#F6F1E7] transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg hover:shadow-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 active:scale-[0.98]"
-          >
-            Sign In to Support Center
-          </Link>
-        </div>
       </main>
       <Footer />
     </div>

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { GET } from '../route';
+import { GET, POST } from '../route';
 import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { DatabaseClient, closePool } from '@/lib/db/db-client';
@@ -14,8 +14,12 @@ async function sessionCookieHeader(tenantId: string): Promise<string> {
   return `${SESSION_COOKIE_NAME}=${token}`;
 }
 
-function buildRequest(headers: Record<string, string>): NextRequest {
-  return new NextRequest(new URL('http://localhost/api/matters/placeholder/tasks'), { headers });
+function buildRequest(headers: Record<string, string>, method = 'GET', body?: unknown): NextRequest {
+  return new NextRequest(new URL('http://localhost/api/matters/placeholder/tasks'), {
+    method,
+    headers: { origin: 'http://localhost:3000', ...headers },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
 }
 
 function routeParams(id: string) {
@@ -125,5 +129,88 @@ describe('GET /api/matters/[id]/tasks — structured pending actions (Milestone 
 
     const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_B) }), routeParams(matterId));
     expect(res.status).toBe(404);
+  });
+
+  describe('POST — standalone task creation (Production Matter Register Foundation)', () => {
+    test('rejects POST with no session (401)', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const res = await POST(buildRequest({}, 'POST', { title: 'Draft rejoinder' }), routeParams(matterId));
+      expect(res.status).toBe(401);
+    });
+
+    test('rejects an untrusted origin (403)', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const res = await POST(
+        buildRequest({ cookie: await sessionCookieHeader(TENANT_A), origin: 'https://attacker.example' }, 'POST', { title: 'Draft rejoinder' }),
+        routeParams(matterId)
+      );
+      expect(res.status).toBe(403);
+    });
+
+    test('creates a standalone task with no Court Note at all — court_note_id and case_id are both null', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const res = await POST(
+        buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, 'POST', {
+          title: 'File vakalatnama',
+          priority: 'HIGH',
+          due_date: '2026-04-01',
+        }),
+        routeParams(matterId)
+      );
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.task.title).toBe('File vakalatnama');
+      expect(body.task.priority).toBe('HIGH');
+      expect(body.task.court_note_id).toBeNull();
+      expect(body.task.case_id).toBeNull();
+      expect(body.task.status).toBe('PENDING');
+    });
+
+    test('defaults priority to MEDIUM when not provided', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const res = await POST(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, 'POST', { title: 'Untitled task' }), routeParams(matterId));
+      const body = await res.json();
+      expect(body.task.priority).toBe('MEDIUM');
+    });
+
+    test('rejects a task with no title (400)', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const res = await POST(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, 'POST', {}), routeParams(matterId));
+      expect(res.status).toBe(400);
+    });
+
+    test('rejects a related_proceeding_id belonging to another matter', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const otherMatterId = await createMatter(TENANT_A);
+      const otherCaseId = await createCase(TENANT_A, otherMatterId, 'Unrelated Proceeding');
+      const res = await POST(
+        buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, 'POST', {
+          title: 'Cross-proceeding task',
+          related_proceeding_id: otherCaseId,
+        }),
+        routeParams(matterId)
+      );
+      expect(res.status).toBe(400);
+    });
+
+    test('a standalone task and a Court-Note-derived task coexist in the same list, newest first among equal status', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const caseId = await createCase(TENANT_A, matterId, 'Test Proceeding');
+      await createCourtNoteWithTask(TENANT_A, caseId, matterId, 'Derived task text', 'PENDING');
+      await POST(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, 'POST', { title: 'Standalone task' }), routeParams(matterId));
+
+      const res = await GET(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }), routeParams(matterId));
+      const body = await res.json();
+      expect(body.tasks).toHaveLength(2);
+      const titles = body.tasks.map((t: { title: string | null; action_text: string | null }) => t.title ?? t.action_text);
+      expect(titles).toEqual(expect.arrayContaining(['Standalone task', 'Derived task text']));
+    });
+
+    test('rejects creating a task on a closed matter (409)', async () => {
+      const matterId = await createMatter(TENANT_A);
+      await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [matterId]);
+      const res = await POST(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, 'POST', { title: 'Should be blocked' }), routeParams(matterId));
+      expect(res.status).toBe(409);
+    });
   });
 });

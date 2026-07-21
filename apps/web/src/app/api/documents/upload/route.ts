@@ -195,15 +195,25 @@ export async function POST(request: NextRequest) {
     const effectiveMatterId = rawMatterId ?? caseMatterId;
 
     if (effectiveMatterId) {
-      const matterRows = await db.execute<{ id: string }>(
+      const matterRows = await db.execute<{ id: string; status: string }>(
         tenantId,
-        `SELECT id FROM "Matter" WHERE id = $1`,
+        `SELECT id, status FROM "Matter" WHERE id = $1`,
         [effectiveMatterId]
       );
       if (matterRows.length === 0) {
         return NextResponse.json(
           { error: 'BAD_REQUEST', message: 'x-matter-id does not reference an accessible matter.' },
           { status: 400 }
+        );
+      }
+      if (matterRows[0].status === 'CLOSED') {
+        return NextResponse.json(
+          {
+            error: 'CONFLICT',
+            code: 'MATTER_CLOSED_READ_ONLY',
+            message: 'This matter is closed and cannot accept new documents.',
+          },
+          { status: 409 }
         );
       }
     }

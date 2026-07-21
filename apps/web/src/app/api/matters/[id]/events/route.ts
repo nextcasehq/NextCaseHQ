@@ -117,13 +117,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // A matter_id FK check bypasses RLS — confirm the Matter exists in the
     // caller's own tenant before inserting a child row under it.
-    const matterRows = await db.execute<{ id: string }>(
+    const matterRows = await db.execute<{ id: string; status: string }>(
       session.tenantId,
-      `SELECT id FROM "Matter" WHERE id = $1`,
+      `SELECT id, status FROM "Matter" WHERE id = $1`,
       [id]
     );
     if (matterRows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND', message: 'Matter not found.' }, { status: 404 });
+    }
+    if (matterRows[0].status === 'CLOSED') {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'MATTER_CLOSED_READ_ONLY',
+          message: 'This matter is closed and cannot accept new chronology entries.',
+        },
+        { status: 409 }
+      );
     }
 
     const rows = await db.execute<MatterEventRow>(

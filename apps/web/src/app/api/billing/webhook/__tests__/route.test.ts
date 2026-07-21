@@ -28,7 +28,11 @@ describe('POST /api/billing/webhook', () => {
   });
 
   afterAll(async () => {
-    await db.execute(TENANT_A, `DELETE FROM "WalletTransactionRecord" WHERE tenant_id = $1`, [TENANT_A]);
+    // WalletTransactionRecord is append-only (nextcase_app has no
+    // UPDATE/DELETE grant, Security & Vulnerability Hardening milestone) —
+    // deleting the parent TenantWallet row cascades to remove its
+    // transaction records automatically (wallet_id is ON DELETE CASCADE),
+    // which does not require a DELETE grant on the child table itself.
     await db.execute(TENANT_A, `DELETE FROM "TenantWallet" WHERE tenant_id = $1`, [TENANT_A]);
     await closePool();
   });
@@ -126,5 +130,34 @@ describe('POST /api/billing/webhook', () => {
       ['cs_test_unique_2']
     );
     expect(txnRows).toHaveLength(1);
+  });
+
+  test('WalletTransactionRecord is append-only — the application role cannot UPDATE or DELETE a transaction', async () => {
+    mockedGetPaymentProvider.mockReturnValue({
+      name: 'stripe',
+      createCheckoutSession: jest.fn(),
+      parseWebhookEvent: jest.fn().mockReturnValue({
+        tenantId: TENANT_A,
+        amount: 25000,
+        currency: 'inr',
+        providerReference: 'cs_test_append_only',
+      }),
+    });
+    await POST(buildRequest('{}'));
+
+    const txnRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `SELECT id FROM "WalletTransactionRecord" WHERE metadata->>'stripe_session_id' = $1`,
+      ['cs_test_append_only']
+    );
+    expect(txnRows).toHaveLength(1);
+
+    await expect(
+      db.execute(TENANT_A, `UPDATE "WalletTransactionRecord" SET amount = 999999 WHERE id = $1`, [txnRows[0].id])
+    ).rejects.toThrow(/permission denied/i);
+
+    await expect(
+      db.execute(TENANT_A, `DELETE FROM "WalletTransactionRecord" WHERE id = $1`, [txnRows[0].id])
+    ).rejects.toThrow(/permission denied/i);
   });
 });

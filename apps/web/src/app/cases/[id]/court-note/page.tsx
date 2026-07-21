@@ -194,9 +194,9 @@ export default function CourtNotePage() {
         <main className="flex-1 flex flex-col justify-center items-center py-20">
           <span className="text-3xl">🔒</span>
           <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
-          <Link href="/login" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Go to Login →
-          </Link>
+          <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
+            Phone verification is required to save or access private work.
+          </p>
         </main>
       </div>
     );
