@@ -151,7 +151,7 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
       [caseId]
     );
     expect(caseRows[0]).toMatchObject({
-      hearing_date: '2026-03-15',
+      hearing_date: '2026-02-01',
       stage: 'Arguments',
       court: 'Tahsildar Court, Bengaluru',
     });
@@ -285,7 +285,7 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
       `SELECT hearing_date, stage FROM "LegalCase" WHERE id = $1`,
       [caseId]
     );
-    expect(caseRows[0]).toMatchObject({ hearing_date: '2026-04-20', stage: 'Final Hearing' });
+    expect(caseRows[0]).toMatchObject({ hearing_date: '2026-03-15', stage: 'Final Hearing' });
   });
 
   test('Court Notes are not visible from another tenant session (RLS)', async () => {
@@ -325,5 +325,111 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
       routeParams(NON_EXISTENT_ID)
     );
     expect(res.status).toBe(404);
+  });
+
+  test('POST rejects a Court Note on a Proceeding whose Matter is closed (409), and inserts nothing', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [matterId]);
+
+    const before = await db.execute<{ count: number }>(
+      TENANT_A,
+      `SELECT COUNT(*)::int AS count FROM "CourtNote" WHERE case_id = $1`,
+      [caseId]
+    );
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_CLOSED_READ_ONLY');
+
+    const after = await db.execute<{ count: number }>(
+      TENANT_A,
+      `SELECT COUNT(*)::int AS count FROM "CourtNote" WHERE case_id = $1`,
+      [caseId]
+    );
+    expect(after[0].count).toBe(before[0].count);
+  });
+
+  test('POST on a Proceeding with no Matter is unaffected by any Matter closure elsewhere', async () => {
+    const caseId = await createCase(TENANT_A);
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+  });
+
+  test('POST defaults source to ADVOCATE_ENTRY and verification_status to ADVOCATE_CONFIRMED, and stamps confirmed_by/confirmed_at', async () => {
+    const caseId = await createCase(TENANT_A);
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.court_note.source).toBe('ADVOCATE_ENTRY');
+    expect(body.court_note.verification_status).toBe('ADVOCATE_CONFIRMED');
+    expect(body.court_note.confirmed_by).toBe(USER_ID);
+    expect(body.court_note.confirmed_at).not.toBeNull();
+  });
+
+  test('POST accepts an explicit ECOURTS_CONFIRMED source, matching the eCourts manual-verification flow', async () => {
+    const caseId = await createCase(TENANT_A);
+    const res = await POST(
+      buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, { ...VALID_PAYLOAD, source: 'ECOURTS_CONFIRMED' }),
+      routeParams(caseId)
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.court_note.source).toBe('ECOURTS_CONFIRMED');
+    expect(body.court_note.verification_status).toBe('ECOURTS_CONFIRMED');
+  });
+
+  test('POST captures previous_hearing_date/previous_stage from the Proceeding as it stood before this update', async () => {
+    const caseId = await createCase(TENANT_A);
+    const first = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    const firstBody = await first.json();
+    expect(firstBody.court_note.previous_hearing_date).toBeNull();
+    expect(firstBody.court_note.previous_stage).toBeNull();
+
+    const second = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { ...VALID_PAYLOAD, hearing_date: '2026-03-15', stage: 'Final Hearing', note: 'Order reserved after arguments.' }
+      ),
+      routeParams(caseId)
+    );
+    const secondBody = await second.json();
+    expect(secondBody.court_note.previous_hearing_date).toBe('2026-02-01');
+    expect(secondBody.court_note.previous_stage).toBe('Arguments');
+  });
+
+  test('POST idempotency: an identical resubmission (same hearing_date/stage/note) is a no-op — no duplicate Court Note or MatterEvent', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    const first = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(first.status).toBe(201);
+    const firstBody = await first.json();
+
+    const eventsBefore = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "MatterEvent" WHERE matter_id = $1`, [matterId]);
+
+    const second = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(second.status).toBe(200);
+    const secondBody = await second.json();
+    expect(secondBody.no_op).toBe(true);
+    expect(secondBody.court_note.id).toBe(firstBody.court_note.id);
+
+    const notes = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "CourtNote" WHERE case_id = $1`, [caseId]);
+    expect(notes).toHaveLength(1);
+
+    const eventsAfter = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "MatterEvent" WHERE matter_id = $1`, [matterId]);
+    expect(eventsAfter).toHaveLength(eventsBefore.length);
+  });
+
+  test('a genuinely different resubmission (different note text) after an identical one is NOT treated as a no-op', async () => {
+    const caseId = await createCase(TENANT_A);
+    await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    const res = await POST(
+      buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, { ...VALID_PAYLOAD, note: 'A materially different note.' }),
+      routeParams(caseId)
+    );
+    expect(res.status).toBe(201);
+    const notes = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "CourtNote" WHERE case_id = $1`, [caseId]);
+    expect(notes).toHaveLength(2);
   });
 });

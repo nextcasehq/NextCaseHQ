@@ -31,6 +31,16 @@ function MattersChamberContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Set only when GET /api/matters returns the `review_mode` marker —
+  // i.e. an unauthenticated visitor under PRODUCT_REVIEW_MODE. Never set
+  // any other way, so this can't be spoofed into showing for a real,
+  // signed-in tenant.
+  const [isReviewMode, setIsReviewMode] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — governs whether the "Authentication Required" wall below uses
+  // neutral review-mode wording instead of the normal sign-in wording.
+  const [reviewModeActive, setReviewModeActive] = useState(false);
+  const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -58,6 +68,12 @@ function MattersChamberContent() {
       if (res.status === 401) {
         setNeedsAuth(true);
         setMatters([]);
+        fetch('/api/beta-status')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.enabled) setReviewModeActive(true);
+          })
+          .catch(() => {});
         return;
       }
       if (!res.ok) {
@@ -67,6 +83,7 @@ function MattersChamberContent() {
       const data = await res.json();
       setNeedsAuth(false);
       setMatters(data.matters);
+      if (data.review_mode) setIsReviewMode(true);
     } catch {
       setLoadError('Unable to reach the matter workspace service.');
     } finally {
@@ -112,6 +129,13 @@ function MattersChamberContent() {
   const handleCreateMatter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
+    // Product Review Mode is read-only — the form itself stays fully
+    // explorable, but the actual write is guarded here at submit time
+    // instead of blocking the form from opening at all.
+    if (isReviewMode) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
 
     const res = await fetch('/api/matters', {
       method: 'POST',
@@ -140,6 +164,13 @@ function MattersChamberContent() {
     fetchMatters(selectedStatus);
   };
 
+  // Product Review Mode is read-only, but the New Matter form itself is
+  // still fully explorable — only the actual submit (handleCreateMatter)
+  // is guarded, so a reviewer can inspect the whole form's UX.
+  const handleNewMatterClick = () => {
+    setShowCreateForm(!showCreateForm);
+  };
+
   const filteredMatters = matters.filter((m) => {
     const q = searchQuery.toLowerCase();
     if (!q) return true;
@@ -153,14 +184,24 @@ function MattersChamberContent() {
   if (needsAuth) {
     return (
       <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
-          Sign in to view and manage matters under your tenant.
-        </p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {reviewModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
+              Sign in to view and manage matters under your tenant.
+            </p>
+            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
+              Phone verification is required to save or access private work.
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -171,20 +212,41 @@ function MattersChamberContent() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
-            Matter Workspace
-          </h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
+              Matter Workspace
+            </h1>
+          </div>
           <p className="text-xs font-semibold text-[#726B58] uppercase tracking-widest mt-1">
             Client engagements — litigation, advisory, and everything in between
           </p>
         </div>
         <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
+          onClick={handleNewMatterClick}
           className="self-start md:self-auto bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs md:text-sm px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
         >
           {showCreateForm ? 'Close Form' : 'New Matter'}
         </button>
       </div>
+
+      {/* Neutral prompt — shown when a reviewer submits the form instead of
+          silently pretending the write succeeded. */}
+      {showUnavailablePrompt && (
+        <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs font-semibold text-[#5C5340]">
+            Function available after production activation.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowUnavailablePrompt(false)}
+              className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Matter Creation Form */}
       {showCreateForm && (
@@ -358,7 +420,7 @@ function MattersChamberContent() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search loaded matters by title, matter number, or client..."
-            className="w-full bg-transparent border-none outline-none text-[#111111] text-xs md:text-sm font-medium placeholder-[#B0A588] py-1.5"
+            className="w-full bg-transparent border-none outline-none text-[#111111] text-xs md:text-sm font-medium placeholder-[#726B58] py-1.5"
           />
         </div>
 
@@ -452,7 +514,7 @@ function MattersChamberContent() {
           description="No matters matching current query/filters exist inside your secure multi-tenant partition."
           action={
             <button
-              onClick={() => setShowCreateForm(true)}
+              onClick={handleNewMatterClick}
               className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
             >
               New Matter
@@ -466,14 +528,12 @@ function MattersChamberContent() {
 
 export default function MattersChamberPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
-      <Suspense fallback={
-        <div className="flex-1 flex justify-center items-center">
-          <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
-        </div>
-      }>
-        <MattersChamberContent />
-      </Suspense>
-    </div>
+    <Suspense fallback={
+      <div className="flex-1 flex justify-center items-center py-20">
+        <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
+      </div>
+    }>
+      <MattersChamberContent />
+    </Suspense>
   );
 }

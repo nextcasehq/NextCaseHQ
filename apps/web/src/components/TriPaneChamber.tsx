@@ -92,6 +92,13 @@ export const TriPaneChamber = () => {
         body: JSON.stringify({ question, case_id: caseContext?.id }),
       });
 
+      if (response.status === 401) {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          text: 'Function available after production activation.'
+        }]);
+        return;
+      }
       if (response.status === 422) {
         setChatMessages(prev => [...prev, {
           role: 'assistant',

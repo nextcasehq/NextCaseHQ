@@ -11,6 +11,9 @@ interface SearchResultItem {
   snippet: string;
   score: number;
   href: string;
+  // Only ever true for Product Review Mode's synthetic search results
+  // (see lib/beta/demo-search-data.ts) — never set by the real Search Service.
+  is_demo?: boolean;
 }
 
 interface SearchResultGroup {
@@ -25,6 +28,10 @@ const GROUP_LABELS: Record<string, string> = {
   PROCEEDING: 'Proceedings',
   CLIENT: 'Clients',
   COURT_NOTE: 'Court Notes',
+  JUDGMENT: 'Judgments',
+  ACT: 'Acts',
+  SECTION: 'Sections',
+  CITATION: 'Citations',
 };
 
 /**
@@ -47,6 +54,12 @@ function SearchPageContent() {
 
   const [query, setQuery] = useState(initialQuery);
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Product Review Mode is actually active right now. Governs
+  // whether the "Authentication Required" wall below uses neutral review
+  // wording instead of the normal sign-in wording; when review mode is off
+  // becomes true and the wall is unchanged.
+  const [reviewModeActive, setReviewModeActive] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +78,12 @@ function SearchPageContent() {
         const res = await fetch(`/api/search?${params.toString()}`);
         if (res.status === 401) {
           setNeedsAuth(true);
+          fetch('/api/beta-status')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.enabled) setReviewModeActive(true);
+            })
+            .catch(() => {});
           return;
         }
         if (!res.ok) {
@@ -94,12 +113,22 @@ function SearchPageContent() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to search.</p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {reviewModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to search.</p>
+            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
+              Phone verification is required to save or access private work.
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -129,7 +158,7 @@ function SearchPageContent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by case number, client name, court, or keyword…"
-          className="flex-1 px-4 py-3 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm"
+          className="flex-1 min-w-0 px-4 py-3 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm"
         />
         <button
           type="submit"
@@ -169,13 +198,20 @@ function SearchPageContent() {
               <div className="space-y-3">
                 {g.items.map((item) => (
                   <div key={item.id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm">
-                    {item.href ? (
-                      <Link href={item.href} className="text-sm font-bold text-[#3A3222] hover:text-[#8A6D2F]">
-                        {item.title}
-                      </Link>
-                    ) : (
-                      <p className="text-sm font-bold text-[#3A3222]">{item.title}</p>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {item.href ? (
+                        <Link href={item.href} className="text-sm font-bold text-[#3A3222] hover:text-[#8A6D2F]">
+                          {item.title}
+                        </Link>
+                      ) : (
+                        <p className="text-sm font-bold text-[#3A3222]">{item.title}</p>
+                      )}
+                      {item.is_demo && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#FBF6EA] text-[#8A6D2F] border border-[#C6A253]/40 uppercase tracking-wider">
+                          Demo Data
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-[#6F5624] mt-1">{item.snippet}</p>
                   </div>
                 ))}

@@ -1,6 +1,5 @@
 import React from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/Badge";
 
@@ -58,14 +57,6 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <div className="text-center">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg hover:shadow-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 active:scale-[0.98]"
-          >
-            Explore Careers &amp; Roles
-          </Link>
-        </div>
       </div>
       <Footer />
     </div>

@@ -15,6 +15,8 @@ interface DocumentDetail {
   version_count: number;
   updated_at: string;
   created_at: string;
+  /** Set only by the Product Review demo payload — never by a real Document. */
+  is_demo?: boolean;
 }
 
 interface DocumentVersion {
@@ -31,6 +33,13 @@ export default function DocumentDetailPage() {
   const id = params.id as string;
 
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Product Review Mode is actually active right now. Governs
+  // whether the "Authentication Required" wall below uses neutral review
+  // wording instead of the normal sign-in wording; when review mode is off
+  // this never becomes true and the wall is unchanged.
+  const [reviewModeActive, setReviewModeActive] = useState(false);
+  const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
   // Named `doc`, not `document` — this is a client component and the
   // global DOM `document` object must stay reachable if ever needed.
   const [doc, setDoc] = useState<DocumentDetail | null | undefined>(undefined);
@@ -49,6 +58,12 @@ export default function DocumentDetailPage() {
     const res = await fetch(`/api/documents/${id}`);
     if (res.status === 401) {
       setNeedsAuth(true);
+      fetch('/api/beta-status')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.enabled) setReviewModeActive(true);
+        })
+        .catch(() => {});
       return;
     }
     if (!res.ok) {
@@ -74,6 +89,11 @@ export default function DocumentDetailPage() {
   const handleUploadVersion = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (doc?.is_demo) {
+      setShowUnavailablePrompt(true);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     setUploading(true);
     setUploadError(null);
     try {
@@ -164,12 +184,22 @@ export default function DocumentDetailPage() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this document.</p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {reviewModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this document.</p>
+            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
+              Phone verification is required to save or access private work.
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -217,6 +247,12 @@ export default function DocumentDetailPage() {
         <div className="flex flex-wrap items-center gap-3 mt-4">
           <a
             href={`/api/documents/${id}/download`}
+            onClick={(e) => {
+              if (doc.is_demo) {
+                e.preventDefault();
+                setShowUnavailablePrompt(true);
+              }
+            }}
             className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
           >
             Download
@@ -232,7 +268,13 @@ export default function DocumentDetailPage() {
             </a>
           )}
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (doc.is_demo) {
+                setShowUnavailablePrompt(true);
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
             disabled={uploading}
             className="px-4 py-2 bg-white border border-[#E7DFC9] text-[#3A3222] hover:border-[#8A6D2F] disabled:opacity-50 text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
           >
@@ -250,6 +292,18 @@ export default function DocumentDetailPage() {
           )}
         </div>
         {uploadError && <p className="text-xs font-semibold text-red-700 mt-2">{uploadError}</p>}
+        {showUnavailablePrompt && (
+          <div className="mt-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-xs font-semibold text-[#5C5340]">Function available after production activation.</p>
+            <button
+              onClick={() => setShowUnavailablePrompt(false)}
+              className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </header>
 
       {isImproveEligible && (improving || improvedContent !== null) && (

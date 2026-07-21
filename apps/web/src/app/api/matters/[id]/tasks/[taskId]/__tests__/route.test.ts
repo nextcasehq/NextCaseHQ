@@ -167,4 +167,20 @@ describe('PATCH /api/matters/[id]/tasks/[taskId] — mark a pending action done/
     );
     expect(res.status).toBe(404);
   });
+
+  test('rejects updating a task whose Matter is closed (409), and never applies the change', async () => {
+    const { matterId, taskId } = await createTask(TENANT_A);
+    await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [matterId]);
+
+    const res = await PATCH(
+      buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }, { status: 'COMPLETED' }),
+      routeParams(matterId, taskId)
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_CLOSED_READ_ONLY');
+
+    const stillPending = await db.execute<{ status: string }>(TENANT_A, `SELECT status FROM "MatterTask" WHERE id = $1`, [taskId]);
+    expect(stillPending[0].status).toBe('PENDING');
+  });
 });

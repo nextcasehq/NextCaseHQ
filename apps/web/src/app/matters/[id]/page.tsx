@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
+import MatterClosurePanel from './MatterClosurePanel';
 
 interface Matter {
   id: string;
@@ -26,6 +27,8 @@ interface Matter {
   closed_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Set only by the Product Review demo payload — never by a real Matter. */
+  is_demo?: boolean;
 }
 
 interface Proceeding {
@@ -119,9 +122,9 @@ interface PreparationItem {
  * Honest placeholder for a future sub-milestone's real data — never
  * fabricated content (Milestone 1 condition: empty states must be honest).
  */
-function ComingSoonPanel({ title, description }: { title: string; description: string }) {
+function ComingSoonPanel({ title, description, id }: { title: string; description: string; id?: string }) {
   return (
-    <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+    <div id={id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
       <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-3">{title}</h2>
       <div className="text-center py-8 bg-[#FBF8F1]/50 border border-dashed border-[#E7DFC9] rounded-xl">
         <p className="text-xs font-semibold text-[#6F5624]">Not yet available.</p>
@@ -146,6 +149,13 @@ export default function MatterDetailsChamberPage() {
   const [matterDocuments, setMatterDocuments] = useState<MatterDocument[]>([]);
   const [showFullCourtNoteHistory, setShowFullCourtNoteHistory] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET /api/beta-status
+  // — i.e. Product Review Mode is actually active right now. Governs
+  // whether the "Authentication Required" wall below uses neutral review
+  // wording instead of the normal sign-in wording; when review mode is off
+  // this never becomes true and the wall is unchanged.
+  const [reviewModeActive, setReviewModeActive] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -165,6 +175,12 @@ export default function MatterDetailsChamberPage() {
     const res = await fetch(`/api/matters/${id}`);
     if (res.status === 401) {
       setNeedsAuth(true);
+      fetch('/api/beta-status')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.enabled) setReviewModeActive(true);
+        })
+        .catch(() => {});
       return;
     }
     if (!res.ok) {
@@ -235,6 +251,10 @@ export default function MatterDetailsChamberPage() {
   }, [id]);
 
   const handleTaskStatusChange = async (taskId: string, status: 'COMPLETED' | 'DISMISSED' | 'PENDING') => {
+    if (matter?.is_demo) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
     const res = await fetch(`/api/matters/${id}/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -270,6 +290,13 @@ export default function MatterDetailsChamberPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Product Review Mode is read-only — the Edit Matter form itself stays
+    // fully explorable, but the actual write is guarded here at submit
+    // time instead of blocking the form from opening at all.
+    if (matter?.is_demo) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
     const res = await fetch(`/api/matters/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -283,6 +310,10 @@ export default function MatterDetailsChamberPage() {
   const handleCreateProceeding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!proceedingTitle) return;
+    if (matter?.is_demo) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
     const res = await fetch('/api/cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -303,6 +334,10 @@ export default function MatterDetailsChamberPage() {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventDate || !eventDescription) return;
+    if (matter?.is_demo) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
     const res = await fetch(`/api/matters/${id}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -319,12 +354,22 @@ export default function MatterDetailsChamberPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <div className="flex-1 flex flex-col justify-center items-center py-20 text-center">
-          <span className="text-3xl">🔒</span>
-          <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-          <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
-          <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Go to Login →
-          </Link>
+          {reviewModeActive ? (
+            <>
+              <span className="text-3xl">👁️</span>
+              <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+              <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+            </>
+          ) : (
+            <>
+              <span className="text-3xl">🔒</span>
+              <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+              <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
+              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
+                Phone verification is required to save or access private work.
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -332,49 +377,41 @@ export default function MatterDetailsChamberPage() {
 
   if (matter === null) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <div className="flex-1 flex flex-col justify-center items-center py-20">
-          <span className="text-3xl">⚠️</span>
-          <h2 className="text-lg font-bold mt-2">Matter Not Found</h2>
-          <p className="text-xs text-[#726B58] mt-1">This matter does not exist or you don&apos;t have access to it.</p>
-          <Link href="/matters" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Back to Matters
-          </Link>
-        </div>
+      <div className="flex-1 flex flex-col justify-center items-center py-20">
+        <span className="text-3xl">⚠️</span>
+        <h2 className="text-lg font-bold mt-2">Matter Not Found</h2>
+        <p className="text-xs text-[#726B58] mt-1">This matter does not exist or you don&apos;t have access to it.</p>
+        <Link href="/matters" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+          Back to Matters
+        </Link>
       </div>
     );
   }
 
   if (matter === undefined) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] flex flex-1 justify-center items-center">
+      <div className="flex flex-1 justify-center items-center py-20">
         <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
-      <div className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
-        <BrandBackground />
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/matters" className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F] transition-colors flex items-center gap-1">
-            ← Back to Matter Workspace
-          </Link>
-          {/* Matter-scoped Universal Search entry point (Product Direction,
-              Milestone 5) — reuses the existing matter_id filter, restricted
-              to the entity types meaningful within a single Matter (not
-              other Matters/Clients). */}
-          <Link
-            href={`/search?matter_id=${id}&type=document,proceeding,court_note`}
-            className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
-          >
-            🔍 Search this Matter
-          </Link>
-        </div>
+  // Product Review's demo Matter is read-only, but every form (Edit
+  // Matter, Add Proceeding, Add Timeline Entry) still opens for full UX
+  // inspection — only the actual submit is guarded (see handleUpdate,
+  // handleCreateProceeding, handleCreateEvent, handleTaskStatusChange
+  // above), so reviewers see the whole form, not just a blocked button.
 
-        {/* Matter Title Card */}
-        <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 md:p-8 shadow-sm mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+  return (
+    <div className="relative isolate max-w-6xl w-full mx-auto px-6 pb-10">
+      <BrandBackground />
+        {/* Matter Title Card — "Overview" anchor target for the Matter
+            Navigator. The old in-page "Back to Matters" and "Search this
+            Matter" links are retired here: both are now provided by the
+            shell (matters/layout.tsx's Matter Navigator and Command
+            Center search bar respectively) — keeping them here too would
+            be duplicate navigation, against the Zero-Clutter Rule. */}
+        <div id="matter-overview" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 md:p-8 shadow-sm mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
@@ -420,6 +457,87 @@ export default function MatterDetailsChamberPage() {
           >
             {isEditing ? 'Cancel Edits' : 'Edit Matter'}
           </button>
+        </div>
+
+        <MatterClosurePanel
+          matterId={id}
+          status={matter.status}
+          isDemo={!!matter.is_demo}
+          onShowUnavailablePrompt={() => setShowUnavailablePrompt(true)}
+          onClosureChanged={fetchMatter}
+        />
+
+        {/* Neutral prompt — shown when a reviewer submits a write instead of
+            silently pretending it succeeded on the read-only demo Matter. */}
+        {showUnavailablePrompt && (
+          <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-xs font-semibold text-[#5C5340]">
+              Function available after production activation.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowUnavailablePrompt(false)}
+                className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Command Center — Search Experience + Action Cards (Product
+            Direction, Phase A). The search field submits to the existing,
+            already-shipped GET /search page (backed by GET /api/search),
+            matter-scoped exactly like the "Search this Matter" link it
+            replaces — no new backend surface. Action Cards are real
+            navigational shortcuts to already-existing routes, not fabricated
+            functionality; workflow-stage-aware prioritization is Phase B. */}
+        <div className="mb-8">
+          <form
+            action="/search"
+            method="get"
+            className="relative flex items-center bg-white border border-[#E7DFC9] rounded-xl shadow-sm focus-within:border-[#8A6D2F] transition-all"
+          >
+            <input type="hidden" name="matter_id" value={id} />
+            <input
+              type="text"
+              name="q"
+              placeholder="Search cases, Acts, Sections, judgments, or ask AI about your matter..."
+              className="w-full bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-[#726B58] px-5 py-4 md:py-5"
+            />
+            <button
+              type="submit"
+              aria-label="Search"
+              className="flex-none pr-4 md:pr-5 text-[#8A6D2F] hover:text-[#6F5624] bg-transparent border-none outline-none cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </form>
+
+          <div className="mt-3 flex flex-wrap gap-2.5">
+            {/* Action Cards navigate for real — Product Review Mode requires
+                every Action Card destination to be directly inspectable
+                (route by route), not intercepted here. Each destination
+                page (ai-chamber, documents/new, draft-builder) guards its
+                own real write/AI actions at the point of use instead. */}
+            {[
+              { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note` },
+              { label: '📤 Upload Documents', href: `/documents/new?matter_id=${id}` },
+              { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
+              { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
+            ].map((card) => (
+              <Link
+                key={card.label}
+                href={card.href}
+                className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
+              >
+                {card.label}
+              </Link>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -489,7 +607,7 @@ export default function MatterDetailsChamberPage() {
 
             {/* Matter Health */}
             {health && (
-              <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <div id="health" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Matter Health</h2>
                   {health.needs_attention && (
@@ -669,7 +787,7 @@ export default function MatterDetailsChamberPage() {
                 </form>
               </div>
             ) : (
-              <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm space-y-6">
+              <div id="overview" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm space-y-6 scroll-mt-6">
                 <div>
                   <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-2">Matter Overview</h2>
                   <p className="text-sm text-[#4A4130] leading-relaxed font-medium whitespace-pre-line">
@@ -698,7 +816,7 @@ export default function MatterDetailsChamberPage() {
             )}
 
             {/* Proceedings Section */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="proceedings" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
                 <div>
                   <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Proceedings</h2>
@@ -785,7 +903,7 @@ export default function MatterDetailsChamberPage() {
                 entries (source_type='MANUAL'), same table/list since
                 Milestone 1 — this section only renames and repositions it,
                 the "Add Entry" capability is unchanged. */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="timeline" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Matter Timeline</h2>
                 <button
@@ -849,7 +967,7 @@ export default function MatterDetailsChamberPage() {
                 (extended, not duplicated, with document_type/version_count/
                 updated_at) — same reuse pattern as every other section on
                 this page. */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="documents" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Documents</h2>
                 <Link
@@ -887,6 +1005,7 @@ export default function MatterDetailsChamberPage() {
               )}
             </div>
             <ComingSoonPanel
+              id="matter-evidence"
               title="Evidence"
               description="Structured evidence registry for this matter is planned for a future milestone."
             />
@@ -898,7 +1017,7 @@ export default function MatterDetailsChamberPage() {
 
           {/* Right Sidebar - Team */}
           <div className="space-y-6">
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+            <div id="team" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
               <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Team</h2>
               {participants.length > 0 ? (
                 <div className="space-y-3">
@@ -920,7 +1039,6 @@ export default function MatterDetailsChamberPage() {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }

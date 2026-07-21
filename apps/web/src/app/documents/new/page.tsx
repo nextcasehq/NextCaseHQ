@@ -2,7 +2,6 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_CATEGORY_LABELS,
@@ -40,6 +39,14 @@ function PrepareNewDocumentForm() {
   const presetMatterId = searchParams.get('matter_id');
 
   const [needsAuth, setNeedsAuth] = useState(false);
+  // Only ever set true by a successful, unauthenticated GET
+  // /api/beta-status — a real, signed-in session always gets a 404 for
+  // this path, so this can't be spoofed into showing for a real tenant.
+  // Governs both the guard on Generate/Save below and the neutral wording
+  // on the needsAuth wall (a defense-in-depth backstop in case this
+  // hasn't resolved yet when a write is attempted).
+  const [reviewModeActive, setReviewModeActive] = useState(false);
+  const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
   const [step, setStep] = useState<Step>('CATEGORY');
   const [category, setCategory] = useState<DocumentCategory | null>(null);
   const [documentTypeSlug, setDocumentTypeSlug] = useState<string | null>(null);
@@ -63,6 +70,12 @@ function PrepareNewDocumentForm() {
       .then((data) => {
         if (data) setMatters(data.matters);
       });
+    fetch('/api/beta-status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.enabled) setReviewModeActive(true);
+      })
+      .catch(() => {});
   }, []);
 
   const goTo = (target: Step) => {
@@ -74,6 +87,14 @@ function PrepareNewDocumentForm() {
 
   const handleGenerate = async () => {
     if (!category || !documentTypeSlug) return;
+    // Product Review Mode is read-only — draft generation is a private AI action,
+    // so it gets an inline prompt instead of ever attempting the real
+    // (still fully protected) request, and without losing the visitor's
+    // in-progress Category/Type/Matter/Facts selections.
+    if (reviewModeActive) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
     setGenerating(true);
     setError(null);
     try {
@@ -107,6 +128,11 @@ function PrepareNewDocumentForm() {
 
   const handleSave = async () => {
     if (!draftContent || !documentTypeSlug) return;
+    // Same Product Review guard as Generate — saving is a write action.
+    if (reviewModeActive) {
+      setShowUnavailablePrompt(true);
+      return;
+    }
     const typeDef = documentTypesByCategory(category!).find((t) => t.slug === documentTypeSlug);
     const fileName = `${(typeDef?.label || 'Document').replace(/\s+/g, '_')}.txt`;
     setSaving(true);
@@ -142,12 +168,21 @@ function PrepareNewDocumentForm() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-3xl">🔒</span>
-        <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-        <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to prepare a document.</p>
-        <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-          Go to Login →
-        </Link>
+        {reviewModeActive ? (
+          <>
+            <span className="text-3xl">👁️</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl">🔒</span>
+            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
+              Sign-in is not yet available in this environment. Preparing a document requires an authenticated session.
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -160,6 +195,21 @@ function PrepareNewDocumentForm() {
           Step {stepIndex + 1} of {STEP_ORDER.length}
         </p>
       </header>
+
+      {showUnavailablePrompt && (
+        <div className="mb-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs font-semibold text-[#5C5340]">
+            Function available after production activation.
+          </p>
+          <button
+            onClick={() => setShowUnavailablePrompt(false)}
+            className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs font-semibold text-red-700">{error}</div>

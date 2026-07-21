@@ -39,15 +39,6 @@ export default function CtaBand() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/login"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#C6A253] px-6 py-3 text-sm font-bold text-[#241E17] transition-all duration-200 hover:bg-[#E4C77E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B] active:scale-[0.98]"
-            >
-              Access your chamber
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-            <Link
               href="/pricing"
               className="inline-flex items-center gap-2 rounded-xl border border-[#C6A253]/50 px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-[#C6A253]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
             >

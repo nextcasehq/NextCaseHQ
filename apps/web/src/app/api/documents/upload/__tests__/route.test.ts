@@ -333,6 +333,36 @@ describe('POST /api/documents/upload — real persistence + object storage', () 
     await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE id = $1`, [matterId]);
   });
 
+  test('rejects a document upload targeting a closed matter (409), and stores no envelope', async () => {
+    if (!hasS3()) return;
+    const matterRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title, status) VALUES ($1, $2, 'CLOSED') RETURNING id`,
+      [TENANT_A, 'Closed Matter Upload Target']
+    );
+    const matterId = matterRows[0].id;
+
+    const req = buildRequest({
+      'x-tenant-key-version': 'v1',
+      cookie: await sessionCookieHeader(TENANT_A),
+      'x-file-name': 'contract.pdf',
+      'x-matter-id': matterId,
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_CLOSED_READ_ONLY');
+
+    const envelopeRows = await db.execute<{ count: number }>(
+      TENANT_A,
+      `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE matter_id = $1`,
+      [matterId]
+    );
+    expect(envelopeRows[0].count).toBe(0);
+
+    await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE id = $1`, [matterId]);
+  });
+
   test('auto-derives matter_id from the Proceeding parent Matter when x-matter-id is omitted', async () => {
     if (!hasS3()) return;
     const matterRows = await db.execute<{ id: string }>(
