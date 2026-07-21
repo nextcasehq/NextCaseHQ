@@ -85,6 +85,20 @@ html, body {
   color: #8A6D2F;
 }
 
+/*
+ * SurveyJS (the Legal Interview Engine's wizard) ships a default theme
+ * whose --font-family variable resolves to "Open Sans" backed by
+ * @font-face rules pointing at fonts.gstatic.com. This app's CSP is
+ * font-src 'self' — those requests are blocked and log a real console
+ * error on every guided interview. --sjs-font-family takes priority over
+ * --font-family in SurveyJS's own CSS, so setting it here to the same
+ * system-font stack the rest of the app already uses means the
+ * "Open Sans" @font-face is never matched/fetched at all.
+ */
+.nchq-survey-wizard {
+  --sjs-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+
 @media print {
   body * {
     visibility: hidden;

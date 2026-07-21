@@ -17,7 +17,7 @@ import {
   PageBreak,
 } from '@/lib/documents/editor/extensions';
 
-export const FONT_FAMILIES = ['Times New Roman', 'Arial', 'Calibri', 'Georgia', 'Garamond', 'Cambria'] as const;
+export const FONT_FAMILIES = ['Times New Roman', 'Aptos', 'Calibri', 'Arial', 'Georgia', 'Garamond', 'Cambria'] as const;
 
 export const FONT_SIZES = ['10pt', '11pt', '12pt', '14pt', '16pt', '18pt', '20pt', '24pt'] as const;
 
@@ -52,7 +52,7 @@ export function useDocumentEditor(options: { editable: boolean; onUpdateHtml?: (
       ParagraphSpacingBefore,
       Indent,
       PageBreak,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextAlign.configure({ types: ['heading', 'paragraph'], defaultAlignment: 'justify' }),
       Placeholder.configure({ placeholder: 'Start typing, or select a template from the library…' }),
     ],
     content: '',
