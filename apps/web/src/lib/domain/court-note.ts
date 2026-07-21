@@ -38,6 +38,28 @@ export const COURT_NOTE_INPUT_METHODS = ['MANUAL', 'VOICE', 'HYBRID'] as const;
 export type CourtNoteInputMethod = (typeof COURT_NOTE_INPUT_METHODS)[number];
 
 /**
+ * Production Matter Register Foundation — how this hearing/stage update was
+ * recorded. ECOURTS_CONFIRMED reflects the existing eCourts "Record an
+ * update" flow (manual advocate-assisted verification only — no
+ * scraping, no automated synchronisation); it is never set without an
+ * explicit advocate confirmation.
+ */
+export const COURT_NOTE_SOURCES = [
+  'ADVOCATE_ENTRY',
+  'ECOURTS_CONFIRMED',
+  'COURT_ORDER',
+  'ADMINISTRATIVE_UPDATE',
+] as const;
+export type CourtNoteSource = (typeof COURT_NOTE_SOURCES)[number];
+
+export const COURT_NOTE_VERIFICATION_STATUSES = [
+  'UNVERIFIED',
+  'ADVOCATE_CONFIRMED',
+  'ECOURTS_CONFIRMED',
+] as const;
+export type CourtNoteVerificationStatus = (typeof COURT_NOTE_VERIFICATION_STATUSES)[number];
+
+/**
  * The one string every future reader (list views, search, templates) should
  * show — never lossy for 'OTHER', never needs a caller-side CASE expression.
  */

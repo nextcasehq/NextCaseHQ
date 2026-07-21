@@ -4,12 +4,14 @@ import { z } from 'zod';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
-import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES } from '@/lib/domain/matter';
+import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES } from '@/lib/domain/matter';
 import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 const MatterStatusSchema = z.enum(MATTER_STATUSES);
 const MatterEngagementTypeSchema = z.enum(MATTER_ENGAGEMENT_TYPES);
+const MatterCategorySchema = z.enum(MATTER_CATEGORIES);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 interface MatterRow {
   id: string;
@@ -31,12 +33,29 @@ interface MatterRow {
   created_at: string;
   updated_at: string;
   client_name: string | null;
+  advocate_reference_number: string | null;
+  matter_category: string | null;
+  state: string | null;
+  district: string | null;
+  court_establishment: string | null;
+  case_type: string | null;
+  filing_number: string | null;
+  matter_year: number | null;
+  cnr_number: string | null;
+  current_stage: string | null;
+  next_hearing_date: string | null;
+  current_proceeding_id: string | null;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
 }
 
 const MATTER_COLUMNS = `m.id, m.tenant_id, m.title, m.matter_number, m.engagement_type, m.practice_area,
                         m.status, m.client_id, m.opposing_party_name, m.opposing_counsel, m.court,
                         m.bench, m.judge, m.description, m.opened_at, m.closed_at, m.created_at,
-                        m.updated_at, c.name AS client_name`;
+                        m.updated_at, c.name AS client_name, m.advocate_reference_number, m.matter_category,
+                        m.state, m.district, m.court_establishment, m.case_type, m.filing_number,
+                        m.matter_year, m.cnr_number, m.current_stage, m.next_hearing_date,
+                        m.current_proceeding_id, m.created_by_user_id, m.updated_by_user_id`;
 
 const UpdateMatterSchema = z
   .object({
@@ -53,6 +72,17 @@ const UpdateMatterSchema = z
     judge: z.string().max(300).nullable(),
     description: z.string().max(10000).nullable(),
     closed_at: z.string().datetime().nullable(),
+    advocate_reference_number: z.string().max(200).nullable(),
+    matter_category: MatterCategorySchema.nullable(),
+    state: z.string().max(200).nullable(),
+    district: z.string().max(200).nullable(),
+    court_establishment: z.string().max(300).nullable(),
+    case_type: z.string().max(200).nullable(),
+    filing_number: z.string().max(200).nullable(),
+    matter_year: z.number().int().min(1900).max(2100).nullable(),
+    cnr_number: z.string().max(50).nullable(),
+    current_stage: z.string().max(300).nullable(),
+    next_hearing_date: z.string().regex(DATE_PATTERN, 'Expected YYYY-MM-DD').nullable(),
   })
   .partial()
   .refine((data) => Object.keys(data).length > 0, { message: 'At least one field must be provided.' });
@@ -143,25 +173,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const fields = result.data;
     const db = new DatabaseClient();
 
-    // A closed Matter is read-only: no field edits are accepted unless this
-    // exact request is what reopens it (an explicit status change away from
-    // CLOSED). Checked up front, before any FK re-verification or update is
-    // attempted, so a closed matter's data can never be silently changed.
-    const currentRows = await db.execute<{ status: string }>(
+    // A closed Matter Register is read-only: no ordinary field edit is
+    // permitted while status = CLOSED — the only sanctioned way out of that
+    // state is the dedicated, audited POST /api/matters/[id]/reopen flow.
+    const statusRows = await db.execute<{ status: string }>(
       session.tenantId,
       `SELECT status FROM "Matter" WHERE id = $1`,
       [id]
     );
-    if (currentRows.length === 0) {
+    if (statusRows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
-    const isReopening = Object.prototype.hasOwnProperty.call(fields, 'status') && fields.status !== 'CLOSED';
-    if (currentRows[0].status === 'CLOSED' && !isReopening) {
+    if (statusRows[0].status === 'CLOSED') {
       return NextResponse.json(
         {
           error: 'CONFLICT',
           code: 'MATTER_CLOSED_READ_ONLY',
-          message: 'This matter is closed. Change its status to reopen it before making further edits.',
+          message: 'This Matter Register is closed and read-only. Reopen it first via POST /api/matters/[id]/reopen.',
         },
         { status: 409 }
       );
@@ -193,6 +221,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       paramIndex += 1;
     }
     setClauses.push(`"updated_at" = now()`);
+    setClauses.push(`"updated_by_user_id" = $${paramIndex}`);
+    values.push(session.sub);
+    paramIndex += 1;
     values.push(id);
 
     const rows = await db.execute<MatterRow>(
@@ -203,7 +234,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
          WHERE id = $${paramIndex}
          RETURNING id, tenant_id, title, matter_number, engagement_type, practice_area, status,
                    client_id, opposing_party_name, opposing_counsel, court, bench, judge,
-                   description, opened_at, closed_at, created_at, updated_at
+                   description, opened_at, closed_at, created_at, updated_at,
+                   advocate_reference_number, matter_category, state, district, court_establishment,
+                   case_type, filing_number, matter_year, cnr_number, current_stage, next_hearing_date,
+                   current_proceeding_id, created_by_user_id, updated_by_user_id
        )
        SELECT ${MATTER_COLUMNS} FROM updated m LEFT JOIN "Client" c ON c.id = m.client_id`,
       values

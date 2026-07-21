@@ -68,6 +68,15 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
     await db.execute(TENANT_B, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "Client" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "User" WHERE tenant_id = $1`, [TENANT_A]);
+    // PATCH /api/matters/[id] now stamps updated_by_user_id (Production
+    // Matter Register Foundation) — a real FK to "User" — so the session
+    // subject must exist as a real row. Re-seeded every beforeEach since
+    // the DELETE above (pre-existing, for unrelated cleanup) wipes it.
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "User" (id, tenant_id, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+      [USER_ID, TENANT_A, 'matters-id-test-author@nextcase.local']
+    );
   });
 
   afterAll(async () => {
@@ -181,7 +190,7 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
     expect(stillThere[0].title).toBe('Closed Matter');
   });
 
-  test('PATCH allows reopening a closed matter by changing its status away from CLOSED', async () => {
+  test('PATCH rejects even a direct status change away from CLOSED — reopening is only via POST /api/matters/[id]/reopen', async () => {
     const id = await createMatter(TENANT_A, 'Reopenable Matter');
     await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [id]);
 
@@ -191,9 +200,12 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
       body: JSON.stringify({ status: 'ACTIVE' }),
     });
     const res = await PATCH(req, { params: Promise.resolve({ id }) });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     const body = await res.json();
-    expect(body.matter.status).toBe('ACTIVE');
+    expect(body.code).toBe('MATTER_CLOSED_READ_ONLY');
+
+    const stillClosed = await db.execute<{ status: string }>(TENANT_A, `SELECT status FROM "Matter" WHERE id = $1`, [id]);
+    expect(stillClosed[0].status).toBe('CLOSED');
   });
 
   test('DELETE removes the matter and returns 404 on a second delete', async () => {
