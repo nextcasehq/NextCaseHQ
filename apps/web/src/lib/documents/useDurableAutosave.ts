@@ -50,6 +50,14 @@ interface UseDurableAutosaveResult {
   conflict: ConflictingRevision | null;
   keepMine: () => void;
   loadNewer: () => void;
+  /**
+   * Abandons whatever draft is currently tracked (the old one is left
+   * untouched on the server/IndexedDB, simply no longer associated with
+   * this tab) and creates a brand-new, independent draft seeded with
+   * `initial` — used when selecting a template, which must never mutate
+   * whatever the advocate was previously working on.
+   */
+  startNewDraft: (initial: { title: string; content: string }) => Promise<void>;
 }
 
 const DEBOUNCE_MS_DEFAULT = 1200;
@@ -159,6 +167,90 @@ export function useDurableAutosave({
     [persistLocalOnly]
   );
 
+  // Creates a brand-new server (or, if unauthenticated, client-only)
+  // draft seeded with `initial`, and points this tab's localStorage
+  // pointer at it — shared by the one-time init effect (create-if-no-
+  // pointer-exists) and startNewDraft (template selection's "always an
+  // independent copy" requirement).
+  const createDraft = useCallback(
+    async (initial: { title: string; content: string }, cancelledRef: { current: boolean }) => {
+      const key = pointerKey(storageKey);
+      try {
+        const res = await fetch('/api/documents/drafts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            matter_id: matterId,
+            document_type: documentType,
+            title: initial.title || null,
+            content: initial.content,
+          }),
+        });
+        if (res.status === 401) {
+          // No session at all — never had a server draft to begin with.
+          // Mint a client-only id so IndexedDB mirroring and the
+          // localStorage resume-pointer both still work exactly as they
+          // would for a real draft; only the server round trip is skipped.
+          if (cancelledRef.current) return;
+          isLocalOnlyRef.current = true;
+          const localId = crypto.randomUUID();
+          draftIdRef.current = localId;
+          setDraftId(localId);
+          syncedRef.current = { content: initial.content, title: initial.title || null };
+          // The content-effect only re-saves locally once it sees content
+          // diverge from syncedRef — since syncedRef is set to this exact
+          // initial content above, that effect will never fire for it.
+          // Without writing it here explicitly, a template selected (or a
+          // page opened) while unauthenticated would vanish on refresh
+          // unless the advocate typed at least one further edit first.
+          await saveLocalDraft({
+            draftId: localId,
+            content: initial.content,
+            title: initial.title || null,
+            revision: 0,
+            savedAt: new Date().toISOString(),
+          });
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(key, localId);
+          }
+          setStatus('unauthenticated');
+          return;
+        }
+        if (!res.ok) {
+          if (!cancelledRef.current) setStatus('save_failed');
+          return;
+        }
+        const data = await res.json();
+        if (cancelledRef.current) return;
+        isLocalOnlyRef.current = false;
+        draftIdRef.current = data.draft.id;
+        revisionRef.current = data.draft.revision;
+        syncedRef.current = { content: data.draft.content, title: data.draft.title };
+        setDraftId(data.draft.id);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(key, data.draft.id);
+        }
+        setStatus('saved');
+      } catch {
+        if (!cancelledRef.current) setStatus('offline');
+      }
+    },
+    [storageKey, matterId, documentType]
+  );
+
+  const startNewDraft = useCallback(
+    async (initial: { title: string; content: string }) => {
+      setConflict(null);
+      draftIdRef.current = null;
+      revisionRef.current = 0;
+      syncedRef.current = { content: '', title: null };
+      setDraftId(null);
+      setStatus('saving');
+      await createDraft(initial, { current: false });
+    },
+    [createDraft]
+  );
+
   // One-time initialization: resume an existing draft (recorded via the
   // localStorage pointer) or create a fresh one, then reconcile against
   // any unsynchronised local (IndexedDB) copy before the advocate types
@@ -166,7 +258,7 @@ export function useDurableAutosave({
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
-    let cancelled = false;
+    const cancelledFlag = { current: false };
 
     (async () => {
       const key = pointerKey(storageKey);
@@ -181,7 +273,7 @@ export function useDurableAutosave({
             // local-only id from an earlier unauthenticated visit. Either
             // way, keep using it as the IndexedDB key so already-typed
             // work survives this refresh, without ever calling the server.
-            if (cancelled) return;
+            if (cancelledFlag.current) return;
             isLocalOnlyRef.current = true;
             draftIdRef.current = existingId;
             setDraftId(existingId);
@@ -194,7 +286,7 @@ export function useDurableAutosave({
           }
           if (res.ok) {
             const data = await res.json();
-            if (cancelled) return;
+            if (cancelledFlag.current) return;
             draftIdRef.current = data.draft.id;
             revisionRef.current = data.draft.revision;
             setDraftId(data.draft.id);
@@ -239,53 +331,14 @@ export function useDurableAutosave({
           // fresh draft rather than getting stuck.
         }
 
-        const res = await fetch('/api/documents/drafts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            matter_id: matterId,
-            document_type: documentType,
-            title: latestRef.current.title || null,
-            content: latestRef.current.content,
-          }),
-        });
-        if (res.status === 401) {
-          // No session at all — never had a server draft to begin with.
-          // Mint a client-only id so IndexedDB mirroring and the
-          // localStorage resume-pointer both still work exactly as they
-          // would for a real draft; only the server round trip is skipped.
-          if (cancelled) return;
-          isLocalOnlyRef.current = true;
-          const localId = crypto.randomUUID();
-          draftIdRef.current = localId;
-          setDraftId(localId);
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(key, localId);
-          }
-          setStatus('unauthenticated');
-          return;
-        }
-        if (!res.ok) {
-          if (!cancelled) setStatus('save_failed');
-          return;
-        }
-        const data = await res.json();
-        if (cancelled) return;
-        draftIdRef.current = data.draft.id;
-        revisionRef.current = data.draft.revision;
-        syncedRef.current = { content: data.draft.content, title: data.draft.title };
-        setDraftId(data.draft.id);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(key, data.draft.id);
-        }
-        setStatus('saved');
+        await createDraft({ title: latestRef.current.title, content: latestRef.current.content }, cancelledFlag);
       } catch {
-        if (!cancelled) setStatus('offline');
+        if (!cancelledFlag.current) setStatus('offline');
       }
     })();
 
     return () => {
-      cancelled = true;
+      cancelledFlag.current = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -366,5 +419,5 @@ export function useDurableAutosave({
     setStatus('saved');
   }, [conflict, onRecovered]);
 
-  return { status, draftId, conflict, keepMine, loadNewer };
+  return { status, draftId, conflict, keepMine, loadNewer, startNewDraft };
 }

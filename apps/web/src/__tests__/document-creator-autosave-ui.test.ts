@@ -44,8 +44,32 @@ describe('Document Creator Phase 2 — Durable Draft and Continuous Autosave', (
     expect(hook).toContain('crypto.randomUUID()');
   });
 
+  test('a brand-new local-only draft (unauthenticated create) is written to IndexedDB immediately, not only on the next keystroke', () => {
+    // Regression: syncedRef is set to the initial content right away so
+    // the content-effect (which only re-saves on *divergence* from
+    // syncedRef) never fires for it — meaning if createDraft's 401
+    // branch didn't ALSO call saveLocalDraft directly, the very first
+    // template/blank draft a visitor sees would silently vanish on
+    // refresh unless they typed at least one further edit first.
+    const createDraftStart = hook.indexOf('const createDraft');
+    const createDraftBody = hook.slice(createDraftStart, createDraftStart + 2000);
+    const unauthenticatedBranchStart = createDraftBody.indexOf('res.status === 401');
+    const unauthenticatedBranch = createDraftBody.slice(unauthenticatedBranchStart, unauthenticatedBranchStart + 1200);
+    expect(unauthenticatedBranch).toContain('saveLocalDraft');
+  });
+
   test('the unauthenticated status is surfaced with the required exact wording', () => {
-    expect(page).toContain('Local draft — verification required for permanent saving');
+    expect(page).toContain('Local draft — phone verification required for permanent saving.');
+  });
+
+  test('the hook exposes startNewDraft for template selection\'s "always an independent draft" requirement', () => {
+    expect(hook).toContain('startNewDraft');
+    // startNewDraft must actually go through the same create-draft path
+    // (and therefore the same POST /api/documents/drafts endpoint,
+    // 401-safe local-only fallback, and localStorage pointer handling) as
+    // the hook's own one-time initialization — not a second, divergent
+    // implementation.
+    expect(hook).toContain('createDraft');
   });
 
   test('every status is surfaced in the editor UI, not just tracked internally', () => {
@@ -93,9 +117,16 @@ describe('Document Creator Phase 2 — Durable Draft and Continuous Autosave', (
     expect(hook).not.toMatch(/localStorage\.setItem\([^)]*content/i);
   });
 
-  test('manual drafting (typing) is never gated by autosave status — the editor textareas remain plain controlled inputs', () => {
-    expect(page).toContain('value={editorHeader}');
-    expect(page).toContain('value={editorText}');
-    expect(page).not.toMatch(/disabled=\{.*autosave/);
+  test('manual drafting (typing) is never gated by autosave status — the rich-text editor is always editable regardless of save state', () => {
+    expect(page).toContain('editable: true');
+    expect(page).not.toMatch(/editable:\s*.*autosave/);
+  });
+
+  test('the rebuilt editor uses a real structured rich-text engine, not a plain textarea or raw contentEditable', () => {
+    const editorHookSource = readSource('components/document-editor/useDocumentEditor.ts');
+    expect(editorHookSource).toContain('@tiptap/react');
+    expect(editorHookSource).toContain('@tiptap/starter-kit');
+    expect(page).not.toMatch(/<textarea/);
+    expect(page).not.toContain('document.execCommand');
   });
 });
