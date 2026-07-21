@@ -1,32 +1,39 @@
 /**
- * Product Review Mode — a temporary, environment-flagged mode that lets a
- * Product Owner (or any unauthenticated reviewer) inspect a working
- * `/dashboard` launch page and one fixed, entirely synthetic Matter
- * Workspace (`DEMO_MATTER_ID`) without ever touching the database or
- * weakening authorization for any real tenant's data.
+ * Two independent, deliberately separate synthetic-data mechanisms live in
+ * this module — do not merge them:
  *
- * Disabled by default. Enable with PRODUCT_REVIEW_MODE=true. This is a
- * server-only flag (read in proxy.ts) — there is no client-exposed
- * equivalent; the client infers review mode purely from the `is_demo` /
- * `review_mode` markers already present in the JSON these routes return,
- * so there is nothing to keep in sync.
+ * 1. `matchPublicPreviewRoute` — ALWAYS ON, never gated by any env var.
+ *    Backs the small, explicitly-approved public-view allowlist (Legal
+ *    Search, and the Matter dropdown that Document Creator/manual drafting
+ *    needs to render) — see the "ARCHITECTURAL CORRECTION" to the
+ *    "PRIORITY CHANGE — MAKE NEXTCASEHQ VIEWABLE BY PRODUCT OWNER"
+ *    milestone. Security must not depend on a deployment remembering to
+ *    set an env var, so these specific, narrow, read-only responses are
+ *    unconditional.
  *
- * Formerly gated by BETA_PREVIEW_ENABLED — migrated to PRODUCT_REVIEW_MODE
- * (this module, and the routes/pages that use it, no longer reads the old
- * variable at all) so review access isn't tied to "beta" branding, which
- * is being removed from every reviewer-facing surface.
+ * 2. `matchProductReviewRoute` — Product Review Mode proper. Opt-in only
+ *    (PRODUCT_REVIEW_MODE=true; secure-by-default, off otherwise), lets an
+ *    operator additionally expose the Ask AI Action Card, AI Credits &
+ *    Usage page, and the one fixed synthetic Matter Workspace
+ *    (`DEMO_MATTER_ID`) sub-resources for manual review sessions. This is
+ *    explicit configuration, never a global default.
  *
- * Every payload below is read-only, hand-written sample content. No write
- * route (POST/PATCH/PUT/DELETE) is ever short-circuited here — only GET
- * requests to this fixed set of paths, and only when there is no session
- * cookie at all. A real signed-in session always reaches the real,
- * database-backed route unchanged.
+ * Both mechanisms only ever intercept GET requests with no session cookie
+ * at all, and only this fixed, reserved set of paths; every write route
+ * (POST/PATCH/PUT/DELETE) and every other GET is completely untouched and
+ * falls through to the real, database-backed route unchanged. A real
+ * signed-in session always reaches the real route too. Every payload
+ * below is read-only, hand-written sample content — neither mechanism
+ * ever touches the database client, issues SQL, or can resolve to a real
+ * tenant id.
  */
 
 import { findDemoSearchItem, searchDemoLegalDataset } from './demo-search-data';
 
 export const DEMO_MATTER_ID = 'deadbeef-0000-4000-8000-000000000000';
 
+// Opt-in, secure-by-default — must be explicitly set to "true" by an
+// operator. Never globally enabled by default.
 export function isProductReviewModeEnabled(): boolean {
   return process.env.PRODUCT_REVIEW_MODE === 'true';
 }
@@ -141,21 +148,22 @@ const DEMO_DOCUMENT = {
 };
 
 /**
- * Maps a request's pathname (+ query, for the matter_id-filtered routes)
- * to a static demo payload. Returns undefined for anything outside this
- * fixed, reserved set — every other path falls through to the real route
- * unchanged.
+ * ALWAYS ON — never gated by PRODUCT_REVIEW_MODE. The fixed, minimal set
+ * of synthetic GET responses the approved public-view allowlist actually
+ * needs to function:
+ *  - /api/beta-status — lets a page swap "Authentication Required" wording
+ *    for neutral, non-actionable wording instead of a sign-in wall.
+ *  - /api/matters (list only) — Document Creator/manual drafting's Matter
+ *    dropdown (/documents/new) would otherwise never leave its own
+ *    "Authentication Required" wall (it treats a 401 here as "not
+ *    viewable at all"), and the dashboard launch page's own Recent
+ *    Matters card.
+ *  - /api/search, /api/search/demo/* — the Legal Search interface.
+ * Returns undefined for anything outside this fixed set — every other
+ * path falls through unchanged (to the real route, or to the opt-in
+ * matchProductReviewRoute below).
  */
-export function matchProductReviewRoute(
-  pathname: string,
-  searchParams: URLSearchParams
-): unknown {
-  // Lets an unauthenticated page know whether Product Review Mode is
-  // actually active — e.g. to swap "Authentication Required" wording for
-  // the neutral "Function available after production activation" wording
-  // on a real (non-demo) Matter ID. No real route backs this path; it
-  // only ever answers from here, and only for the same no-session GET
-  // case every other Product Review response uses.
+export function matchPublicPreviewRoute(pathname: string, searchParams: URLSearchParams): unknown {
   if (pathname === '/api/beta-status') {
     return { enabled: true };
   }
@@ -192,54 +200,19 @@ export function matchProductReviewRoute(
     };
   }
 
-  if (pathname === '/api/notifications') {
-    return { notifications: [DEMO_NOTIFICATION], unread_count: 1, review_mode: true };
-  }
-
-  if (pathname === `/api/matters/${DEMO_MATTER_ID}`) {
-    return { matter: DEMO_MATTER };
-  }
-  if (pathname === `/api/matters/${DEMO_MATTER_ID}/participants`) {
-    return { participants: [DEMO_PARTICIPANT] };
-  }
-  if (pathname === `/api/matters/${DEMO_MATTER_ID}/court-notes`) {
-    return { court_notes: [DEMO_COURT_NOTE] };
-  }
-  if (pathname === `/api/matters/${DEMO_MATTER_ID}/events`) {
-    return { events: [DEMO_EVENT] };
-  }
-  if (pathname === `/api/matters/${DEMO_MATTER_ID}/tasks`) {
-    return { tasks: [DEMO_TASK] };
-  }
-  if (pathname === `/api/matters/${DEMO_MATTER_ID}/health`) {
-    return { health: DEMO_HEALTH };
-  }
-  if (pathname === `/api/matters/${DEMO_MATTER_ID}/preparation`) {
-    return { preparation: [] };
-  }
-  if (pathname === '/api/cases' && searchParams.get('matter_id') === DEMO_MATTER_ID) {
-    return { cases: [DEMO_PROCEEDING] };
-  }
-  if (pathname === '/api/documents' && searchParams.get('matter_id') === DEMO_MATTER_ID) {
-    return { documents: [DEMO_DOCUMENT] };
-  }
-  if (pathname === `/api/documents/${DEMO_DOCUMENT_ID}`) {
-    return { document: DEMO_DOCUMENT };
-  }
-
-  // Demo search — a separate, synthetic search path for unauthenticated
-  // Product Review Mode visitors. The real Search Service (lib/search/
+  // Demo search — a separate, synthetic search path for the always-public
+  // Legal Search interface. The real Search Service (lib/search/
   // search-service.ts) is completely unchanged and still requires a real
-  // session for every request; this only ever answers GET /api/search
-  // when there is no session cookie at all (the same condition every
-  // other Product Review response uses).
+  // session for every request; this only ever answers GET /api/search when
+  // there is no session cookie at all (the same condition every other
+  // preview response uses).
   if (pathname === '/api/search') {
     const query = searchParams.get('q') ?? '';
     const matterId = searchParams.get('matter_id');
     if (matterId === DEMO_MATTER_ID) {
       // Matter-scoped ("Search this Matter") — reuses the same demo
-      // Proceeding / Document / Court Note fixtures already shown
-      // elsewhere in the demo Matter Workspace, not the general legal
+      // Proceeding / Document / Court Note fixtures shown in the
+      // (opt-in-only) demo Matter Workspace, not the general legal
       // dataset below.
       const q = query.trim().toLowerCase();
       const proceedingMatches = q && DEMO_PROCEEDING.title.toLowerCase().includes(q);
@@ -299,6 +272,57 @@ export function matchProductReviewRoute(
     const id = pathname.slice('/api/search/demo/'.length);
     const item = findDemoSearchItem(id);
     return item ? { result: item } : undefined;
+  }
+
+  return undefined;
+}
+
+/**
+ * Opt-in only (PRODUCT_REVIEW_MODE=true) — the broader legacy Product
+ * Review Mode surface: the Ask AI Action Card, the AI Credits & Usage
+ * page, and the one fixed synthetic Matter Workspace's (`DEMO_MATTER_ID`)
+ * sub-resources. Never active by default; an operator must explicitly
+ * turn this on for a manual review session. Returns undefined for
+ * anything outside this fixed, reserved set — every other path falls
+ * through to the real route unchanged.
+ */
+export function matchProductReviewRoute(
+  pathname: string,
+  searchParams: URLSearchParams
+): unknown {
+  if (pathname === '/api/notifications') {
+    return { notifications: [DEMO_NOTIFICATION], unread_count: 1, review_mode: true };
+  }
+
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}`) {
+    return { matter: DEMO_MATTER };
+  }
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}/participants`) {
+    return { participants: [DEMO_PARTICIPANT] };
+  }
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}/court-notes`) {
+    return { court_notes: [DEMO_COURT_NOTE] };
+  }
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}/events`) {
+    return { events: [DEMO_EVENT] };
+  }
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}/tasks`) {
+    return { tasks: [DEMO_TASK] };
+  }
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}/health`) {
+    return { health: DEMO_HEALTH };
+  }
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}/preparation`) {
+    return { preparation: [] };
+  }
+  if (pathname === '/api/cases' && searchParams.get('matter_id') === DEMO_MATTER_ID) {
+    return { cases: [DEMO_PROCEEDING] };
+  }
+  if (pathname === '/api/documents' && searchParams.get('matter_id') === DEMO_MATTER_ID) {
+    return { documents: [DEMO_DOCUMENT] };
+  }
+  if (pathname === `/api/documents/${DEMO_DOCUMENT_ID}`) {
+    return { document: DEMO_DOCUMENT };
   }
 
   return undefined;

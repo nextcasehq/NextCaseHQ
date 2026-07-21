@@ -74,7 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch {
       // Cookie is short-lived even if this call fails; proceed regardless.
     }
-    router.push('/login');
+    router.push('/');
   };
 
   return (

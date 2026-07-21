@@ -195,9 +195,9 @@ export default function DocumentDetailPage() {
             <span className="text-3xl">🔒</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
             <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to view this document.</p>
-            <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-              Go to Login →
-            </Link>
+            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
+              Phone verification is required to save or access private work.
+            </p>
           </>
         )}
       </div>

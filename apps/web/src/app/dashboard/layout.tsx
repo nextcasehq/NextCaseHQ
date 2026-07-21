@@ -83,15 +83,16 @@ export default function DashboardLayout({
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch {
-      // Session cookie is short-lived even if this call fails; proceed to
-      // the single login page regardless.
+      // Session cookie is short-lived even if this call fails; proceed
+      // regardless — there is no dedicated login page to send them to, so
+      // land back on the publicly-viewable dashboard launch page instead.
     }
     if (typeof window !== 'undefined') {
       sessionStorage.clear();
       localStorage.clear();
       document.cookie = 'NEXTCASE_CURRENT_TENANT_ID_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'NEXTCASE_CURRENT_CASE_CONTEXT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      window.location.href = '/login';
+      window.location.href = '/dashboard';
     }
   };
 
