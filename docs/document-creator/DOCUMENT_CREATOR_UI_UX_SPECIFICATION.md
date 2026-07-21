@@ -364,3 +364,108 @@ Continue using only MIT-compatible dependencies. No paid Tiptap services. No pai
 - Template cards display only real template metadata (§11) — no fabricated parties, disputes, or decorative copy.
 - Keyboard accessibility (§19) and visible focus indicators are verified by real interaction (Tab/Shift+Tab/Arrow/Enter/Escape/Space), not assumed from markup alone.
 - Desktop, tablet, and mobile screenshots of the rebuilt workspace are produced and provided before requesting Product Owner review.
+
+---
+
+## Appendix A — Template Library and Court Organisation
+
+This appendix extends the existing Product Requirements and this UI/UX Specification. It refines how templates and matters are organised. It does not change the Constitution, architecture, roadmap, or existing implementation milestones. Its scope reaches slightly beyond the Document Creator's editing surface (this document's usual scope, per the header above) into the Matter Register's own organisation (§A.6), since both must use the same Court Vertical taxonomy consistently across the application — there is no separate Matter Register specification document as of this appendix; until one exists, §A.6 is the governing reference for the Matter Register's Court Vertical tabs.
+
+### A.1 Court Verticals
+
+Across NextCaseHQ, templates and matters shall be organised using the following primary Court Verticals:
+
+- Supreme Court
+- High Courts
+- District Courts
+- Magistrate Courts
+- Other Courts & Tribunals
+
+This organisation shall remain consistent throughout the application.
+
+### A.2 Template Library
+
+The Template Library shall first display these five Court Verticals. Expanding a Court Vertical displays the available templates for that court.
+
+Example:
+
+```
+Supreme Court
+    • Special Leave Petition
+    • Review Petition
+
+High Courts
+    • Writ Petition
+    • Civil Revision
+    • Bail Application
+
+District Courts
+    • Plaint
+    • Written Statement
+    • Civil Suit
+    • Affidavit
+
+Magistrate Courts
+    • Criminal Complaint
+    • Bail Application
+
+Other Courts & Tribunals
+    • Consumer Commission
+    • NCLT
+    • DRT
+    • Family Court
+    • Labour Court
+```
+
+The interface should remain simple and easy to scan. (This grouped, expandable structure supersedes the flat template list described as the "first release" state in §13 above — §13's category taxonomy, Constitutional/Civil/Criminal/etc., remains a *secondary*, future-facing dimension for filtering within a Court Vertical, not a replacement for this primary grouping.)
+
+### A.3 Template Cards
+
+Each template card should display only useful information:
+
+- Template Name
+- Court
+- Document Type
+- Practice Area
+- Version
+- Starter Template badge
+
+Example:
+
+> **Delhi High Court — Writ Petition**
+> Practice Area: Constitutional
+> Version: v1.0
+> *Starter Template*
+
+Do not display fake parties, fake disputes, or sample case numbers. (This refines §11's card-field list: **Practice Area** replaces §11's **Category** as the field name for the same concept, and **Court** replaces §11's separate **Jurisdiction**/**Court** pairing with a single field — this card layout in §A.3 is the current, authoritative one where the two lists differ; §11's underlying honesty requirement, real metadata only, is unchanged and reaffirmed here.)
+
+### A.4 Template Information
+
+Selecting a template should display:
+
+- Purpose
+- When to use
+- Required Information
+- Important Notes
+
+Display the existing warning: **"Starter templates — advocate review required. Not filing-ready."**
+
+### A.5 Future Template Inputs
+
+Each template should define the information it will eventually collect, for example: Court, Petitioner, Respondent, Facts, Grounds, Relief, Prayer, Verification, Annexures. These will later be collected through SurveyJS. **Do not implement SurveyJS in this milestone** — this is a data-shape note for a future, separately-approved milestone, not an instruction to build questionnaire collection now (consistent with this document's Preserved Invariants on the SurveyJS roadmap).
+
+### A.6 Matter Register
+
+The Matter Register shall also use the same five Court Verticals, as five tabs: Supreme Court, High Courts, District Courts, Magistrate Courts, Other Courts & Tribunals. Every Matter belongs to one Court Vertical.
+
+Until the Matter Register is implemented, continue showing:
+
+> Matter: Unlinked Draft
+
+### A.7 Future Features
+
+As the platform grows, templates may later support: Search, Filters, Recently Used, Favourites, Firm Templates, Personal Templates. Do not implement these until enough real templates exist. (§15's Template Search placeholder remains the correct honest scaffold in the meantime.)
+
+### A.8 Appendix Implementation Constraints
+
+These are UI and organisational refinements only. Do not modify: Constitution, Autosave, Draft model, API contracts, existing roadmap. Continue using only free, MIT-compatible components. Maintain honest disclosure of all features that are not yet implemented — the same standard this entire specification holds throughout.
