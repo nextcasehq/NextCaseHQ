@@ -490,10 +490,10 @@ export default function DraftBuilderPage() {
       {pendingTemplate && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
-            <h2 className="text-sm font-bold text-[#111111]">Replace current draft content?</h2>
+            <h2 className="text-sm font-bold text-[#111111]">Create New Draft?</h2>
             <p className="text-xs text-[#5C5340]">
-              Selecting a new template starts a fresh, independent draft. Your current draft is not deleted — it
-              stays saved under its own id — but this document view will switch to the new template's content.
+              Your current draft is safely preserved. A new independent draft will now be created. Your existing
+              draft remains available from Draft History.
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -506,7 +506,7 @@ export default function DraftBuilderPage() {
                 onClick={confirmReplaceTemplate}
                 className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
               >
-                Start New Draft
+                Create New Draft
               </button>
             </div>
           </div>
@@ -523,7 +523,7 @@ export default function DraftBuilderPage() {
         {!focusMode && (
           <aside
             style={{ width: leftOpen ? '272px' : '0px' }}
-            className={`no-print hidden md:flex flex-col overflow-hidden border-r ${chromeBg}`}
+            className={`no-print hidden md:flex flex-col overflow-hidden ${leftOpen ? 'border-r' : 'border-r-0'} ${chromeBg}`}
           >
             <div className="w-[272px] shrink-0 overflow-y-auto p-4 space-y-4">{leftSidebarContent}</div>
           </aside>
@@ -569,7 +569,7 @@ export default function DraftBuilderPage() {
         {!focusMode && (
           <aside
             style={{ width: rightOpen ? '288px' : '0px' }}
-            className={`no-print hidden md:flex flex-col overflow-hidden border-l ${chromeBg}`}
+            className={`no-print hidden md:flex flex-col overflow-hidden ${rightOpen ? 'border-l' : 'border-l-0'} ${chromeBg}`}
           >
             <div className="w-[288px] shrink-0 overflow-y-auto p-4 space-y-4">{rightSidebarContent}</div>
           </aside>
