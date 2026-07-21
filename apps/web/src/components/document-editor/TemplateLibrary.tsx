@@ -17,14 +17,16 @@ function TemplateCard({ template, selected, onSelect }: { template: LegalTemplat
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`w-full text-left p-3 rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] ${
+      className={`w-full min-h-[10.5rem] flex flex-col justify-between text-left p-3 rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] ${
         selected ? 'bg-[#111111] border-[#111111] text-[#FDFBF7]' : 'bg-white border-[#E7DFC9] text-[#3A3222] hover:border-[#8A6D2F]'
       }`}
     >
-      <span className="block text-xs font-bold">{template.name}</span>
-      <span className={`block text-[10px] mt-0.5 ${selected ? 'text-[#FDFBF7]/70' : 'text-[#8A7A56]'}`}>
-        {template.court} · {template.practiceArea}
-      </span>
+      <div>
+        <span className="block text-xs font-bold leading-snug">{template.name}</span>
+        <span className={`block text-[10px] mt-0.5 ${selected ? 'text-[#FDFBF7]/70' : 'text-[#8A7A56]'}`}>
+          {template.court} · {template.practiceArea}
+        </span>
+      </div>
       <span className="flex items-center gap-1.5 mt-1.5 flex-wrap">
         <span
           className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${

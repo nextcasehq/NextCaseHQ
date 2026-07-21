@@ -22,16 +22,24 @@ function MenuItem({ onClick, children }: { onClick: () => void; children: React.
   );
 }
 
+const MENU_WIDTH_PX = 192;
+const MENU_HEIGHT_ESTIMATE_PX = 260;
+const VIEWPORT_MARGIN_PX = 8;
+
 /** Right-click context menu for the editor surface (UI/UX Specification §10). */
 export function EditorContextMenu({ editor, position, onClose }: EditorContextMenuProps) {
   React.useEffect(() => {
     if (!position) return;
     const close = () => onClose();
-    window.addEventListener('click', close);
-    window.addEventListener('keydown', (e) => {
+    const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
-    });
-    return () => window.removeEventListener('click', close);
+    };
+    window.addEventListener('click', close);
+    window.addEventListener('keydown', handleKeydown);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('keydown', handleKeydown);
+    };
   }, [position, onClose]);
 
   if (!editor || !position) return null;
@@ -41,11 +49,16 @@ export function EditorContextMenu({ editor, position, onClose }: EditorContextMe
     onClose();
   };
 
+  // Clamped so a right-click near the right/bottom edge never renders the
+  // menu partly off-screen.
+  const left = Math.min(position.x, window.innerWidth - MENU_WIDTH_PX - VIEWPORT_MARGIN_PX);
+  const top = Math.min(position.y, window.innerHeight - MENU_HEIGHT_ESTIMATE_PX - VIEWPORT_MARGIN_PX);
+
   return (
     <div
       role="menu"
       aria-label="Editor context menu"
-      style={{ top: position.y, left: position.x }}
+      style={{ top: Math.max(VIEWPORT_MARGIN_PX, top), left: Math.max(VIEWPORT_MARGIN_PX, left) }}
       className="no-print fixed z-50 w-48 bg-white border border-[#E7DFC9] rounded-lg shadow-xl p-1.5 space-y-0.5"
     >
       <MenuItem onClick={() => run(() => void cutSelection(editor))}>✂ Cut</MenuItem>

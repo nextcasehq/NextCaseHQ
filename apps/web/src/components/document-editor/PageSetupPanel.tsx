@@ -20,7 +20,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const inputClass = 'w-full px-2 py-1.5 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs';
+const inputClass = 'w-full px-2 py-1.5 bg-white border border-[#E7DFC9] rounded-md outline-none focus:border-[#8A6D2F] text-xs';
 
 export function PageSetupPanel({ pageSetup, onChange, onFitWidth, isFitWidth }: PageSetupPanelProps) {
   const update = (patch: Partial<PageSetup>) => onChange({ ...pageSetup, ...patch });

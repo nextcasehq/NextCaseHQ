@@ -59,7 +59,16 @@ export default function DraftBuilderPage() {
   const [currentHtml, setCurrentHtml] = React.useState('');
   const [pendingTemplate, setPendingTemplate] = React.useState<LegalTemplate | null | 'blank'>(null);
   const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
-  const [sessionStartedAt] = React.useState(() => new Date());
+  // Computed in an effect (client-only, after hydration) rather than a
+  // useState lazy initializer: this component is server-rendered first,
+  // and `new Date()` evaluated during that render would almost always
+  // differ by a tick from the client's own first render of the same
+  // component, producing a real hydration-mismatch warning for the
+  // "Created" field's rendered text.
+  const [sessionStartedAt, setSessionStartedAt] = React.useState<Date | null>(null);
+  React.useEffect(() => {
+    setSessionStartedAt(new Date());
+  }, []);
 
   const [mobileDrawer, setMobileDrawer] = React.useState<MobileDrawer>('none');
   const [leftOpen, setLeftOpen] = React.useState(true);
@@ -263,7 +272,7 @@ export default function DraftBuilderPage() {
           template cards). Guided questionnaire-driven assembly is a
           separate, later milestone — selecting a template here loads its
           complete static content directly into the manual editor. */}
-      <div className="pb-4 border-b border-[#F4EEE0]">
+      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create Manually</h3>
         <button
           type="button"
@@ -273,7 +282,7 @@ export default function DraftBuilderPage() {
           Start Blank Draft
         </button>
       </div>
-      <div className="pb-4 border-b border-[#F4EEE0]">
+      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">Create Using Template</h3>
         <p className="text-[10px] text-[#B0A588] mb-3">
           Guided, questionnaire-driven assembly is a separate upcoming milestone. For now, selecting a template loads its full
@@ -286,7 +295,7 @@ export default function DraftBuilderPage() {
           hideBlankAction
         />
       </div>
-      <div className="pb-4 border-b border-[#F4EEE0] space-y-2">
+      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0 space-y-2">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Current Draft</h3>
         <dl className="space-y-1.5 text-xs">
           <div className="flex justify-between gap-2">
@@ -323,7 +332,8 @@ export default function DraftBuilderPage() {
                 honestly labeled as this browser session's start time, not
                 claimed as the document's true original creation date. */}
             <dd className="text-[#3A3222] font-bold text-right">
-              {sessionStartedAt.toLocaleTimeString()} <span className="font-normal text-[#B0A588]">(session)</span>
+              {sessionStartedAt ? sessionStartedAt.toLocaleTimeString() : '—'}{' '}
+              <span className="font-normal text-[#B0A588]">(session)</span>
             </dd>
           </div>
           <div className="flex justify-between gap-2">
@@ -339,8 +349,10 @@ export default function DraftBuilderPage() {
           </div>
         </dl>
       </div>
-      <AttachmentsPanel />
-      <div className="pt-4 border-t border-[#F4EEE0] opacity-60">
+      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
+        <AttachmentsPanel />
+      </div>
+      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0 opacity-60">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">AI Panel</h3>
         <p className="text-[10px] text-[#B0A588] italic">Reserved for a future milestone.</p>
       </div>
@@ -511,7 +523,7 @@ export default function DraftBuilderPage() {
         {!focusMode && (
           <aside
             style={{ width: leftOpen ? '272px' : '0px' }}
-            className={`no-print hidden md:flex flex-col overflow-hidden transition-all duration-200 border-r ${chromeBg}`}
+            className={`no-print hidden md:flex flex-col overflow-hidden border-r ${chromeBg}`}
           >
             <div className="w-[272px] shrink-0 overflow-y-auto p-4 space-y-4">{leftSidebarContent}</div>
           </aside>
@@ -557,7 +569,7 @@ export default function DraftBuilderPage() {
         {!focusMode && (
           <aside
             style={{ width: rightOpen ? '288px' : '0px' }}
-            className={`no-print hidden md:flex flex-col overflow-hidden transition-all duration-200 border-l ${chromeBg}`}
+            className={`no-print hidden md:flex flex-col overflow-hidden border-l ${chromeBg}`}
           >
             <div className="w-[288px] shrink-0 overflow-y-auto p-4 space-y-4">{rightSidebarContent}</div>
           </aside>
