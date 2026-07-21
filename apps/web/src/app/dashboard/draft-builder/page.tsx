@@ -16,6 +16,7 @@ const AUTOSAVE_STATUS_LABEL: Record<AutosaveStatus, string> = {
   save_failed: 'Save failed — retrying',
   conflict_detected: 'Conflict detected',
   recovered_draft: 'Recovered draft',
+  unauthenticated: 'Local draft — verification required for permanent saving',
 };
 
 const AUTOSAVE_STATUS_DOT: Record<AutosaveStatus, string> = {
@@ -25,6 +26,7 @@ const AUTOSAVE_STATUS_DOT: Record<AutosaveStatus, string> = {
   save_failed: 'bg-red-500',
   conflict_detected: 'bg-red-500',
   recovered_draft: 'bg-amber-500',
+  unauthenticated: 'bg-sky-500',
 };
 
 interface DraftTemplate {

@@ -59,28 +59,34 @@ export async function proxy(request: NextRequest) {
   // session cookie. Previously this page had no edge-level protection at
   // all — authorization was enforced only for its data (every /api/admin/*
   // call), while the page shell itself was reachable by anyone; it also
-  // used to embed its own separate credential-entry form. Both gaps close
-  // together here: the page now redirects unauthenticated visitors to the
-  // single /login entry point, exactly like /dashboard does below, and
-  // /login (not this page) is the only place any credential is ever typed.
+  // used to embed its own separate credential-entry form. There is no
+  // dedicated /login page (removed — Phone OTP sign-in is a separate,
+  // not-yet-implemented milestone), so an unauthenticated visitor is sent
+  // to the public landing page instead of a dead route; the console
+  // itself stays fully locked regardless of where they land.
   if (pathname.startsWith('/admin')) {
     const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value;
     if (!adminToken || !(await verifyAdminSessionToken(adminToken))) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
   }
 
-  // 0.5. Product Review Mode (PRODUCT_REVIEW_MODE=true, off by default):
-  // serve a fixed set of static, non-sensitive demo GET responses to
-  // unauthenticated visitors — one synthetic Matter (DEMO_MATTER_ID) plus
-  // the /dashboard launch page's list/notifications calls — without ever
-  // reaching the database or the real route handler. Only GET, only with
-  // no session cookie at all, and only this exact reserved set of paths;
-  // every write route and every other GET (including any other matter_id)
-  // is completely untouched and falls through to the checks below exactly
-  // as before. Formerly gated by BETA_PREVIEW_ENABLED — that variable is
-  // no longer read anywhere in this file.
+  // 0.5. Product Review Mode (PRODUCT_REVIEW_MODE, on by default — set to
+  // "false" to opt out): serve a fixed set of static, non-sensitive demo
+  // GET responses to unauthenticated visitors — one synthetic Matter
+  // (DEMO_MATTER_ID) plus the /dashboard launch page's list/notifications
+  // calls — without ever reaching the database or the real route handler.
+  // Only GET, only with no session cookie at all, and only this exact
+  // reserved set of paths; every write route and every other GET
+  // (including any other matter_id) is completely untouched and falls
+  // through to the checks below exactly as before. Defaulted on so the
+  // Product Owner and public visitors can inspect the approved
+  // public-view routes without any deployment-specific env var having to
+  // be set — see docs/document-creator and the "PRIORITY CHANGE — MAKE
+  // NEXTCASEHQ VIEWABLE BY PRODUCT OWNER" milestone. Formerly gated by
+  // BETA_PREVIEW_ENABLED — that variable is no longer read anywhere in
+  // this file.
   if (
     isProductReviewModeEnabled() &&
     request.method === 'GET' &&
@@ -133,7 +139,12 @@ export async function proxy(request: NextRequest) {
         (PRODUCT_REVIEW_DASHBOARD_PATHS.has(pathname) || pathname.startsWith('/dashboard/matters/')) &&
         isProductReviewModeEnabled();
       if (!isProductReviewExemptPage) {
-        return NextResponse.redirect(new URL('/login', request.url));
+        // No dedicated /login page exists (removed — Phone OTP sign-in is
+        // a separate, not-yet-implemented milestone) — send unauthenticated
+        // visitors to the public landing page rather than a dead route.
+        // The sub-route itself stays fully protected either way; only the
+        // redirect target changed.
+        return NextResponse.redirect(new URL('/', request.url));
       }
     }
     return NextResponse.next();

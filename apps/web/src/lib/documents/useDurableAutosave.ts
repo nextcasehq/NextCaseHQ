@@ -19,7 +19,14 @@ import { loadLocalDraft, saveLocalDraft, resolveRecoveredContent } from './local
  * "never store permanent authority only in localStorage" constraint.
  */
 
-export type AutosaveStatus = 'saving' | 'saved' | 'offline' | 'save_failed' | 'conflict_detected' | 'recovered_draft';
+export type AutosaveStatus =
+  | 'saving'
+  | 'saved'
+  | 'offline'
+  | 'save_failed'
+  | 'conflict_detected'
+  | 'recovered_draft'
+  | 'unauthenticated';
 
 export interface ConflictingRevision {
   content: string;
@@ -80,11 +87,32 @@ export function useDurableAutosave({
   // completely unrelated, legitimately-concurrent editor who never
   // touched anything.
   const syncedRef = useRef<{ content: string; title: string | null }>({ content: '', title: null });
+  // Set once a visitor is known to have no session (create/recover
+  // returned 401). From then on, no further network attempt is made — work
+  // is preserved only in IndexedDB, under whatever draft id is already in
+  // use, until a future authenticated session takes over (Phone OTP is out
+  // of scope for this milestone; this hook never assumes one exists).
+  const isLocalOnlyRef = useRef(false);
+
+  const persistLocalOnly = useCallback(async (id: string, payload: { title: string; content: string }) => {
+    await saveLocalDraft({
+      draftId: id,
+      content: payload.content,
+      title: payload.title || null,
+      revision: revisionRef.current,
+      savedAt: new Date().toISOString(),
+    });
+    setStatus('unauthenticated');
+  }, []);
 
   const persist = useCallback(
     async (payload: { title: string; content: string }) => {
       const id = draftIdRef.current;
       if (!id) return;
+      if (isLocalOnlyRef.current) {
+        await persistLocalOnly(id, payload);
+        return;
+      }
       setStatus('saving');
       try {
         const res = await fetch(`/api/documents/drafts/${id}`, {
@@ -96,6 +124,11 @@ export function useDurableAutosave({
             expected_revision: revisionRef.current,
           }),
         });
+        if (res.status === 401) {
+          isLocalOnlyRef.current = true;
+          await persistLocalOnly(id, payload);
+          return;
+        }
         if (res.status === 409) {
           const body = await res.json().catch(() => null);
           if (body?.current) {
@@ -123,7 +156,7 @@ export function useDurableAutosave({
         setStatus(navigator.onLine === false ? 'offline' : 'save_failed');
       }
     },
-    []
+    [persistLocalOnly]
   );
 
   // One-time initialization: resume an existing draft (recorded via the
@@ -142,6 +175,23 @@ export function useDurableAutosave({
       try {
         if (existingId) {
           const res = await fetch(`/api/documents/drafts/${existingId}`);
+          if (res.status === 401) {
+            // No session — the pointer may reference a real server draft
+            // this visitor can no longer reach, or a client-generated
+            // local-only id from an earlier unauthenticated visit. Either
+            // way, keep using it as the IndexedDB key so already-typed
+            // work survives this refresh, without ever calling the server.
+            if (cancelled) return;
+            isLocalOnlyRef.current = true;
+            draftIdRef.current = existingId;
+            setDraftId(existingId);
+            const local = await loadLocalDraft(existingId);
+            if (local && (local.content !== latestRef.current.content || local.title !== latestRef.current.title)) {
+              onRecovered?.({ content: local.content, title: local.title });
+            }
+            setStatus('unauthenticated');
+            return;
+          }
           if (res.ok) {
             const data = await res.json();
             if (cancelled) return;
@@ -199,6 +249,22 @@ export function useDurableAutosave({
             content: latestRef.current.content,
           }),
         });
+        if (res.status === 401) {
+          // No session at all — never had a server draft to begin with.
+          // Mint a client-only id so IndexedDB mirroring and the
+          // localStorage resume-pointer both still work exactly as they
+          // would for a real draft; only the server round trip is skipped.
+          if (cancelled) return;
+          isLocalOnlyRef.current = true;
+          const localId = crypto.randomUUID();
+          draftIdRef.current = localId;
+          setDraftId(localId);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(key, localId);
+          }
+          setStatus('unauthenticated');
+          return;
+        }
         if (!res.ok) {
           if (!cancelled) setStatus('save_failed');
           return;

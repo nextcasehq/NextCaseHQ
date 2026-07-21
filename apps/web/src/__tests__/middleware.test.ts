@@ -33,16 +33,18 @@ function buildAdminApiRequest(tokenCookieValue?: string, path = '/api/admin/heal
 }
 
 describe('middleware — protected /dashboard routes', () => {
-  test('redirects to /login when there is no session cookie', async () => {
+  test('redirects to the landing page (never the deleted /login route) when there is no session cookie', async () => {
     const response = await proxy(buildDashboardRequest());
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/login');
+    expect(response.headers.get('location')).not.toContain('/login');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
   });
 
-  test('redirects to /login when the session cookie is invalid', async () => {
+  test('redirects to the landing page (never the deleted /login route) when the session cookie is invalid', async () => {
     const response = await proxy(buildDashboardRequest('not-a-real-jwt'));
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/login');
+    expect(response.headers.get('location')).not.toContain('/login');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
   });
 
   test('allows the request through with a validly signed session cookie', async () => {
@@ -85,17 +87,19 @@ describe('middleware — /api/admin gate', () => {
   });
 });
 
-describe('middleware — protected /admin console page (single login entry point)', () => {
-  test('redirects to /login when there is no admin session cookie', async () => {
+describe('middleware — protected /admin console page (no dedicated login page)', () => {
+  test('redirects to the landing page (never the deleted /login route) when there is no admin session cookie', async () => {
     const response = await proxy(buildAdminApiRequest(undefined, '/admin'));
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/login');
+    expect(response.headers.get('location')).not.toContain('/login');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
   });
 
-  test('redirects to /login when the admin session cookie is invalid', async () => {
+  test('redirects to the landing page (never the deleted /login route) when the admin session cookie is invalid', async () => {
     const response = await proxy(buildAdminApiRequest('not-a-real-admin-jwt', '/admin'));
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/login');
+    expect(response.headers.get('location')).not.toContain('/login');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
   });
 
   test('allows the request through with a validly signed admin session cookie', async () => {
@@ -124,11 +128,11 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
   });
 
   test('security regression: the retired BETA_PREVIEW_ENABLED variable has no effect at all, even set to "true" — only PRODUCT_REVIEW_MODE is read', async () => {
-    delete process.env.PRODUCT_REVIEW_MODE;
+    process.env.PRODUCT_REVIEW_MODE = 'false';
     process.env.BETA_PREVIEW_ENABLED = 'true';
-    const dashboardResponse = await proxy(buildDashboardRequest(undefined, '/dashboard'));
+    const dashboardResponse = await proxy(buildDashboardRequest(undefined, '/dashboard/cases'));
     expect(dashboardResponse.status).toBe(307);
-    expect(dashboardResponse.headers.get('location')).toContain('/login');
+    expect(dashboardResponse.headers.get('location')).not.toContain('/login');
 
     const mattersResponse = await proxy(buildApiRequest('/api/matters'));
     const mattersBody = await mattersResponse.json().catch(() => null);
@@ -139,15 +143,31 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(searchBody?.review_mode).not.toBe(true);
   });
 
-  test('disabled by default: bare /dashboard still redirects to /login with no session', async () => {
+  test('on by default: bare /dashboard is allowed through with no session and no env var set', async () => {
     delete process.env.PRODUCT_REVIEW_MODE;
     const response = await proxy(buildDashboardRequest(undefined, '/dashboard'));
-    expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/login');
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
   });
 
-  test('disabled by default: GET /api/matters/{demo id} is not intercepted with a demo payload', async () => {
+  test('on by default: GET /api/matters/{demo id} returns the demo payload with no env var set', async () => {
     delete process.env.PRODUCT_REVIEW_MODE;
+    const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.matter.is_demo).toBe(true);
+  });
+
+  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): bare /dashboard/cases still redirects, never to /login', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/cases'));
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).not.toContain('/login');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+  });
+
+  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/matters/{demo id} is not intercepted with a demo payload', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
     const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`));
     const body = await response.json().catch(() => null);
     expect(body?.matter?.is_demo).not.toBe(true);
@@ -174,12 +194,13 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
-  test('enabled + no session: every other /dashboard sub-route still redirects to /login (narrow allowlist, not a blanket exemption)', async () => {
+  test('enabled + no session: every other /dashboard sub-route still redirects, never to /login (narrow allowlist, not a blanket exemption)', async () => {
     process.env.PRODUCT_REVIEW_MODE = 'true';
     for (const path of ['/dashboard/cases', '/dashboard/search', '/dashboard/audit', '/dashboard/evidence', '/dashboard/settings']) {
       const response = await proxy(buildDashboardRequest(undefined, path));
       expect(response.status).toBe(307);
-      expect(response.headers.get('location')).toContain('/login');
+      expect(response.headers.get('location')).not.toContain('/login');
+      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
     }
   });
 
@@ -204,12 +225,13 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
-  test('disabled by default: /dashboard/ai-chamber, /dashboard/draft-builder, /dashboard/matters, and /dashboard/credits still redirect to /login (exemption only applies when the flag is on)', async () => {
-    delete process.env.PRODUCT_REVIEW_MODE;
+  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): /dashboard/ai-chamber, /dashboard/draft-builder, /dashboard/matters, and /dashboard/credits still redirect, never to /login (exemption only applies when the flag is on)', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
     for (const path of ['/dashboard/ai-chamber', '/dashboard/draft-builder', '/dashboard/matters', '/dashboard/matters/mock-matter-001', '/dashboard/credits']) {
       const response = await proxy(buildDashboardRequest(undefined, path));
       expect(response.status).toBe(307);
-      expect(response.headers.get('location')).toContain('/login');
+      expect(response.headers.get('location')).not.toContain('/login');
+      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
     }
   });
 
@@ -295,8 +317,8 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(body?.matter?.is_demo).not.toBe(true);
   });
 
-  test('disabled by default: GET /api/beta-status is not intercepted (no real route backs it, so it 404s downstream)', async () => {
-    delete process.env.PRODUCT_REVIEW_MODE;
+  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/beta-status is not intercepted (no real route backs it, so it 404s downstream)', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
     const response = await proxy(buildApiRequest('/api/beta-status'));
     const body = await response.json().catch(() => null);
     expect(body?.enabled).not.toBe(true);
@@ -322,8 +344,8 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(body?.enabled).not.toBe(true);
   });
 
-  test('disabled by default: GET /api/documents/{demo document id} is not intercepted', async () => {
-    delete process.env.PRODUCT_REVIEW_MODE;
+  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/documents/{demo document id} is not intercepted', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
     const response = await proxy(buildApiRequest(`/api/documents/${DEMO_DOCUMENT_ID}`));
     const body = await response.json().catch(() => null);
     expect(body?.document?.is_demo).not.toBe(true);
@@ -338,8 +360,8 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(body.document.matter_id).toBe(DEMO_MATTER_ID);
   });
 
-  test('disabled by default: GET /api/search is not intercepted with demo results', async () => {
-    delete process.env.PRODUCT_REVIEW_MODE;
+  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/search is not intercepted with demo results', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
     const response = await proxy(buildApiRequest('/api/search?q=contract'));
     const body = await response.json().catch(() => null);
     expect(body?.review_mode).not.toBe(true);

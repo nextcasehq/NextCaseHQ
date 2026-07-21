@@ -11,10 +11,7 @@ export default function Hero() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("NEXTCASE_PENDING_SEARCH_QUERY", query.trim());
-      }
-      router.push("/login");
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };
 
@@ -81,11 +78,11 @@ export default function Hero() {
       {/* Quick links to login with subtle underlines and high-contrast labels */}
       <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs md:text-sm font-semibold text-neutral-500">
         <span className="text-neutral-600 font-extrabold uppercase tracking-widest text-[10px]">Quick Actions:</span>
-        <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Access Active Chamber</Link>
+        <Link href="/dashboard" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Access Active Chamber</Link>
         <span className="text-neutral-300 select-none" aria-hidden="true">•</span>
-        <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Ingest New File</Link>
+        <Link href="/documents/new" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Ingest New File</Link>
         <span className="text-neutral-300 select-none" aria-hidden="true">•</span>
-        <Link href="/login" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
+        <Link href="/audit" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
       </div>
 
     </main>

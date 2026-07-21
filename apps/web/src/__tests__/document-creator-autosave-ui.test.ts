@@ -24,10 +24,28 @@ describe('Document Creator Phase 2 — Durable Draft and Continuous Autosave', (
     expect(page).toContain('useDurableAutosave({');
   });
 
-  test('the hook exposes exactly the six required status states', () => {
-    for (const state of ['saving', 'saved', 'offline', 'save_failed', 'conflict_detected', 'recovered_draft']) {
+  test('the hook exposes exactly the seven required status states', () => {
+    for (const state of [
+      'saving',
+      'saved',
+      'offline',
+      'save_failed',
+      'conflict_detected',
+      'recovered_draft',
+      'unauthenticated',
+    ]) {
       expect(hook).toContain(`'${state}'`);
     }
+  });
+
+  test('an unauthenticated visitor never loses their typed work — the draft is preserved locally, never blocked on a server draft id', () => {
+    expect(hook).toContain('isLocalOnlyRef');
+    expect(hook).toContain("res.status === 401");
+    expect(hook).toContain('crypto.randomUUID()');
+  });
+
+  test('the unauthenticated status is surfaced with the required exact wording', () => {
+    expect(page).toContain('Local draft — verification required for permanent saving');
   });
 
   test('every status is surfaced in the editor UI, not just tracked internally', () => {

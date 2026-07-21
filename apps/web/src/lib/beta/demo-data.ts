@@ -1,15 +1,18 @@
 /**
- * Product Review Mode — a temporary, environment-flagged mode that lets a
- * Product Owner (or any unauthenticated reviewer) inspect a working
- * `/dashboard` launch page and one fixed, entirely synthetic Matter
- * Workspace (`DEMO_MATTER_ID`) without ever touching the database or
- * weakening authorization for any real tenant's data.
+ * Product Review Mode — lets a Product Owner (or any unauthenticated
+ * visitor) inspect a working `/dashboard` launch page and one fixed,
+ * entirely synthetic Matter Workspace (`DEMO_MATTER_ID`) without ever
+ * touching the database or weakening authorization for any real tenant's
+ * data.
  *
- * Disabled by default. Enable with PRODUCT_REVIEW_MODE=true. This is a
- * server-only flag (read in proxy.ts) — there is no client-exposed
- * equivalent; the client infers review mode purely from the `is_demo` /
- * `review_mode` markers already present in the JSON these routes return,
- * so there is nothing to keep in sync.
+ * On by default (opt out with PRODUCT_REVIEW_MODE=false) — the deployed
+ * environment must not have to set a variable for the approved
+ * public-view routes to be reachable; see the "PRIORITY CHANGE — MAKE
+ * NEXTCASEHQ VIEWABLE BY PRODUCT OWNER" milestone. This is a server-only
+ * flag (read in proxy.ts) — there is no client-exposed equivalent; the
+ * client infers review mode purely from the `is_demo` / `review_mode`
+ * markers already present in the JSON these routes return, so there is
+ * nothing to keep in sync.
  *
  * Formerly gated by BETA_PREVIEW_ENABLED — migrated to PRODUCT_REVIEW_MODE
  * (this module, and the routes/pages that use it, no longer reads the old
@@ -28,7 +31,7 @@ import { findDemoSearchItem, searchDemoLegalDataset } from './demo-search-data';
 export const DEMO_MATTER_ID = 'deadbeef-0000-4000-8000-000000000000';
 
 export function isProductReviewModeEnabled(): boolean {
-  return process.env.PRODUCT_REVIEW_MODE === 'true';
+  return process.env.PRODUCT_REVIEW_MODE !== 'false';
 }
 
 const DEMO_MATTER = {

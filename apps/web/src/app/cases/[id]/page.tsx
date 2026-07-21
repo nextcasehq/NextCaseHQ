@@ -125,9 +125,9 @@ export default function CaseWorkspaceDetailsPage() {
               <span className="text-3xl">🔒</span>
               <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
               <p className="text-xs text-[#B0A588] mt-1">Sign in to view this case workspace.</p>
-              <Link href="/login" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-                Go to Login →
-              </Link>
+              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
+                Phone verification is required to save or access private work.
+              </p>
             </>
           )}
         </main>

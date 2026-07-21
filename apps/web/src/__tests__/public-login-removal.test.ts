@@ -45,14 +45,23 @@ describe('Public /login removal', () => {
 });
 
 describe('Backend authentication infrastructure preserved (not modified by the /login removal)', () => {
-  test('protected-route proxy (formerly middleware) still redirects unauthenticated visitors to /login', () => {
+  // Superseded by the "PRIORITY CHANGE — MAKE NEXTCASEHQ VIEWABLE BY
+  // PRODUCT OWNER" milestone: every remaining /login redirect/link
+  // (protected-route proxy, dashboard logout, admin logout) was itself a
+  // dead end once the page was removed, so that milestone's requirement
+  // #10 ("remove every active user-facing redirect or link to /login")
+  // replaced all of them with a safe, existing destination. Authentication
+  // itself (session validation, tenant isolation, RLS, mutation
+  // protection) is untouched — only the redirect/link target changed.
+  test('protected-route proxy (formerly middleware) no longer redirects anywhere to /login', () => {
     const proxySource = fs.readFileSync(path.join(__dirname, '../proxy.ts'), 'utf8');
-    expect(proxySource).toContain('/login');
+    expect(proxySource).not.toContain("'/login'");
+    expect(proxySource).not.toContain('"/login"');
   });
 
-  test('dashboard and admin logout still route back to /login', () => {
-    expect(readSource('app/dashboard/layout.tsx')).toContain('/login');
-    expect(readSource('app/admin/layout.tsx')).toContain('/login');
+  test('dashboard and admin logout no longer route to /login', () => {
+    expect(readSource('app/dashboard/layout.tsx')).not.toContain('/login');
+    expect(readSource('app/admin/layout.tsx')).not.toContain('/login');
   });
 
   test('session, admin-session, and logout API routes are untouched by this cleanup', () => {
