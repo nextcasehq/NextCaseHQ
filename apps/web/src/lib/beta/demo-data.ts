@@ -6,7 +6,7 @@
  * weakening authorization for any real tenant's data.
  *
  * Disabled by default. Enable with PRODUCT_REVIEW_MODE=true. This is a
- * server-only flag (read in middleware.ts) — there is no client-exposed
+ * server-only flag (read in proxy.ts) — there is no client-exposed
  * equivalent; the client infers review mode purely from the `is_demo` /
  * `review_mode` markers already present in the JSON these routes return,
  * so there is nothing to keep in sync.

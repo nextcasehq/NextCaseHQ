@@ -2,7 +2,6 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_CATEGORY_LABELS,
@@ -179,10 +178,9 @@ function PrepareNewDocumentForm() {
           <>
             <span className="text-3xl">🔒</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to prepare a document.</p>
-            <Link href="/login" className="inline-block mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-              Go to Login →
-            </Link>
+            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+              Sign-in is not yet available in this environment. Preparing a document requires an authenticated session.
+            </p>
           </>
         )}
       </div>

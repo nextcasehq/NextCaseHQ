@@ -6,18 +6,28 @@ import { ADMIN_SESSION_COOKIE_NAME, verifyAdminSessionToken } from '@/lib/securi
 import { isProductReviewModeEnabled, matchProductReviewRoute } from '@/lib/beta/demo-data';
 
 /**
- * NCHQ Module 9: Secure Multi-Tenant API Gateway (Edge Middleware)
+ * NCHQ Module 9: Secure Multi-Tenant API Gateway (Proxy, formerly Middleware)
+ *
+ * Renamed from middleware.ts / `export function middleware` to proxy.ts /
+ * `export function proxy` per the Next.js 16 rename (the `middleware`
+ * filename and export are deprecated in favor of `proxy` — see the v16
+ * upgrade guide). The old middleware.ts was silently never invoked under
+ * Next.js 16.2.10, which meant dashboard/admin route protection, the API
+ * bearer-token gate, and Product Review Mode's demo-data mocking were all
+ * inert. This file's logic is unchanged; only the filename and exported
+ * function name moved. Proxy always runs on the nodejs runtime (unlike
+ * middleware, which could opt into edge) — nothing here required edge.
  *
  * Static security headers (CSP, HSTS, etc.) are applied globally via
  * next.config.ts's headers(), not here — they don't depend on anything
- * request-specific, so there's no need to route them through middleware
- * or widen this file's matcher to cover pages it otherwise has no reason
+ * request-specific, so there's no need to route them through proxy or
+ * widen this file's matcher to cover pages it otherwise has no reason
  * to touch.
  */
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const start = performance.now();
   const pathname = request.nextUrl.pathname;
 
