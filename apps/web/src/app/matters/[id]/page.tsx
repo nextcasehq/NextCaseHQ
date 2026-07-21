@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
+import MatterClosurePanel from './MatterClosurePanel';
 
 interface Matter {
   id: string;
@@ -471,6 +472,14 @@ export default function MatterDetailsChamberPage() {
             {isEditing ? 'Cancel Edits' : 'Edit Matter'}
           </button>
         </div>
+
+        <MatterClosurePanel
+          matterId={id}
+          status={matter.status}
+          isDemo={!!matter.is_demo}
+          onShowUnavailablePrompt={() => setShowUnavailablePrompt(true)}
+          onClosureChanged={fetchMatter}
+        />
 
         {/* Neutral prompt — shown when a reviewer submits a write instead of
             silently pretending it succeeded on the read-only demo Matter. */}
