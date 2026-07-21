@@ -48,18 +48,24 @@ const sessionToken = () =>
   });
 
 describe('middleware — protected /dashboard routes (non-allowlisted sub-routes)', () => {
-  test('redirects to the landing page (never the deleted /login route) when there is no session cookie', async () => {
+  test('redirects to /verify-phone (never the deleted /login route) when there is no session cookie', async () => {
     const response = await proxy(buildDashboardRequest());
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).not.toContain('/login');
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+    const location = new URL(response.headers.get('location')!);
+    expect(location.pathname).toBe('/verify-phone');
   });
 
-  test('redirects to the landing page (never the deleted /login route) when the session cookie is invalid', async () => {
+  test('redirects to /verify-phone (never the deleted /login route) when the session cookie is invalid', async () => {
     const response = await proxy(buildDashboardRequest('not-a-real-jwt'));
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).not.toContain('/login');
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+    const location = new URL(response.headers.get('location')!);
+    expect(location.pathname).toBe('/verify-phone');
+  });
+
+  test('carries the originally requested path as returnTo', async () => {
+    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/cases'));
+    const location = new URL(response.headers.get('location')!);
+    expect(location.searchParams.get('returnTo')).toBe('/dashboard/cases');
   });
 
   test('allows the request through with a validly signed session cookie', async () => {
@@ -122,17 +128,16 @@ describe('middleware — protected /admin console page (no dedicated login page)
 });
 
 describe('middleware — protected /audit page', () => {
-  test('redirects to the landing page (never the deleted /login route) when there is no session cookie', async () => {
+  test('redirects to /verify-phone (never the deleted /login route) when there is no session cookie', async () => {
     const response = await proxy(buildAuditRequest());
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).not.toContain('/login');
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/verify-phone');
   });
 
-  test('redirects to the landing page when the session cookie is invalid', async () => {
+  test('redirects to /verify-phone when the session cookie is invalid', async () => {
     const response = await proxy(buildAuditRequest('not-a-real-jwt'));
     expect(response.status).toBe(307);
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/verify-phone');
   });
 
   test('allows the request through with a validly signed session cookie', async () => {
@@ -187,7 +192,7 @@ describe('middleware — always-on public preview (independent of PRODUCT_REVIEW
     expect(detail.status).not.toBe(307);
   });
 
-  test('every other /dashboard sub-route still redirects, never to /login (narrow allowlist, not a blanket exemption)', async () => {
+  test('every other /dashboard sub-route still redirects to /verify-phone, never to /login (narrow allowlist, not a blanket exemption)', async () => {
     process.env.PRODUCT_REVIEW_MODE = 'false';
     for (const path of [
       '/dashboard/cases',
@@ -200,8 +205,9 @@ describe('middleware — always-on public preview (independent of PRODUCT_REVIEW
     ]) {
       const response = await proxy(buildDashboardRequest(undefined, path));
       expect(response.status).toBe(307);
-      expect(response.headers.get('location')).not.toContain('/login');
-      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+      const location = new URL(response.headers.get('location')!);
+      expect(location.pathname).toBe('/verify-phone');
+      expect(location.searchParams.get('returnTo')).toBe(path);
     }
   });
 
@@ -338,7 +344,7 @@ describe('middleware — Product Review Mode, opt-in only (PRODUCT_REVIEW_MODE=t
     for (const path of ['/dashboard/ai-chamber', '/dashboard/credits']) {
       const response = await proxy(buildDashboardRequest(undefined, path));
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+      expect(new URL(response.headers.get('location')!).pathname).toBe('/verify-phone');
     }
   });
 

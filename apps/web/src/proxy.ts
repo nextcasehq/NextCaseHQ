@@ -27,6 +27,12 @@ import { isProductReviewModeEnabled, matchProductReviewRoute, matchPublicPreview
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');
 
+/** /verify-phone?returnTo=<originally requested path>, per the Phone OTP Authentication spec's return-to flow. */
+function buildVerifyPhoneRedirect(request: NextRequest): URL {
+  const returnTo = encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search);
+  return new URL(`/verify-phone?returnTo=${returnTo}`, request.url);
+}
+
 export async function proxy(request: NextRequest) {
   const start = performance.now();
   const pathname = request.nextUrl.pathname;
@@ -56,13 +62,12 @@ export async function proxy(request: NextRequest) {
 
   // 0.6. Protect the /admin console page itself (distinct from /api/admin,
   // handled in section 0 above) with the same server-verified admin
-  // session cookie. Previously this page had no edge-level protection at
-  // all — authorization was enforced only for its data (every /api/admin/*
-  // call), while the page shell itself was reachable by anyone; it also
-  // used to embed its own separate credential-entry form. There is no
-  // dedicated /login page (removed — Phone OTP sign-in is a separate,
-  // not-yet-implemented milestone), so an unauthenticated visitor is sent
-  // to the public landing page instead of a dead route; the console
+  // session cookie. Phone OTP verifies identity, not administrative
+  // authority (see the locked spec's "Administration" section) — it
+  // deliberately never mints an admin session, so this does not redirect
+  // to /verify-phone. No dedicated admin login page exists yet (admin
+  // sessions are minted directly against /api/admin/session), so an
+  // unauthenticated visitor lands on the public landing page; the console
   // itself stays fully locked regardless of where they land.
   if (pathname.startsWith('/admin')) {
     const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value;
@@ -103,7 +108,7 @@ export async function proxy(request: NextRequest) {
       }
     }
     if (!hasValidSession) {
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(buildVerifyPhoneRedirect(request));
     }
     return NextResponse.next();
   }
@@ -188,12 +193,10 @@ export async function proxy(request: NextRequest) {
       // requires a real session and redirects as before — this is a
       // narrow, explicit allowlist, not a blanket exemption.
       if (!isAlwaysPublicDashboardPage && !isProductReviewExemptPage) {
-        // No dedicated /login page exists (removed — Phone OTP sign-in is
-        // a separate, not-yet-implemented milestone) — send unauthenticated
-        // visitors to the public landing page rather than a dead route.
-        // The sub-route itself stays fully protected either way; only the
-        // redirect target changed.
-        return NextResponse.redirect(new URL('/', request.url));
+        // Phone OTP Authentication's single public entry point — carries
+        // the originally requested path as returnTo so verification can
+        // send the advocate back where they meant to go.
+        return NextResponse.redirect(buildVerifyPhoneRedirect(request));
       }
     }
     return NextResponse.next();
