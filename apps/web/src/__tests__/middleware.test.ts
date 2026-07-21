@@ -32,7 +32,22 @@ function buildAdminApiRequest(tokenCookieValue?: string, path = '/api/admin/heal
   return new NextRequest(new URL(`http://localhost${path}`), { headers });
 }
 
-describe('middleware — protected /dashboard routes', () => {
+function buildAuditRequest(cookieValue?: string): NextRequest {
+  const headers: Record<string, string> = {};
+  if (cookieValue !== undefined) {
+    headers.cookie = `${SESSION_COOKIE_NAME}=${cookieValue}`;
+  }
+  return new NextRequest(new URL('http://localhost/audit'), { headers });
+}
+
+const sessionToken = () =>
+  signSessionToken({
+    sub: '00000000-0000-4000-8000-00000000000e',
+    tenantId: '00000000-0000-4000-8000-00000000000f',
+    email: 'middleware-test@nextcase.local',
+  });
+
+describe('middleware — protected /dashboard routes (non-allowlisted sub-routes)', () => {
   test('redirects to the landing page (never the deleted /login route) when there is no session cookie', async () => {
     const response = await proxy(buildDashboardRequest());
     expect(response.status).toBe(307);
@@ -48,11 +63,7 @@ describe('middleware — protected /dashboard routes', () => {
   });
 
   test('allows the request through with a validly signed session cookie', async () => {
-    const token = await signSessionToken({
-      sub: '00000000-0000-4000-8000-00000000000e',
-      tenantId: '00000000-0000-4000-8000-00000000000f',
-      email: 'middleware-test@nextcase.local',
-    });
+    const token = await sessionToken();
     const response = await proxy(buildDashboardRequest(token));
     expect(response.status).not.toBe(307);
     expect(response.headers.get('location')).toBeNull();
@@ -110,7 +121,194 @@ describe('middleware — protected /admin console page (no dedicated login page)
   });
 });
 
-describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
+describe('middleware — protected /audit page', () => {
+  test('redirects to the landing page (never the deleted /login route) when there is no session cookie', async () => {
+    const response = await proxy(buildAuditRequest());
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).not.toContain('/login');
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+  });
+
+  test('redirects to the landing page when the session cookie is invalid', async () => {
+    const response = await proxy(buildAuditRequest('not-a-real-jwt'));
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+  });
+
+  test('allows the request through with a validly signed session cookie', async () => {
+    const token = await sessionToken();
+    const response = await proxy(buildAuditRequest(token));
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+});
+
+describe('middleware — always-on public preview (independent of PRODUCT_REVIEW_MODE, never globally default-active for anything beyond this fixed set)', () => {
+  const originalFlag = process.env.PRODUCT_REVIEW_MODE;
+
+  afterEach(() => {
+    if (originalFlag === undefined) {
+      delete process.env.PRODUCT_REVIEW_MODE;
+    } else {
+      process.env.PRODUCT_REVIEW_MODE = originalFlag;
+    }
+  });
+
+  test('PRODUCT_REVIEW_MODE is opt-in, secure-by-default: unset reads as disabled', async () => {
+    delete process.env.PRODUCT_REVIEW_MODE;
+    // The legacy opt-in surface (DEMO_MATTER_ID sub-resources) must NOT be
+    // reachable merely because the env var is unset.
+    const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`));
+    const body = await response.json().catch(() => null);
+    expect(body?.matter?.is_demo).not.toBe(true);
+  });
+
+  test('bare /dashboard is allowed through with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
+    delete process.env.PRODUCT_REVIEW_MODE;
+    const withoutFlag = await proxy(buildDashboardRequest(undefined, '/dashboard'));
+    expect(withoutFlag.status).not.toBe(307);
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const explicitlyOff = await proxy(buildDashboardRequest(undefined, '/dashboard'));
+    expect(explicitlyOff.status).not.toBe(307);
+  });
+
+  test('/dashboard/draft-builder (Document Creator/manual drafting) is allowed through with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/draft-builder'));
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  test('/dashboard/matters and /dashboard/matters/[matterId] (synthetic Matter Register preview) are allowed through with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const list = await proxy(buildDashboardRequest(undefined, '/dashboard/matters'));
+    expect(list.status).not.toBe(307);
+    const detail = await proxy(buildDashboardRequest(undefined, '/dashboard/matters/mock-matter-001'));
+    expect(detail.status).not.toBe(307);
+  });
+
+  test('every other /dashboard sub-route still redirects, never to /login (narrow allowlist, not a blanket exemption)', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    for (const path of [
+      '/dashboard/cases',
+      '/dashboard/search',
+      '/dashboard/audit',
+      '/dashboard/evidence',
+      '/dashboard/settings',
+      '/dashboard/ai-chamber',
+      '/dashboard/credits',
+    ]) {
+      const response = await proxy(buildDashboardRequest(undefined, path));
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).not.toContain('/login');
+      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+    }
+  });
+
+  test('GET /api/beta-status always reports enabled: true with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const response = await proxy(buildApiRequest('/api/beta-status'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.enabled).toBe(true);
+  });
+
+  test('GET /api/beta-status is NOT intercepted with a valid session', async () => {
+    const token = await sessionToken();
+    const response = await proxy(buildApiRequest('/api/beta-status', { cookieValue: token }));
+    const body = await response.json().catch(() => null);
+    expect(body?.enabled).not.toBe(true);
+  });
+
+  test('GET /api/matters (list) always returns exactly the one demo Matter with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const response = await proxy(buildApiRequest('/api/matters'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.review_mode).toBe(true);
+    expect(body.matters).toHaveLength(1);
+    expect(body.matters[0].id).toBe(DEMO_MATTER_ID);
+  });
+
+  test('GET /api/matters?status=ACTIVE (matching the demo Matter\'s own status) still returns it', async () => {
+    const response = await proxy(buildApiRequest('/api/matters?status=ACTIVE'));
+    const body = await response.json();
+    expect(body.matters).toHaveLength(1);
+  });
+
+  test('GET /api/matters?status=CLOSED (not the demo Matter\'s status) returns no matters', async () => {
+    const response = await proxy(buildApiRequest('/api/matters?status=CLOSED'));
+    const body = await response.json();
+    expect(body.matters).toHaveLength(0);
+  });
+
+  test('GET /api/matters is NOT intercepted with a valid session — real, signed-in requests always reach the real route', async () => {
+    const token = await sessionToken();
+    const response = await proxy(buildApiRequest('/api/matters', { cookieValue: token }));
+    const body = await response.json().catch(() => null);
+    expect(body?.review_mode).not.toBe(true);
+  });
+
+  test('GET /api/matters/{demo id} (a specific matter, not the list) is NOT part of the always-on surface — falls through', async () => {
+    const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`));
+    const body = await response.json().catch(() => null);
+    expect(body?.matter?.is_demo).not.toBe(true);
+  });
+
+  test('write methods (e.g. PATCH) to /api/matters are NEVER intercepted', async () => {
+    const response = await proxy(buildApiRequest('/api/matters', { method: 'PATCH' }));
+    const body = await response.json().catch(() => null);
+    expect(body?.review_mode).not.toBe(true);
+  });
+
+  test('GET /api/search (Legal Search interface) always returns the synthetic legal dataset with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const response = await proxy(buildApiRequest('/api/search?q=contract'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.review_mode).toBe(true);
+    const allItems = body.groups.flatMap((g: { items: unknown[] }) => g.items);
+    expect(allItems.length).toBeGreaterThan(0);
+    expect(allItems.every((item: { is_demo?: boolean }) => item.is_demo)).toBe(true);
+  });
+
+  test('GET /api/search with an unmatched query returns empty groups (no results), not an error', async () => {
+    const response = await proxy(buildApiRequest('/api/search?q=zzzznonexistentqueryzzzz'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    const allItems = body.groups.flatMap((g: { items: unknown[] }) => g.items);
+    expect(allItems).toHaveLength(0);
+  });
+
+  test('GET /api/search is NOT intercepted with a valid session — real, signed-in requests always reach the real Search Service', async () => {
+    const token = await sessionToken();
+    const response = await proxy(buildApiRequest('/api/search?q=contract', { cookieValue: token }));
+    const body = await response.json().catch(() => null);
+    expect(body?.review_mode).not.toBe(true);
+  });
+
+  test('POST /api/search (hypothetical write) is never intercepted', async () => {
+    const response = await proxy(buildApiRequest('/api/search?q=contract', { method: 'POST' }));
+    const body = await response.json().catch(() => null);
+    expect(body?.review_mode).not.toBe(true);
+  });
+
+  test('GET /api/search/demo/{a real demo id} returns that item with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
+    process.env.PRODUCT_REVIEW_MODE = 'false';
+    const response = await proxy(buildApiRequest('/api/search/demo/demo-act-0001'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.result.id).toBe('demo-act-0001');
+  });
+
+  test('GET /api/search/demo/{unknown id} is not intercepted (falls through, no fabricated content)', async () => {
+    const response = await proxy(buildApiRequest('/api/search/demo/does-not-exist'));
+    const body = await response.json().catch(() => null);
+    expect(body?.result).toBeUndefined();
+  });
+});
+
+describe('middleware — Product Review Mode, opt-in only (PRODUCT_REVIEW_MODE=true; secure by default otherwise)', () => {
   const originalFlag = process.env.PRODUCT_REVIEW_MODE;
   const originalLegacyFlag = process.env.BETA_PREVIEW_ENABLED;
 
@@ -128,92 +326,39 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
   });
 
   test('security regression: the retired BETA_PREVIEW_ENABLED variable has no effect at all, even set to "true" — only PRODUCT_REVIEW_MODE is read', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'false';
+    delete process.env.PRODUCT_REVIEW_MODE;
     process.env.BETA_PREVIEW_ENABLED = 'true';
-    const dashboardResponse = await proxy(buildDashboardRequest(undefined, '/dashboard/cases'));
-    expect(dashboardResponse.status).toBe(307);
-    expect(dashboardResponse.headers.get('location')).not.toContain('/login');
-
-    const mattersResponse = await proxy(buildApiRequest('/api/matters'));
-    const mattersBody = await mattersResponse.json().catch(() => null);
-    expect(mattersBody?.review_mode).not.toBe(true);
-
-    const searchResponse = await proxy(buildApiRequest('/api/search?q=contract'));
-    const searchBody = await searchResponse.json().catch(() => null);
-    expect(searchBody?.review_mode).not.toBe(true);
-  });
-
-  test('on by default: bare /dashboard is allowed through with no session and no env var set', async () => {
-    delete process.env.PRODUCT_REVIEW_MODE;
-    const response = await proxy(buildDashboardRequest(undefined, '/dashboard'));
-    expect(response.status).not.toBe(307);
-    expect(response.headers.get('location')).toBeNull();
-  });
-
-  test('on by default: GET /api/matters/{demo id} returns the demo payload with no env var set', async () => {
-    delete process.env.PRODUCT_REVIEW_MODE;
-    const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.matter.is_demo).toBe(true);
-  });
-
-  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): bare /dashboard/cases still redirects, never to /login', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'false';
-    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/cases'));
+    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/ai-chamber'));
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).not.toContain('/login');
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/');
   });
 
-  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/matters/{demo id} is not intercepted with a demo payload', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'false';
+  test('disabled by default: unset PRODUCT_REVIEW_MODE keeps /dashboard/ai-chamber and /dashboard/credits locked', async () => {
+    delete process.env.PRODUCT_REVIEW_MODE;
+    for (const path of ['/dashboard/ai-chamber', '/dashboard/credits']) {
+      const response = await proxy(buildDashboardRequest(undefined, path));
+      expect(response.status).toBe(307);
+      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
+    }
+  });
+
+  test('disabled by default: GET /api/matters/{demo id} and its sub-resources are not intercepted', async () => {
+    delete process.env.PRODUCT_REVIEW_MODE;
     const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`));
     const body = await response.json().catch(() => null);
     expect(body?.matter?.is_demo).not.toBe(true);
   });
 
-  test('enabled + no session: bare /dashboard is allowed through (no redirect)', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildDashboardRequest(undefined, '/dashboard'));
-    expect(response.status).not.toBe(307);
-    expect(response.headers.get('location')).toBeNull();
+  test('disabled by default: GET /api/documents/{demo document id} is not intercepted', async () => {
+    delete process.env.PRODUCT_REVIEW_MODE;
+    const response = await proxy(buildApiRequest(`/api/documents/${DEMO_DOCUMENT_ID}`));
+    const body = await response.json().catch(() => null);
+    expect(body?.document?.is_demo).not.toBe(true);
   });
 
   test('enabled + no session: /dashboard/ai-chamber (Ask AI Action Card destination) is allowed through, no redirect', async () => {
     process.env.PRODUCT_REVIEW_MODE = 'true';
     const response = await proxy(buildDashboardRequest(undefined, '/dashboard/ai-chamber'));
-    expect(response.status).not.toBe(307);
-    expect(response.headers.get('location')).toBeNull();
-  });
-
-  test('enabled + no session: /dashboard/draft-builder (Draft Document Action Card destination) is allowed through, no redirect', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/draft-builder'));
-    expect(response.status).not.toBe(307);
-    expect(response.headers.get('location')).toBeNull();
-  });
-
-  test('enabled + no session: every other /dashboard sub-route still redirects, never to /login (narrow allowlist, not a blanket exemption)', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    for (const path of ['/dashboard/cases', '/dashboard/search', '/dashboard/audit', '/dashboard/evidence', '/dashboard/settings']) {
-      const response = await proxy(buildDashboardRequest(undefined, path));
-      expect(response.status).toBe(307);
-      expect(response.headers.get('location')).not.toContain('/login');
-      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
-    }
-  });
-
-  test('enabled + no session: /dashboard/matters (Matter Register prototype list) is allowed through, no redirect', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/matters'));
-    expect(response.status).not.toBe(307);
-    expect(response.headers.get('location')).toBeNull();
-  });
-
-  test('enabled + no session: /dashboard/matters/[matterId] (Matter Register prototype detail) is allowed through, no redirect', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildDashboardRequest(undefined, '/dashboard/matters/mock-matter-001'));
     expect(response.status).not.toBe(307);
     expect(response.headers.get('location')).toBeNull();
   });
@@ -225,16 +370,6 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
-  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): /dashboard/ai-chamber, /dashboard/draft-builder, /dashboard/matters, and /dashboard/credits still redirect, never to /login (exemption only applies when the flag is on)', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'false';
-    for (const path of ['/dashboard/ai-chamber', '/dashboard/draft-builder', '/dashboard/matters', '/dashboard/matters/mock-matter-001', '/dashboard/credits']) {
-      const response = await proxy(buildDashboardRequest(undefined, path));
-      expect(response.status).toBe(307);
-      expect(response.headers.get('location')).not.toContain('/login');
-      expect(new URL(response.headers.get('location')!).pathname).toBe('/');
-    }
-  });
-
   test('enabled + no session: GET /api/matters/{demo id} returns the static demo Matter', async () => {
     process.env.PRODUCT_REVIEW_MODE = 'true';
     const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`));
@@ -242,48 +377,6 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     const body = await response.json();
     expect(body.matter.is_demo).toBe(true);
     expect(body.matter.id).toBe(DEMO_MATTER_ID);
-  });
-
-  test('enabled + no session: GET /api/matters (list) returns exactly the one demo Matter with review_mode: true', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/matters'));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.review_mode).toBe(true);
-    expect(body.matters).toHaveLength(1);
-    expect(body.matters[0].id).toBe(DEMO_MATTER_ID);
-  });
-
-  test('enabled + no session: GET /api/matters?status=ACTIVE (matching the demo Matter\'s own status) still returns it', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/matters?status=ACTIVE'));
-    const body = await response.json();
-    expect(body.matters).toHaveLength(1);
-    expect(body.total).toBe(1);
-  });
-
-  test('enabled + no session: GET /api/matters?status=ALL still returns the demo Matter', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/matters?status=ALL'));
-    const body = await response.json();
-    expect(body.matters).toHaveLength(1);
-  });
-
-  test('enabled + no session: GET /api/matters?status=CLOSED (not the demo Matter\'s status) returns no matters, not the demo Matter under the wrong tab', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/matters?status=CLOSED'));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.review_mode).toBe(true);
-    expect(body.matters).toHaveLength(0);
-    expect(body.total).toBe(0);
-  });
-
-  test('enabled + no session: GET /api/matters?status=ON_HOLD also returns no matters', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/matters?status=ON_HOLD'));
-    const body = await response.json();
-    expect(body.matters).toHaveLength(0);
   });
 
   test('enabled + no session: GET for any other Matter ID is NOT intercepted (falls through to the real route)', async () => {
@@ -296,59 +389,17 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
 
   test('enabled + WITH a valid session: GET /api/matters/{demo id} is NOT intercepted — real, signed-in requests always reach the real route', async () => {
     process.env.PRODUCT_REVIEW_MODE = 'true';
-    const token = await signSessionToken({
-      sub: '00000000-0000-4000-8000-00000000000e',
-      tenantId: '00000000-0000-4000-8000-00000000000f',
-      email: 'middleware-test@nextcase.local',
-    });
-    const response = await proxy(
-      buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`, { cookieValue: token })
-    );
+    const token = await sessionToken();
+    const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`, { cookieValue: token }));
     const body = await response.json().catch(() => null);
     expect(body?.matter?.is_demo).not.toBe(true);
   });
 
   test('enabled + no session: write methods (e.g. PATCH) to the demo Matter are NEVER intercepted', async () => {
     process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(
-      buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`, { method: 'PATCH' })
-    );
+    const response = await proxy(buildApiRequest(`/api/matters/${DEMO_MATTER_ID}`, { method: 'PATCH' }));
     const body = await response.json().catch(() => null);
     expect(body?.matter?.is_demo).not.toBe(true);
-  });
-
-  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/beta-status is not intercepted (no real route backs it, so it 404s downstream)', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'false';
-    const response = await proxy(buildApiRequest('/api/beta-status'));
-    const body = await response.json().catch(() => null);
-    expect(body?.enabled).not.toBe(true);
-  });
-
-  test('enabled + no session: GET /api/beta-status reports enabled: true, so pages can swap auth wording for neutral review wording', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/beta-status'));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.enabled).toBe(true);
-  });
-
-  test('enabled + WITH a valid session: GET /api/beta-status is NOT intercepted (irrelevant for signed-in users, who never hit the auth wall)', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const token = await signSessionToken({
-      sub: '00000000-0000-4000-8000-00000000000e',
-      tenantId: '00000000-0000-4000-8000-00000000000f',
-      email: 'middleware-test@nextcase.local',
-    });
-    const response = await proxy(buildApiRequest('/api/beta-status', { cookieValue: token }));
-    const body = await response.json().catch(() => null);
-    expect(body?.enabled).not.toBe(true);
-  });
-
-  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/documents/{demo document id} is not intercepted', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'false';
-    const response = await proxy(buildApiRequest(`/api/documents/${DEMO_DOCUMENT_ID}`));
-    const body = await response.json().catch(() => null);
-    expect(body?.document?.is_demo).not.toBe(true);
   });
 
   test('enabled + no session: GET /api/documents/{demo document id} returns the static demo Document', async () => {
@@ -358,80 +409,5 @@ describe('middleware — Product Review Mode (PRODUCT_REVIEW_MODE)', () => {
     const body = await response.json();
     expect(body.document.id).toBe(DEMO_DOCUMENT_ID);
     expect(body.document.matter_id).toBe(DEMO_MATTER_ID);
-  });
-
-  test('explicitly disabled (PRODUCT_REVIEW_MODE=false): GET /api/search is not intercepted with demo results', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'false';
-    const response = await proxy(buildApiRequest('/api/search?q=contract'));
-    const body = await response.json().catch(() => null);
-    expect(body?.review_mode).not.toBe(true);
-  });
-
-  test('enabled + no session: GET /api/search (no matter_id) returns the synthetic legal dataset, matching the query', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/search?q=contract'));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.review_mode).toBe(true);
-    const allItems = body.groups.flatMap((g: { items: unknown[] }) => g.items);
-    expect(allItems.length).toBeGreaterThan(0);
-    expect(allItems.every((item: { is_demo?: boolean }) => item.is_demo)).toBe(true);
-  });
-
-  test('enabled + no session: GET /api/search with an unmatched query returns empty groups (no results), not an error', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/search?q=zzzznonexistentqueryzzzz'));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    const allItems = body.groups.flatMap((g: { items: unknown[] }) => g.items);
-    expect(allItems).toHaveLength(0);
-  });
-
-  test('enabled + no session: GET /api/search scoped to the demo Matter returns the matter-scoped demo fixtures instead of the general dataset', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(
-      buildApiRequest(`/api/search?matter_id=${DEMO_MATTER_ID}&q=Acme`)
-    );
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.review_mode).toBe(true);
-    const groupTypes = body.groups.map((g: { type: string }) => g.type);
-    expect(groupTypes).toEqual(expect.arrayContaining(['PROCEEDING', 'DOCUMENT', 'COURT_NOTE']));
-    expect(groupTypes).not.toContain('JUDGMENT');
-  });
-
-  test('enabled + WITH a valid session: GET /api/search is NOT intercepted — real, signed-in requests always reach the real Search Service', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const token = await signSessionToken({
-      sub: '00000000-0000-4000-8000-00000000000e',
-      tenantId: '00000000-0000-4000-8000-00000000000f',
-      email: 'middleware-test@nextcase.local',
-    });
-    const response = await proxy(buildApiRequest('/api/search?q=contract', { cookieValue: token }));
-    const body = await response.json().catch(() => null);
-    expect(body?.review_mode).not.toBe(true);
-  });
-
-  test('enabled + no session: POST /api/search (hypothetical write) is never intercepted', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/search?q=contract', { method: 'POST' }));
-    const body = await response.json().catch(() => null);
-    expect(body?.review_mode).not.toBe(true);
-  });
-
-  test('enabled + no session: GET /api/search/demo/{a real demo id} returns that item', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/search/demo/demo-act-0001'));
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.result.id).toBe('demo-act-0001');
-    expect(body.result.type).toBe('ACT');
-  });
-
-  test('enabled + no session: GET /api/search/demo/{unknown id} is not intercepted (falls through, no fabricated content)', async () => {
-    process.env.PRODUCT_REVIEW_MODE = 'true';
-    const response = await proxy(buildApiRequest('/api/search/demo/does-not-exist'));
-    const body = await response.json().catch(() => null);
-    expect(body?.result).toBeUndefined();
   });
 });

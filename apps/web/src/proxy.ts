@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { ADMIN_SESSION_COOKIE_NAME, verifyAdminSessionToken } from '@/lib/security/admin-session';
-import { isProductReviewModeEnabled, matchProductReviewRoute } from '@/lib/beta/demo-data';
+import { isProductReviewModeEnabled, matchProductReviewRoute, matchPublicPreviewRoute } from '@/lib/beta/demo-data';
 
 /**
  * NCHQ Module 9: Secure Multi-Tenant API Gateway (Proxy, formerly Middleware)
@@ -72,19 +72,55 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 0.5. Product Review Mode (PRODUCT_REVIEW_MODE, on by default — set to
-  // "false" to opt out): serve a fixed set of static, non-sensitive demo
-  // GET responses to unauthenticated visitors — one synthetic Matter
-  // (DEMO_MATTER_ID) plus the /dashboard launch page's list/notifications
-  // calls — without ever reaching the database or the real route handler.
-  // Only GET, only with no session cookie at all, and only this exact
-  // reserved set of paths; every write route and every other GET
-  // (including any other matter_id) is completely untouched and falls
-  // through to the checks below exactly as before. Defaulted on so the
-  // Product Owner and public visitors can inspect the approved
-  // public-view routes without any deployment-specific env var having to
-  // be set — see docs/document-creator and the "PRIORITY CHANGE — MAKE
-  // NEXTCASEHQ VIEWABLE BY PRODUCT OWNER" milestone. Formerly gated by
+  // 0.55. Always-on public preview (independent of PRODUCT_REVIEW_MODE —
+  // never gated behind any env var, so it cannot be silently inactive in
+  // a deployment). Serves the small, fixed set of synthetic GET responses
+  // the explicitly-approved public-view allowlist (Legal Search,
+  // Document Creator/manual drafting's Matter dropdown) needs to actually
+  // function for an unauthenticated visitor — see
+  // matchPublicPreviewRoute in lib/beta/demo-data.ts for the exact,
+  // reserved path list. Only GET, only with no session cookie at all;
+  // every write route and every other GET falls through unchanged.
+  if (request.method === 'GET' && !request.cookies.get(SESSION_COOKIE_NAME)?.value) {
+    const publicPreviewPayload = matchPublicPreviewRoute(pathname, request.nextUrl.searchParams);
+    if (publicPreviewPayload !== undefined) {
+      return NextResponse.json(publicPreviewPayload, { status: 200 });
+    }
+  }
+
+  // 0.57. Protect the /audit console page — no real audit data is exposed
+  // here yet, but this stays behind the same real-session gate as every
+  // other non-public-preview page rather than being reachable by default.
+  if (pathname.startsWith('/audit')) {
+    const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+    let hasValidSession = false;
+    if (sessionToken) {
+      try {
+        await jwtVerify(sessionToken, JWT_SECRET);
+        hasValidSession = true;
+      } catch {
+        hasValidSession = false;
+      }
+    }
+    if (!hasValidSession) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 0.5. Product Review Mode — opt-in only (PRODUCT_REVIEW_MODE=true;
+  // secure-by-default, off otherwise): serve a broader set of static,
+  // non-sensitive demo GET responses to unauthenticated visitors — the
+  // Ask AI Action Card, AI Credits & Usage page, and one synthetic
+  // Matter's (DEMO_MATTER_ID) sub-resources — without ever reaching the
+  // database or the real route handler. Only GET, only with no session
+  // cookie at all, and only this exact reserved set of paths; every write
+  // route and every other GET (including any other matter_id) is
+  // completely untouched and falls through to the checks below exactly
+  // as before. This is explicit, operator-controlled configuration for a
+  // manual review session — never a global default; see the
+  // "ARCHITECTURAL CORRECTION" to the "PRIORITY CHANGE — MAKE NEXTCASEHQ
+  // VIEWABLE BY PRODUCT OWNER" milestone. Formerly gated by
   // BETA_PREVIEW_ENABLED — that variable is no longer read anywhere in
   // this file.
   if (
@@ -114,20 +150,28 @@ export async function proxy(request: NextRequest) {
       }
     }
     if (!hasValidSession) {
-      // Product Review Mode exemption: the bare launch page, the two
-      // landing-page Action Card destinations under /dashboard
-      // (Ask AI -> ai-chamber, Draft Document -> draft-builder), the
-      // Matter Register prototype (/dashboard/matters and its [matterId]
-      // detail page), and the AI Credits & Usage page. Every other
-      // /dashboard/* sub-route (cases, search, audit, evidence, settings)
-      // still requires a real session and redirects as before — this is a
-      // narrow, explicit allowlist, not a blanket exemption. None of the
-      // exempted pages fetch real tenant data: ai-chamber's TriPaneChamber
-      // runs on local sample state and only gates the actual Ask AI
-      // network call (still 401s, unchanged); draft-builder, the Matter
-      // Register prototype, and the AI Credits & Usage page are all 100%
-      // client-side mock content (local/session storage only) with no
-      // backend calls at all.
+      // Always-on public-view allowlist (independent of PRODUCT_REVIEW_MODE
+      // — never gated behind any env var): the bare launch page (the
+      // public product-navigation entry point the landing page's own
+      // "Access Active Chamber" link and every other public route link
+      // into), Document Creator/manual drafting (draft-builder), and the
+      // approved synthetic Matter Register preview (/dashboard/matters and
+      // its [matterId] detail page, which embeds the demo eCourts Case
+      // Status interface). None of these fetch real tenant data:
+      // draft-builder and the Matter Register prototype are 100%
+      // client-side mock content (local/session storage / hardcoded
+      // fixtures) with no backend calls at all; the bare launch page's own
+      // network calls are all served by the always-on preview data above
+      // or degrade to an empty, non-erroring state.
+      const ALWAYS_PUBLIC_DASHBOARD_PATHS = new Set(['/dashboard', '/dashboard/draft-builder', '/dashboard/matters']);
+      const isAlwaysPublicDashboardPage =
+        ALWAYS_PUBLIC_DASHBOARD_PATHS.has(pathname) || pathname.startsWith('/dashboard/matters/');
+
+      // Product Review Mode exemption — opt-in only (PRODUCT_REVIEW_MODE=
+      // true): additionally exposes the Ask AI Action Card and the AI
+      // Credits & Usage page for an operator-initiated manual review
+      // session. Never active by default; AI Credits stays locked unless
+      // an operator explicitly turns this on.
       const PRODUCT_REVIEW_DASHBOARD_PATHS = new Set([
         '/dashboard',
         '/dashboard/ai-chamber',
@@ -138,7 +182,12 @@ export async function proxy(request: NextRequest) {
       const isProductReviewExemptPage =
         (PRODUCT_REVIEW_DASHBOARD_PATHS.has(pathname) || pathname.startsWith('/dashboard/matters/')) &&
         isProductReviewModeEnabled();
-      if (!isProductReviewExemptPage) {
+
+      // Every other /dashboard/* sub-route (cases, search, audit, evidence,
+      // settings, ai-chamber/credits when the opt-in flag is off) still
+      // requires a real session and redirects as before — this is a
+      // narrow, explicit allowlist, not a blanket exemption.
+      if (!isAlwaysPublicDashboardPage && !isProductReviewExemptPage) {
         // No dedicated /login page exists (removed — Phone OTP sign-in is
         // a separate, not-yet-implemented milestone) — send unauthenticated
         // visitors to the public landing page rather than a dead route.
@@ -226,7 +275,7 @@ export async function proxy(request: NextRequest) {
   }
 }
 
-// Match api routes, dashboard routes, and admin console routes
+// Match api routes, dashboard routes, admin console routes, and the audit page
 export const config = {
-  matcher: ['/api/:path*', '/dashboard/:path*', '/admin/:path*'],
+  matcher: ['/api/:path*', '/dashboard/:path*', '/admin/:path*', '/audit/:path*'],
 };

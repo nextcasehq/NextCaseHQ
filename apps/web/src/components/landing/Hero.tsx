@@ -82,7 +82,7 @@ export default function Hero() {
         <span className="text-neutral-300 select-none" aria-hidden="true">•</span>
         <Link href="/documents/new" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Ingest New File</Link>
         <span className="text-neutral-300 select-none" aria-hidden="true">•</span>
-        <Link href="/audit" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
+        <Link href="/dashboard/matters" className="text-neutral-600 hover:text-indigo-600 hover:underline transition-all duration-200">Audit Immutable Ledger</Link>
       </div>
 
     </main>

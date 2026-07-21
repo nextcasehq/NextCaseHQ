@@ -8,10 +8,11 @@ import path from 'path';
  * @testing-library/react), so this asserts at the source-file level — the
  * same established convention as public-login-removal.test.ts and
  * document-creator-autosave-ui.test.ts. Behavioral coverage for the
- * proxy-level default-on Product Review Mode lives in middleware.test.ts;
- * this file focuses on the UI-layer requirements — no dead /login links
- * or redirects anywhere a public visitor can reach, and no real-data
- * leakage in the demo-data source itself.
+ * always-on public preview surface and the restored opt-in-only Product
+ * Review Mode lives in middleware.test.ts; this file focuses on the
+ * UI-layer requirements — no dead /login links or redirects anywhere a
+ * public visitor can reach, and no real-data leakage in the demo-data
+ * source itself.
  */
 
 const SRC_ROOT = path.join(__dirname, '..');
@@ -55,7 +56,7 @@ describe('Stage 2 — public-view journeys never link or redirect to the deleted
     expect(hero).toContain("router.push(`/search?q=");
     expect(hero).toContain('href="/dashboard"');
     expect(hero).toContain('href="/documents/new"');
-    expect(hero).toContain('href="/audit"');
+    expect(hero).toContain('href="/dashboard/matters"');
   });
 });
 
@@ -75,8 +76,18 @@ describe('Stage 2 — proxy.ts default-on public viewing (source-level, behavior
     }
   });
 
-  test('Product Review Mode defaults on (opt-out via PRODUCT_REVIEW_MODE=false), not opt-in', () => {
-    expect(demoDataSource).toContain("process.env.PRODUCT_REVIEW_MODE !== 'false'");
+  test('Product Review Mode is opt-in and secure-by-default (never globally enabled by default)', () => {
+    expect(demoDataSource).toContain("process.env.PRODUCT_REVIEW_MODE === 'true'");
+  });
+
+  test('the always-on public preview surface is a separate, explicit function — not folded into the opt-in Product Review Mode gate', () => {
+    expect(proxySource).toContain('matchPublicPreviewRoute');
+    // The always-on interception in proxy.ts must not be conditioned on
+    // isProductReviewModeEnabled() — find the call site and confirm it
+    // isn't guarded by that check on the same statement.
+    const alwaysOnCallIndex = proxySource.indexOf('matchPublicPreviewRoute(pathname');
+    const precedingCode = proxySource.slice(Math.max(0, alwaysOnCallIndex - 400), alwaysOnCallIndex);
+    expect(precedingCode).not.toContain('isProductReviewModeEnabled()');
   });
 
   test('Admin and /api/admin/* gating is untouched — still resolved before Product Review Mode / dashboard sections run', () => {
