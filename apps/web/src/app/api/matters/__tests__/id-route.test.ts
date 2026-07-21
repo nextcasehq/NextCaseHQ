@@ -163,6 +163,39 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
     expect(res.status).toBe(404);
   });
 
+  test('PATCH rejects edits to a closed matter (409), and leaves the title unchanged', async () => {
+    const id = await createMatter(TENANT_A, 'Closed Matter');
+    await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [id]);
+
+    const req = new NextRequest(`http://localhost/api/matters/${id}`, {
+      method: 'PATCH',
+      headers: { origin: 'http://localhost:3000', cookie: await sessionCookieHeader(TENANT_A) },
+      body: JSON.stringify({ title: 'Snuck In Edit' }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id }) });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_CLOSED_READ_ONLY');
+
+    const stillThere = await db.execute<{ title: string }>(TENANT_A, `SELECT title FROM "Matter" WHERE id = $1`, [id]);
+    expect(stillThere[0].title).toBe('Closed Matter');
+  });
+
+  test('PATCH allows reopening a closed matter by changing its status away from CLOSED', async () => {
+    const id = await createMatter(TENANT_A, 'Reopenable Matter');
+    await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [id]);
+
+    const req = new NextRequest(`http://localhost/api/matters/${id}`, {
+      method: 'PATCH',
+      headers: { origin: 'http://localhost:3000', cookie: await sessionCookieHeader(TENANT_A) },
+      body: JSON.stringify({ status: 'ACTIVE' }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.matter.status).toBe('ACTIVE');
+  });
+
   test('DELETE removes the matter and returns 404 on a second delete', async () => {
     const id = await createMatter(TENANT_A, 'To Be Deleted');
     const req = new NextRequest(`http://localhost/api/matters/${id}`, {

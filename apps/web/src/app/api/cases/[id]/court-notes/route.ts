@@ -157,13 +157,35 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // A case_id FK check bypasses RLS — confirm the Proceeding exists in the
     // caller's own tenant before inserting a child row under it (same rule
     // as POST /api/matters/[id]/events).
-    const caseRows = await db.execute<{ id: string }>(
+    const caseRows = await db.execute<{ id: string; matter_id: string | null }>(
       session.tenantId,
-      `SELECT id FROM "LegalCase" WHERE id = $1`,
+      `SELECT id, matter_id FROM "LegalCase" WHERE id = $1`,
       [id]
     );
     if (caseRows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND', message: 'Case not found.' }, { status: 404 });
+    }
+
+    // A Court Note tied to a Proceeding whose parent Matter is closed would
+    // silently add new hearing history to a matter that's supposed to be
+    // read-only. Only blocked when the Proceeding actually links to a
+    // Matter — a standalone Proceeding is unaffected.
+    if (caseRows[0].matter_id) {
+      const matterRows = await db.execute<{ status: string }>(
+        session.tenantId,
+        `SELECT status FROM "Matter" WHERE id = $1`,
+        [caseRows[0].matter_id]
+      );
+      if (matterRows.length > 0 && matterRows[0].status === 'CLOSED') {
+        return NextResponse.json(
+          {
+            error: 'CONFLICT',
+            code: 'MATTER_CLOSED_READ_ONLY',
+            message: 'The Matter linked to this Proceeding is closed. Reopen it before adding new Court Notes.',
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const courtForumDisplay = resolveCourtForumDisplay(

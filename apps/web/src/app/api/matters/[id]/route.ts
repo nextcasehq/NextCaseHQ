@@ -143,6 +143,30 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const fields = result.data;
     const db = new DatabaseClient();
 
+    // A closed Matter is read-only: no field edits are accepted unless this
+    // exact request is what reopens it (an explicit status change away from
+    // CLOSED). Checked up front, before any FK re-verification or update is
+    // attempted, so a closed matter's data can never be silently changed.
+    const currentRows = await db.execute<{ status: string }>(
+      session.tenantId,
+      `SELECT status FROM "Matter" WHERE id = $1`,
+      [id]
+    );
+    if (currentRows.length === 0) {
+      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+    const isReopening = Object.prototype.hasOwnProperty.call(fields, 'status') && fields.status !== 'CLOSED';
+    if (currentRows[0].status === 'CLOSED' && !isReopening) {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'MATTER_CLOSED_READ_ONLY',
+          message: 'This matter is closed. Change its status to reopen it before making further edits.',
+        },
+        { status: 409 }
+      );
+    }
+
     if (Object.prototype.hasOwnProperty.call(fields, 'client_id') && fields.client_id) {
       // A client_id FK check bypasses RLS — re-verify ownership through an
       // RLS-scoped query before trusting it (same rule as POST /api/matters).

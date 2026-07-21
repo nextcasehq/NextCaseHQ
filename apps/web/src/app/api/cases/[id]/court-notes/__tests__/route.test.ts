@@ -326,4 +326,33 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
     );
     expect(res.status).toBe(404);
   });
+
+  test('POST rejects a Court Note on a Proceeding whose Matter is closed (409), and inserts nothing', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    await db.execute(TENANT_A, `UPDATE "Matter" SET status = 'CLOSED' WHERE id = $1`, [matterId]);
+
+    const before = await db.execute<{ count: number }>(
+      TENANT_A,
+      `SELECT COUNT(*)::int AS count FROM "CourtNote" WHERE case_id = $1`,
+      [caseId]
+    );
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('MATTER_CLOSED_READ_ONLY');
+
+    const after = await db.execute<{ count: number }>(
+      TENANT_A,
+      `SELECT COUNT(*)::int AS count FROM "CourtNote" WHERE case_id = $1`,
+      [caseId]
+    );
+    expect(after[0].count).toBe(before[0].count);
+  });
+
+  test('POST on a Proceeding with no Matter is unaffected by any Matter closure elsewhere', async () => {
+    const caseId = await createCase(TENANT_A);
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+  });
 });

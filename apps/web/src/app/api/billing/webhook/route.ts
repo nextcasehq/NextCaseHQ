@@ -29,7 +29,13 @@ export async function POST(request: NextRequest) {
       event = getPaymentProvider().parseWebhookEvent(rawBody, signatureHeader);
     } catch (error) {
       if (error instanceof WebhookSignatureVerificationError) {
-        return NextResponse.json({ error: 'SECURE_ACCESS_DENIED', message: error.message }, { status: 401 });
+        // The underlying reason (including the Stripe SDK's own internal
+        // error text) is logged server-side only — this endpoint is public
+        // and unauthenticated by design, so the response body must never
+        // hand an attacker fingerprinting details about why verification
+        // failed.
+        console.error('[BILLING_API] webhook signature verification failed:', error.message);
+        return NextResponse.json({ error: 'SECURE_ACCESS_DENIED' }, { status: 401 });
       }
       throw error;
     }
