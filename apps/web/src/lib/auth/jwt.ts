@@ -9,7 +9,13 @@ import { SignJWT, jwtVerify } from 'jose';
  */
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'nchq-secret-placeholder');
 const JWT_ALG = 'HS256';
-const SESSION_TTL = '24h';
+// Trusted server session lifetime — shared by every sign-in method (Phone
+// OTP included; there is only ever one kind of session token). Defaults to
+// the Phone OTP Authentication spec's ~30 days; SESSION_TTL_SECONDS
+// overrides it, matching session-cookie.ts's own cookie Max-Age, which
+// must stay equal to this or the cookie would outlive (or expire before)
+// the JWT it carries.
+const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS) || 60 * 60 * 24 * 30;
 
 export interface SessionClaims {
   sub: string;
@@ -22,7 +28,7 @@ export async function signSessionToken(claims: SessionClaims): Promise<string> {
     .setProtectedHeader({ alg: JWT_ALG })
     .setSubject(claims.sub)
     .setIssuedAt()
-    .setExpirationTime(SESSION_TTL)
+    .setExpirationTime(Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS)
     .sign(JWT_SECRET);
 }
 

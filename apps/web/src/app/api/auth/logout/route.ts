@@ -7,7 +7,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'INVALID_ORIGIN' }, { status: 403 });
   }
 
-  const response = NextResponse.json({ loggedOut: true }, { status: 200 });
+  // success: true matches the Phone OTP Authentication spec's logout
+  // contract; loggedOut: true is kept alongside it for backward
+  // compatibility with anything already reading that field.
+  const response = NextResponse.json({ success: true, loggedOut: true }, { status: 200 });
   response.cookies.set(SESSION_COOKIE_NAME, '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

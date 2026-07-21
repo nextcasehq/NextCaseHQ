@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { verifyPassword } from '@/lib/auth/password';
 import { signSessionToken } from '@/lib/auth/jwt';
+import { requireSession } from '@/lib/auth/session';
 import { SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_SECONDS } from '@/lib/auth/session-cookie';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { getClientIdentifier } from '@/lib/security/rate-limit';
@@ -81,5 +82,33 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     return NextResponse.json({ error: 'AUTH_FAILED' }, { status: 401 });
+  }
+}
+
+/**
+ * Session status check — used by the client to know whether it's
+ * currently authenticated (e.g. after a Phone OTP redirect back from
+ * /verify-phone) without re-submitting any credentials. Reads the same
+ * httpOnly session cookie every other authenticated route already trusts;
+ * no role is returned because no per-user role/permission model exists yet
+ * — this only reports identity, never a client-trusted permission flag.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const session = await requireSession(request);
+    return NextResponse.json(
+      {
+        authenticated: true,
+        user: { id: session.sub, email: session.email },
+        tenant: { id: session.tenantId },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    // requireSession only ever throws UnauthenticatedError (missing or
+    // invalid/expired cookie) — either way, "not authenticated" is the
+    // correct, generic response; this is a status check, not a protected
+    // resource, so it's a 200 either way rather than a 401.
+    return NextResponse.json({ authenticated: false }, { status: 200 });
   }
 }

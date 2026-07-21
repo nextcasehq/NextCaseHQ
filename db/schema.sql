@@ -112,6 +112,58 @@ BEGIN
 END
 $$;
 
+-- Phone OTP Authentication milestone: same tenant-agnostic lookup rationale
+-- as email above — OTP verification resolves a phone number to a user
+-- before the tenant is known, so phone_number must be globally unique too.
+-- Nullable (not every user has a phone number yet); Postgres UNIQUE already
+-- permits any number of NULLs, so this doesn't force backfilling existing
+-- rows. phone_verified_at is set once, the first time that phone number is
+-- successfully verified — it is never cleared by a later OTP verification
+-- of the same already-verified number.
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phone_number" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phone_verified_at" TIMESTAMPTZ;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'user_phone_number_unique'
+    ) THEN
+        ALTER TABLE "User" ADD CONSTRAINT user_phone_number_unique UNIQUE ("phone_number");
+    END IF;
+END
+$$;
+
+-- OTP challenges are looked up by phone number before any user/tenant is
+-- resolved (the same reason User rows are looked up tenant-agnostically
+-- during login) — no tenant_id, no RLS, same as "Tenant" and "User"
+-- themselves. Only what's needed to verify a code securely is stored: a
+-- bcrypt hash (never the plaintext code, matching password_hash's own
+-- precedent), an expiry, an attempt counter, and a consumed marker so a
+-- verified challenge can never be replayed. challenge_id lets the client
+-- reference "this specific OTP request" (e.g. for a resend) without ever
+-- seeing the code or its hash.
+CREATE TABLE IF NOT EXISTS "OtpChallenge" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "challenge_id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "phone_number" TEXT NOT NULL,
+    "otp_hash" TEXT NOT NULL,
+    "expires_at" TIMESTAMPTZ NOT NULL,
+    "attempt_count" INTEGER NOT NULL DEFAULT 0,
+    "consumed_at" TIMESTAMPTZ,
+    "provider_reference" TEXT,
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now(),
+    UNIQUE ("challenge_id")
+);
+
+-- The verify endpoint's hot path: "find the newest not-yet-consumed
+-- challenge for this phone number" — every request to /api/auth/otp/verify
+-- and /api/auth/otp/request (superseding a prior challenge) runs this
+-- lookup.
+CREATE INDEX IF NOT EXISTS otpchallenge_phone_lookup_idx
+    ON "OtpChallenge" ("phone_number", "created_at" DESC)
+    WHERE "consumed_at" IS NULL;
+
 -- 3. LegalCase
 CREATE TABLE IF NOT EXISTS "LegalCase" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
