@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useDurableAutosave, type AutosaveStatus } from '@/lib/documents/useDurableAutosave';
+import { useDurableAutosave, pointerKey, type AutosaveStatus } from '@/lib/documents/useDurableAutosave';
 import { serializeDraftPayload, parseDraftPayload } from '@/lib/documents/editor/draft-payload';
 import { DEFAULT_PAGE_SETUP, clampZoom, pageDimensionsMm, type PageSetup } from '@/lib/documents/editor/page-setup';
 import { LEGAL_TEMPLATES, BLANK_DRAFT_TITLE, type LegalTemplate } from '@/lib/documents/editor/templates';
@@ -83,6 +83,24 @@ export default function DraftBuilderPage() {
   }, []);
 
   const [mobileDrawer, setMobileDrawer] = React.useState<MobileDrawer>('none');
+  // A brand-new visitor (no resumable draft pointer yet — see
+  // useDurableAutosave's own localStorage key) otherwise lands silently on
+  // a blank editor with the Template Library tucked behind an icon-only
+  // hamburger, easy to miss entirely on a small screen. Surfacing it once,
+  // automatically, up front — exactly like Google Docs/Word's own "choose
+  // a template" gallery on a new document — costs nothing for anyone
+  // resuming an existing draft (the pointer already exists by then) and
+  // costs one dismissible tap for anyone who genuinely wants to start
+  // blank. Desktop already shows the same Template Library permanently in
+  // its sidebar, so this only needs to run below the md breakpoint.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hasExistingDraft = window.localStorage.getItem(pointerKey('draft-builder-session')) !== null;
+    if (!hasExistingDraft && window.matchMedia('(max-width: 767px)').matches) {
+      setMobileDrawer('left');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [leftOpen, setLeftOpen] = React.useState(true);
   const [rightOpen, setRightOpen] = React.useState(true);
   const [zoomMode, setZoomMode] = React.useState<'fixed' | 'fit-width'>('fixed');
@@ -457,9 +475,10 @@ export default function DraftBuilderPage() {
                 type="button"
                 onClick={() => setMobileDrawer(mobileDrawer === 'left' ? 'none' : 'left')}
                 aria-label="Toggle templates and attachments"
-                className={`md:hidden px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                className={`md:hidden shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                ☰
+                <span aria-hidden="true">☰</span>
+                <span>Templates</span>
               </button>
               <div>
                 <h1 className={`text-lg md:text-xl font-black uppercase tracking-widest ${chromeText}`}>Document Creator</h1>

@@ -62,7 +62,7 @@ interface UseDurableAutosaveResult {
 
 const DEBOUNCE_MS_DEFAULT = 1200;
 
-function pointerKey(storageKey: string): string {
+export function pointerKey(storageKey: string): string {
   return `nchq:document-draft-id:${storageKey}`;
 }
 
