@@ -1245,6 +1245,54 @@ CREATE TABLE IF NOT EXISTS "MatterAuditEvent" (
     "created_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- 9m. DocumentDraft — Document Creator Phase 2 (Durable Draft and
+-- Continuous Autosave, see docs/document-creator/
+-- DOCUMENT_AUTOSAVE_SPECIFICATION.md). The durable, mutable working-draft
+-- record an advocate's typed content is autosaved into before it ever
+-- becomes a permanent DocumentVersion. Deliberately NOT append-only
+-- (unlike MatterClosureRecord/MatterAuditEvent above): a draft is
+-- overwritten in place by design, "revision" guards every write for
+-- optimistic concurrency (see POST/PATCH .../drafts routes) exactly as
+-- DOCUMENT_AUTOSAVE_SPECIFICATION.md's "Concurrency Control" section
+-- specifies. envelope_id is nullable: a brand-new document has no
+-- DocumentEnvelope yet (Phase 3 is what promotes a draft into one);
+-- matter_id and document_type are nullable for the same reason drafting
+-- may begin before either is chosen.
+CREATE TABLE IF NOT EXISTS "DocumentDraft" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "user_id" UUID NOT NULL REFERENCES "User"("id"),
+    "matter_id" UUID REFERENCES "Matter"("id"),
+    "envelope_id" UUID REFERENCES "DocumentEnvelope"("id"),
+    "document_type" TEXT,
+    "title" TEXT,
+    "content" TEXT NOT NULL DEFAULT '',
+    "revision" INTEGER NOT NULL DEFAULT 1,
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentdraft_revision_positive'
+    ) THEN
+        ALTER TABLE "DocumentDraft" ADD CONSTRAINT documentdraft_revision_positive
+            CHECK ("revision" > 0);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'documentdraft_document_type_check'
+    ) THEN
+        ALTER TABLE "DocumentDraft" ADD CONSTRAINT documentdraft_document_type_check
+            CHECK ("document_type" IS NULL OR "document_type" IN (
+                'PLAINT', 'WRITTEN_STATEMENT', 'AFFIDAVIT', 'INTERIM_APPLICATION', 'LEGAL_NOTICE',
+                'BAIL_APPLICATION', 'ANTICIPATORY_BAIL_APPLICATION', 'CRIMINAL_COMPLAINT', 'OBJECTION_STATEMENT', 'PETITION',
+                'WRIT_PETITION', 'WRIT_APPEAL', 'REVISION_PETITION', 'REVIEW_PETITION', 'MEMO'
+            ));
+    END IF;
+END
+$$;
+
 -- Activation of RLS
 -- FORCE is required in addition to ENABLE: without it, Postgres exempts the
 -- table owner from RLS policies, and the application's runtime role is
@@ -1297,6 +1345,8 @@ ALTER TABLE "MatterReopeningRecord" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterReopeningRecord" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "MatterAuditEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterAuditEvent" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentDraft" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "DocumentDraft" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -1393,6 +1443,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "MatterAuditEvent";
 CREATE POLICY tenant_isolation_policy ON "MatterAuditEvent"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentDraft";
+CREATE POLICY tenant_isolation_policy ON "DocumentDraft"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -1446,6 +1500,8 @@ CREATE INDEX IF NOT EXISTS idx_matterreopeningrecord_matter ON "MatterReopeningR
 CREATE INDEX IF NOT EXISTS idx_matterreopeningrecord_closure ON "MatterReopeningRecord"("closure_record_id");
 CREATE INDEX IF NOT EXISTS idx_matterauditevent_matter_created ON "MatterAuditEvent"("matter_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_matterauditevent_tenant_created ON "MatterAuditEvent"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_documentdraft_user_updated ON "DocumentDraft"("user_id", "updated_at");
+CREATE INDEX IF NOT EXISTS idx_documentdraft_matter ON "DocumentDraft"("matter_id");
 
 -- Universal Search — Milestone 5 (Product Direction, Milestone 5). pg_trgm
 -- backs EntitySearchProvider's structured-field search (Matter/Proceeding/

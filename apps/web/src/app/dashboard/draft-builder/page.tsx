@@ -7,6 +7,25 @@ import {
   InsufficientCreditsModal,
   BlockedActionNotice,
 } from '@/components/ai-credits/chargeable-action';
+import { useDurableAutosave, type AutosaveStatus } from '@/lib/documents/useDurableAutosave';
+
+const AUTOSAVE_STATUS_LABEL: Record<AutosaveStatus, string> = {
+  saving: 'Saving…',
+  saved: 'Saved',
+  offline: 'Offline — recovering locally',
+  save_failed: 'Save failed — retrying',
+  conflict_detected: 'Conflict detected',
+  recovered_draft: 'Recovered draft',
+};
+
+const AUTOSAVE_STATUS_DOT: Record<AutosaveStatus, string> = {
+  saving: 'bg-amber-500 animate-pulse',
+  saved: 'bg-emerald-500',
+  offline: 'bg-slate-400',
+  save_failed: 'bg-red-500',
+  conflict_detected: 'bg-red-500',
+  recovered_draft: 'bg-amber-500',
+};
 
 interface DraftTemplate {
   name: string;
@@ -52,6 +71,23 @@ export default function DraftBuilderPage() {
   const { state, notice, start, confirmAndRun, cancel, dismissNotice, dismissBlocked } = useChargeableAiAction();
   const editorRef = React.useRef<HTMLTextAreaElement>(null);
   const [hasSelection, setHasSelection] = useState(false);
+
+  // Document Creator Phase 2 — Durable Draft and Continuous Autosave.
+  // Preserves the advocate's typed work (this page's own editorHeader/
+  // editorText state, unchanged above) without depending on the "Save
+  // Draft" button below, which remains a distinct, not-yet-implemented
+  // action (creating a permanent, reviewable DocumentVersion is Phase 3
+  // scope). One durable draft per browser tab session, independent of
+  // which jurisdictional template is currently selected.
+  const autosave = useDurableAutosave({
+    storageKey: 'draft-builder-session',
+    title: editorHeader,
+    content: editorText,
+    onRecovered: (recovered) => {
+      setEditorHeader(recovered.title ?? '');
+      setEditorText(recovered.content);
+    },
+  });
 
   const handleSelectTemplate = (template: DraftTemplate) => {
     setSelectedTemplate(template);
@@ -180,20 +216,48 @@ export default function DraftBuilderPage() {
 
         {/* Right Side: The Pleading Canvas Editor */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="flex justify-between items-center bg-white border border-[#111111]/10 rounded px-6 py-4">
+          <div className="flex justify-between items-center bg-white border border-[#111111]/10 rounded px-6 py-4 flex-wrap gap-3">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               <span className="text-xs font-mono uppercase font-bold tracking-widest text-[#111111]/60">
                 Active Session Draft: {selectedTemplate.jurisdiction} Pack
               </span>
             </div>
-            <button
-              onClick={handleSaveDraft}
-              className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-bold text-[10px] uppercase tracking-widest rounded transition-colors"
-            >
-              💾 Save Draft
-            </button>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest text-[#111111]/50">
+                <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`}></span>
+                {AUTOSAVE_STATUS_LABEL[autosave.status]}
+              </span>
+              <button
+                onClick={handleSaveDraft}
+                className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-bold text-[10px] uppercase tracking-widest rounded transition-colors"
+              >
+                💾 Save Draft
+              </button>
+            </div>
           </div>
+
+          {autosave.conflict && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-4 flex-wrap">
+              <p className="text-xs font-semibold text-red-700">
+                This draft was updated elsewhere since it was last loaded here.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={autosave.loadNewer}
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-red-300 text-red-700 hover:bg-red-100 bg-white transition-all"
+                >
+                  Load Newer Version
+                </button>
+                <button
+                  onClick={autosave.keepMine}
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-red-700 text-white hover:bg-red-800 transition-all"
+                >
+                  Keep Mine
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="bg-white border border-[#F4EEE0] rounded-2xl p-8 md:p-12 shadow-xl shadow-[#F4EEE0]/50 min-h-[600px] flex flex-col space-y-6">
             {/* Header Editor Area */}
