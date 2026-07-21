@@ -1,6 +1,5 @@
 import React from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/Badge";
 
@@ -76,13 +75,6 @@ export default function PricingPage() {
               <span className="text-[#8A6D2F]">&#10003;</span> Full KMS Circuit-Breaker Access
             </li>
           </ul>
-
-          <Link
-            href="/login"
-            className="block text-center w-full bg-[#8A6D2F] hover:bg-[#6F5624] text-[#F6F1E7] font-sans font-bold text-xs py-3.5 rounded-xl transition-all"
-          >
-            Start Professional Plan
-          </Link>
         </div>
       </main>
       <Footer />

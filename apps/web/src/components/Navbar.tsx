@@ -53,12 +53,6 @@ export default function Navbar() {
         >
           Dashboard
         </Link>
-        <Link
-          href={`${baseUrl}/login`}
-          className="whitespace-nowrap bg-[#C6A253] text-[#241E17] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#E4C77E] transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E4C77E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E241B]"
-        >
-          Sign In
-        </Link>
       </div>
 
       {/* Mobile Burger Menu Button */}
@@ -92,13 +86,6 @@ export default function Navbar() {
             className="text-base font-medium text-[#CFC3A8] hover:text-[#F6F1E7] transition-colors"
           >
             Dashboard
-          </Link>
-          <Link
-            href={`${baseUrl}/login`}
-            onClick={() => setMobileMenuOpen(false)}
-            className="bg-[#C6A253] text-[#241E17] text-center text-base font-semibold py-3 rounded-lg hover:bg-[#E4C77E] transition-all"
-          >
-            Sign In
           </Link>
         </nav>
       )}
