@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs';
 import { jwtVerify } from 'jose';
-import { POST } from '../route';
+import { NextRequest } from 'next/server';
+import { POST, GET } from '../route';
 import { DatabaseClient, closePool } from '@/lib/db/db-client';
+import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { __resetRateLimitForTests } from '@/lib/security/rate-limit';
 
@@ -114,5 +116,43 @@ describe('POST /api/auth/session — real credential validation', () => {
     }
     expect(lastResponse.status).toBe(429);
     expect(lastResponse.headers.get('Retry-After')).toBeTruthy();
+  });
+});
+
+describe('GET /api/auth/session — status check (used after a Phone OTP redirect back)', () => {
+  function buildGetRequest(cookieValue?: string): NextRequest {
+    const headers: Record<string, string> = {};
+    if (cookieValue !== undefined) {
+      headers.cookie = `${SESSION_COOKIE_NAME}=${cookieValue}`;
+    }
+    return new NextRequest('http://localhost/api/auth/session', { headers });
+  }
+
+  test('reports authenticated: true with the session identity when a valid session cookie is present', async () => {
+    const token = await signSessionToken({
+      sub: '00000000-0000-4000-8000-00000000001a',
+      tenantId: '00000000-0000-4000-8000-00000000001b',
+      email: 'get-session-test@nextcase.local',
+    });
+    const response = await GET(buildGetRequest(token));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.authenticated).toBe(true);
+    expect(body.user).toEqual({ id: '00000000-0000-4000-8000-00000000001a', email: 'get-session-test@nextcase.local' });
+    expect(body.tenant).toEqual({ id: '00000000-0000-4000-8000-00000000001b' });
+  });
+
+  test('reports authenticated: false with no cookie, without throwing', async () => {
+    const response = await GET(buildGetRequest());
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual({ authenticated: false });
+  });
+
+  test('reports authenticated: false for an invalid/forged cookie', async () => {
+    const response = await GET(buildGetRequest('not-a-real-jwt'));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual({ authenticated: false });
   });
 });
