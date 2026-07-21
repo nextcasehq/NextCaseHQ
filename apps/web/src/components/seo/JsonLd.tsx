@@ -1,7 +1,16 @@
 import React from 'react';
 
+/**
+ * `LegalService`/`FAQPage`/`Article` builders exist for future use only.
+ * NextCaseHQ is a software platform for legal professionals, not itself a
+ * law firm or provider of legal representation — do not wire `LegalService`
+ * to any page unless that page explicitly and truthfully presents
+ * NextCaseHQ as a legal-service provider. Likewise, `FAQPage`/`Article`
+ * should only be attached to a page that actually contains the
+ * corresponding Q&A or article content the schema describes.
+ */
 interface JsonLdProps {
-  type: 'Organization' | 'SoftwareApplication' | 'WebSite';
+  type: 'Organization' | 'SoftwareApplication' | 'WebSite' | 'LegalService' | 'FAQPage' | 'Article';
   data?: Record<string, any>;
 }
 
@@ -39,6 +48,23 @@ export default function JsonLd({ type, data = {} }: JsonLdProps) {
       '@type': 'WebSite',
       'name': 'NextCaseHQ',
       'url': baseUrl,
+      ...data
+    },
+    LegalService: {
+      '@context': 'https://schema.org',
+      '@type': 'LegalService',
+      'name': 'NextCaseHQ',
+      'url': baseUrl,
+      ...data
+    },
+    FAQPage: {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      ...data
+    },
+    Article: {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
       ...data
     }
   };

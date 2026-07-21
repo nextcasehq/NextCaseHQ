@@ -5,6 +5,9 @@
  * how we talk to storage.
  */
 
+/** Shared by the upload route and the versions route so the two never drift apart. */
+export const MAX_DOCUMENT_SIZE_BYTES = 128 * 1024 * 1024; // 128MB
+
 export const ALLOWED_DOCUMENT_EXTENSIONS: Record<string, string> = {
   '.pdf': 'application/pdf',
   '.doc': 'application/msword',
@@ -14,6 +17,20 @@ export const ALLOWED_DOCUMENT_EXTENSIONS: Record<string, string> = {
   '.jpeg': 'image/jpeg',
   '.png': 'image/png',
 };
+
+/**
+ * Which of the 7 allowed upload content types (above) can be rendered
+ * inline by a browser with zero conversion (Sprint 3B, PR 3B-2). DOC/DOCX
+ * are deliberately excluded — no browser-native renderer exists for them
+ * and a conversion service is out of scope for this milestone — so those
+ * two remain download-only, with an explicit, testable "unsupported
+ * preview" response rather than a silent failure.
+ */
+const PREVIEW_ELIGIBLE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf', 'text/plain']);
+
+export function isPreviewEligible(contentType: string | null | undefined): boolean {
+  return !!contentType && PREVIEW_ELIGIBLE_CONTENT_TYPES.has(contentType);
+}
 
 export interface FileTypeValidationResult {
   valid: boolean;
@@ -44,4 +61,26 @@ export function sanitizeFileName(fileName: string): string {
 /** Tenant-namespaced key: defense-in-depth even though DocumentEnvelope rows are already RLS-scoped by tenant_id — a leaked/misrouted key still can't be confused with another tenant's object. */
 export function buildObjectKey(tenantId: string, documentId: string, fileName: string): string {
   return `${tenantId}/${documentId}/${sanitizeFileName(fileName)}`;
+}
+
+/**
+ * Distinct key per version, nested under the same tenant/document prefix
+ * as buildObjectKey — every version is its own independently-addressable
+ * object, never overwriting a prior version's bytes, so DocumentVersion
+ * history stays real (not just metadata pointing at the same object).
+ *
+ * Takes a caller-generated unique token rather than the version_number
+ * itself: the object must be written to storage before the DB assigns
+ * that number (it's computed atomically inside the insert, to keep two
+ * concurrent uploads for the same document from racing to the same
+ * "next" number), so nothing tying storage identity to it is available
+ * yet at key-generation time.
+ */
+export function buildVersionObjectKey(
+  tenantId: string,
+  documentId: string,
+  versionToken: string,
+  fileName: string
+): string {
+  return `${tenantId}/${documentId}/versions/${versionToken}-${sanitizeFileName(fileName)}`;
 }

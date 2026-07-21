@@ -106,4 +106,21 @@ describe('POST /api/documents/[id]/index', () => {
     const body = await res.json();
     expect(body.reason).toBe('UNSUPPORTED_CONTENT_TYPE');
   });
+
+  test('returns 502 FAILED, honestly, when indexing errors — never a raw 500', async () => {
+    if (!hasS3()) return;
+    const id = await createDocumentWithRealObject(TENANT_A, 'will be deleted from storage before indexing');
+    const envelopeRows = await db.execute<{ storage_structure: { object_key: string } }>(
+      TENANT_A,
+      `SELECT storage_structure FROM "DocumentEnvelope" WHERE id = $1`,
+      [id]
+    );
+    await deleteObject(envelopeRows[0].storage_structure.object_key);
+
+    const res = await POST(buildRequest({ cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.status).toBe('FAILED');
+    expect(body.error).toBeTruthy();
+  });
 });

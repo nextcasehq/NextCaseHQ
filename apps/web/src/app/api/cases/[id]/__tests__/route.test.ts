@@ -8,6 +8,13 @@ const TENANT_A = '00000000-0000-4000-8000-0000000000d1';
 const TENANT_B = '00000000-0000-4000-8000-0000000000d2';
 const USER_ID = '00000000-0000-4000-8000-00000000009c';
 const NON_EXISTENT_ID = '00000000-0000-4000-8000-000000000000';
+// Dedicated tenant/user for the Court-Note-linked test only — a case with a
+// Court Note can never be cleaned up (CourtNote is append-only; case_id is
+// RESTRICT), so it must not live under TENANT_A/TENANT_B, whose ids are
+// reused by other unrelated test files (e.g. lib/db/__tests__/matter-rls.test.ts)
+// that do their own blanket, CourtNote-unaware cleanup for the same ids.
+const TENANT_C = '4baabd66-9fd8-4b8c-96e0-eea33988a045';
+const USER_C = 'b9a000bb-c367-4978-8ca4-55de3330b325';
 
 async function sessionCookieHeader(tenantId: string): Promise<string> {
   const token = await signSessionToken({ sub: USER_ID, tenantId, email: 'case-detail-test@nextcase.local' });
@@ -38,16 +45,40 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
       TENANT_B,
       'Case Detail Test Tenant B',
     ]);
+    await db.execute(TENANT_C, `INSERT INTO "Tenant" (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`, [
+      TENANT_C,
+      'Case Detail Test Tenant C (Court Note)',
+    ]);
+    // CourtNote.author_user_id is a real FK to "User" — needed for the
+    // Court-Note-linked DELETE test below.
+    await db.execute(
+      TENANT_C,
+      `INSERT INTO "User" (id, tenant_id, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+      [USER_C, TENANT_C, 'case-detail-author@nextcase.local']
+    );
   });
 
   beforeEach(async () => {
+    // DocumentEnvelope.case_id is RESTRICT, not CASCADE (Sprint 3, PR 3A) —
+    // must be cleared (versions first, then envelopes) before the cases
+    // they reference, or this cleanup itself would fail with a foreign
+    // key violation for any test that links a document to a case.
+    await db.execute(TENANT_A, `DELETE FROM "DocumentVersion" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
   });
 
   afterAll(async () => {
+    await db.execute(TENANT_A, `DELETE FROM "DocumentVersion" WHERE tenant_id = $1`, [TENANT_A]);
+    await db.execute(TENANT_A, `DELETE FROM "DocumentEnvelope" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
+    // TENANT_C's Court-Note-linked case is never cleaned up — CourtNote is
+    // append-only (nextcase_app has no UPDATE/DELETE grant) and its case_id
+    // is RESTRICT, so the case that owns it can't be deleted either. Same
+    // accepted trade-off as DocumentAccessEvent's tests (lib/documents/
+    // __tests__/access-audit.test.ts): one leftover row per suite run.
     await closePool();
   });
 
@@ -203,5 +234,44 @@ describe('GET/PATCH/DELETE /api/cases/[id]', () => {
 
     const verify = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
     expect(verify.status).toBe(200);
+  });
+
+  test('DELETE returns a deterministic 409 (never a raw 500) when a document is linked, and leaves the case intact', async () => {
+    const id = await createCase(TENANT_A, 'Case With Linked Document');
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "DocumentEnvelope" (tenant_id, case_id, title) VALUES ($1, $2, $3)`,
+      [TENANT_A, id, 'Linked Document']
+    );
+
+    const res = await DELETE(buildRequest('DELETE', { cookie: await sessionCookieHeader(TENANT_A) }), routeParams(id));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('CASE_HAS_LINKED_DOCUMENTS');
+    expect(body.linked.documents).toBe(1);
+
+    const stillThere = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "LegalCase" WHERE id = $1`, [id]);
+    expect(stillThere).toHaveLength(1);
+  });
+
+  test('DELETE returns a deterministic 409 (never a raw 500) when a Court Note is linked, preserving hearing history', async () => {
+    const id = await createCase(TENANT_C, 'Case With Court Note');
+    await db.execute(
+      TENANT_C,
+      `INSERT INTO "CourtNote" (
+         tenant_id, case_id, author_user_id, hearing_date, court_forum_type, court_forum_display, stage, note
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [TENANT_C, id, USER_C, '2026-02-01', 'HIGH_COURT', 'High Court', 'Arguments', 'Matter adjourned.']
+    );
+
+    const cookie = `${SESSION_COOKIE_NAME}=${await signSessionToken({ sub: USER_C, tenantId: TENANT_C, email: 'case-detail-author@nextcase.local' })}`;
+    const res = await DELETE(buildRequest('DELETE', { cookie }), routeParams(id));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('CASE_HAS_COURT_NOTES');
+    expect(body.linked.court_notes).toBe(1);
+
+    const stillThere = await db.execute<{ id: string }>(TENANT_C, `SELECT id FROM "LegalCase" WHERE id = $1`, [id]);
+    expect(stillThere).toHaveLength(1);
   });
 });

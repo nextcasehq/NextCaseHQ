@@ -42,6 +42,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (result.status === 'SKIPPED') {
       return NextResponse.json({ status: 'SKIPPED', reason: result.reason }, { status: 422 });
     }
+    if (result.status === 'FAILED') {
+      // A genuine indexing failure (e.g. the embedding provider or storage
+      // read errored) — reported honestly, not silently swallowed. The
+      // document is left in a FAILED, retryable state (see indexDocument);
+      // calling this endpoint again is the retry path.
+      return NextResponse.json({ status: 'FAILED', error: result.error }, { status: 502 });
+    }
     return NextResponse.json(
       { status: 'INDEXED', chunksIndexed: result.chunksIndexed, provider: result.provider },
       { status: 200 }

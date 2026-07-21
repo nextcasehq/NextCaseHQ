@@ -8,6 +8,7 @@ function baseProdEnv(): NodeJS.ProcessEnv {
     WEBHOOK_SIGNING_SECRET: 'another-real-random-secret',
     ADMIN_ACCESS_TOKEN: 'yet-another-real-random-secret',
     ADMIN_SESSION_SECRET: 'still-another-real-random-secret',
+    CRON_SECRET: 'yet-still-another-real-random-secret',
     REDIS_URL: 'redis://prod-redis.example.com:6379',
     S3_ENDPOINT: 'https://s3.example-provider.com',
     S3_BUCKET: 'nextcase-documents-prod',
@@ -57,6 +58,17 @@ describe('collectStartupEnvIssues', () => {
   test('flags the known insecure ADMIN_SESSION_SECRET placeholder', () => {
     const env = { ...baseProdEnv(), ADMIN_SESSION_SECRET: 'nchq-admin-session-secret-placeholder' };
     expect(collectStartupEnvIssues(env).some((i) => i.variable === 'ADMIN_SESSION_SECRET')).toBe(true);
+  });
+
+  test('flags a missing CRON_SECRET in production', () => {
+    const env = baseProdEnv();
+    delete env.CRON_SECRET;
+    expect(collectStartupEnvIssues(env).some((i) => i.variable === 'CRON_SECRET')).toBe(true);
+  });
+
+  test('flags the known insecure CRON_SECRET placeholder', () => {
+    const env = { ...baseProdEnv(), CRON_SECRET: 'nchq-cron-secret-placeholder' };
+    expect(collectStartupEnvIssues(env).some((i) => i.variable === 'CRON_SECRET')).toBe(true);
   });
 
   test('flags a missing REDIS_URL in production', () => {

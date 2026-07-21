@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/seven-day-preparation",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

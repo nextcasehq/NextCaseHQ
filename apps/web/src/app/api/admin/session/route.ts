@@ -24,7 +24,7 @@ const ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
  * unchanged from PR #63 — this endpoint is what was missing: a real
  * server-side check of that secret, followed by a signed, httpOnly session
  * cookie the client can no longer read or forge (see
- * lib/security/admin-session.ts). middleware.ts's /api/admin/* gate verifies
+ * lib/security/admin-session.ts). proxy.ts's /api/admin/* gate verifies
  * that signed token instead of comparing a raw shared secret.
  */
 export async function POST(request: Request) {

@@ -5,6 +5,7 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { CASE_STATUSES } from '@/lib/domain/legal-case';
+import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 /**
  * Real Case Management API — LegalCase persistence.
@@ -18,6 +19,8 @@ import { CASE_STATUSES } from '@/lib/domain/legal-case';
 
 const CaseStatusSchema = z.enum(CASE_STATUSES);
 const HEARING_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface LegalCaseRow {
   id: string;
@@ -35,13 +38,14 @@ interface LegalCaseRow {
   stage: string | null;
   hearing_date: string | null;
   notes: string | null;
+  matter_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const CASE_COLUMNS = `id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
                       procedure_pack_id, state_metadata, status, court, judge, stage, hearing_date,
-                      notes, created_at, updated_at`;
+                      notes, matter_id, created_at, updated_at`;
 
 const CreateCaseSchema = z.object({
   title: z.string().min(1).max(500),
@@ -57,6 +61,7 @@ const CreateCaseSchema = z.object({
   stage: z.string().max(300).optional(),
   hearing_date: z.string().regex(HEARING_DATE_PATTERN, 'Expected YYYY-MM-DD').optional(),
   notes: z.string().max(10000).optional(),
+  matter_id: z.string().regex(UUID_PATTERN, 'Invalid matter id').optional(),
 });
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -66,6 +71,7 @@ const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_LIMIT).optional().default(DEFAULT_PAGE_LIMIT),
   offset: z.coerce.number().int().min(0).optional().default(0),
   status: CaseStatusSchema.optional(),
+  matter_id: z.string().regex(UUID_PATTERN, 'Invalid matter id').optional(),
 });
 
 async function resolveSession(request: NextRequest) {
@@ -93,6 +99,7 @@ export async function GET(request: NextRequest) {
       limit: request.nextUrl.searchParams.get('limit') ?? undefined,
       offset: request.nextUrl.searchParams.get('offset') ?? undefined,
       status: request.nextUrl.searchParams.get('status') ?? undefined,
+      matter_id: request.nextUrl.searchParams.get('matter_id') ?? undefined,
     });
     if (!queryResult.success) {
       return NextResponse.json(
@@ -100,13 +107,28 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { limit, offset, status } = queryResult.data;
+    const { limit, offset, status, matter_id } = queryResult.data;
 
     const db = new DatabaseClient();
-    const statusFilter = status ? `WHERE status = $3` : '';
-    const listParams: unknown[] = status ? [limit, offset, status] : [limit, offset];
-    const countFilter = status ? `WHERE status = $1` : '';
-    const countParams: unknown[] = status ? [status] : [];
+    const conditions: string[] = [];
+    const countParams: unknown[] = [];
+    if (status) {
+      conditions.push(`status = $${countParams.length + 1}`);
+      countParams.push(status);
+    }
+    if (matter_id) {
+      conditions.push(`matter_id = $${countParams.length + 1}`);
+      countParams.push(matter_id);
+    }
+    // The WHERE clause is identical for both queries — countParams' indices
+    // line up with listParams' leading elements since listParams only
+    // appends limit/offset after them.
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const countFilter = whereClause;
+    const statusFilter = whereClause;
+    const listParams: unknown[] = [...countParams, limit, offset];
+    const limitPlaceholder = `$${listParams.length - 1}`;
+    const offsetPlaceholder = `$${listParams.length}`;
 
     const [rows, countRows] = await Promise.all([
       db.execute<LegalCaseRow>(
@@ -115,7 +137,7 @@ export async function GET(request: NextRequest) {
          FROM "LegalCase"
          ${statusFilter}
          ORDER BY created_at DESC
-         LIMIT $1 OFFSET $2`,
+         LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
         listParams
       ),
       db.execute<{ count: number }>(
@@ -166,12 +188,30 @@ export async function POST(request: NextRequest) {
 
     const input = result.data;
     const db = new DatabaseClient();
+
+    // A matter_id FK check bypasses RLS, so a caller could otherwise link a
+    // Proceeding to another tenant's Matter by guessing its UUID. Re-verify
+    // ownership through an RLS-scoped query before trusting it.
+    if (input.matter_id) {
+      const matterRows = await db.execute<{ id: string }>(
+        session.tenantId,
+        `SELECT id FROM "Matter" WHERE id = $1`,
+        [input.matter_id]
+      );
+      if (matterRows.length === 0) {
+        return NextResponse.json(
+          { error: 'BAD_REQUEST', message: 'matter_id does not refer to an existing matter.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const rows = await db.execute<LegalCaseRow>(
       session.tenantId,
       `INSERT INTO "LegalCase"
          (tenant_id, title, case_number, country_code, court_pack_id, law_pack_id, procedure_pack_id,
-          state_metadata, status, court, judge, stage, hearing_date, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          state_metadata, status, court, judge, stage, hearing_date, notes, matter_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING ${CASE_COLUMNS}`,
       [
         session.tenantId,
@@ -188,9 +228,13 @@ export async function POST(request: NextRequest) {
         input.stage ?? null,
         input.hearing_date ?? null,
         input.notes ?? null,
+        input.matter_id ?? null,
       ]
     );
 
+    if (input.matter_id) {
+      await invalidateMatterContext(session.tenantId, input.matter_id);
+    }
     return NextResponse.json({ case: rows[0] }, { status: 201 });
   } catch (error) {
     console.error('[CASES_API] POST /api/cases failed:', error);

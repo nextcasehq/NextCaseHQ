@@ -5,6 +5,7 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { CASE_STATUSES } from '@/lib/domain/legal-case';
+import { invalidateMatterContext } from '@/lib/ai/context/cache';
 
 const CaseStatusSchema = z.enum(CASE_STATUSES);
 const HEARING_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,13 +26,14 @@ interface LegalCaseRow {
   stage: string | null;
   hearing_date: string | null;
   notes: string | null;
+  matter_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const CASE_COLUMNS = `id, tenant_id, title, case_number, country_code, court_pack_id, law_pack_id,
                       procedure_pack_id, state_metadata, status, court, judge, stage, hearing_date,
-                      notes, created_at, updated_at`;
+                      notes, matter_id, created_at, updated_at`;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -50,6 +52,7 @@ const UpdateCaseSchema = z
     stage: z.string().max(300).nullable(),
     hearing_date: z.string().regex(HEARING_DATE_PATTERN, 'Expected YYYY-MM-DD').nullable(),
     notes: z.string().max(10000).nullable(),
+    matter_id: z.string().regex(UUID_PATTERN, 'Invalid matter id').nullable(),
   })
   .partial()
   .refine((data) => Object.keys(data).length > 0, { message: 'At least one field must be provided.' });
@@ -138,6 +141,36 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const fields = result.data;
+    const db = new DatabaseClient();
+
+    if (Object.prototype.hasOwnProperty.call(fields, 'matter_id') && fields.matter_id) {
+      // A matter_id FK check bypasses RLS — re-verify ownership through an
+      // RLS-scoped query before trusting it (same rule as POST /api/cases).
+      const matterRows = await db.execute<{ id: string }>(
+        session.tenantId,
+        `SELECT id FROM "Matter" WHERE id = $1`,
+        [fields.matter_id]
+      );
+      if (matterRows.length === 0) {
+        return NextResponse.json(
+          { error: 'BAD_REQUEST', message: 'matter_id does not refer to an existing matter.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Any change to this Proceeding — not just matter_id — can alter what
+    // its parent Matter's cached context renders (title/status/court/stage
+    // all feed the proceedingsSource's rendered text), so the Matter this
+    // case is linked to *before* the update also needs invalidating, not
+    // just whatever it's linked to afterward.
+    const beforeRows = await db.execute<{ matter_id: string | null }>(
+      session.tenantId,
+      `SELECT matter_id FROM "LegalCase" WHERE id = $1`,
+      [id]
+    );
+    const previousMatterId = beforeRows[0]?.matter_id ?? null;
+
     const setClauses: string[] = [];
     const values: unknown[] = [];
     let paramIndex = 1;
@@ -150,7 +183,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     setClauses.push(`"updated_at" = now()`);
     values.push(id);
 
-    const db = new DatabaseClient();
     const rows = await db.execute<LegalCaseRow>(
       session.tenantId,
       `UPDATE "LegalCase"
@@ -163,6 +195,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
+
+    const matterIdsToInvalidate = Array.from(
+      new Set([previousMatterId, rows[0].matter_id].filter((v): v is string => v !== null))
+    );
+    await Promise.all(
+      matterIdsToInvalidate.map((matterId) => invalidateMatterContext(session.tenantId, matterId))
+    );
+
     return NextResponse.json({ case: rows[0] }, { status: 200 });
   } catch (error) {
     console.error('[CASES_API] PATCH /api/cases/[id] failed:', error);
@@ -190,14 +230,97 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const db = new DatabaseClient();
-    const rows = await db.execute<{ id: string }>(
+
+    // RLS scopes this to the caller's own tenant — a case belonging to
+    // another tenant is indistinguishable from a nonexistent one, so a
+    // cross-tenant id returns 404 here without ever running the dependent
+    // check below.
+    const caseRows = await db.execute<{ id: string }>(
       session.tenantId,
-      `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id`,
+      `SELECT id FROM "LegalCase" WHERE id = $1`,
       [id]
     );
+    if (caseRows.length === 0) {
+      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+
+    // DocumentEnvelope.case_id is now RESTRICT, not CASCADE (Sprint 3, PR
+    // 3A) — this endpoint checks explicitly up front rather than relying
+    // on the resulting FK violation, so the caller gets a clear,
+    // actionable response instead of a raw 500, matching the same
+    // deterministic-409 pattern already used by matters/clients.
+    // CourtNote.case_id is RESTRICT (no ON DELETE clause), same rule as
+    // DocumentEnvelope.case_id (Sprint 3, PR 3A) — a Proceeding's hearing
+    // history must never silently disappear via cascade, so this is
+    // checked explicitly here too rather than relying on the resulting FK
+    // violation.
+    const [documentRows, courtNoteRows] = await Promise.all([
+      db.execute<{ count: number }>(
+        session.tenantId,
+        `SELECT COUNT(*)::int AS count FROM "DocumentEnvelope" WHERE case_id = $1`,
+        [id]
+      ),
+      db.execute<{ count: number }>(
+        session.tenantId,
+        `SELECT COUNT(*)::int AS count FROM "CourtNote" WHERE case_id = $1`,
+        [id]
+      ),
+    ]);
+    const linkedDocuments = documentRows[0].count;
+    const linkedCourtNotes = courtNoteRows[0].count;
+    if (linkedDocuments > 0) {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'CASE_HAS_LINKED_DOCUMENTS',
+          message: 'This case still has linked documents. Remove or relink them before deleting this case.',
+          linked: { documents: linkedDocuments },
+        },
+        { status: 409 }
+      );
+    }
+    if (linkedCourtNotes > 0) {
+      return NextResponse.json(
+        {
+          error: 'CONFLICT',
+          code: 'CASE_HAS_COURT_NOTES',
+          message: 'This case has recorded Court Notes. Its hearing history must be preserved and cannot be deleted.',
+          linked: { court_notes: linkedCourtNotes },
+        },
+        { status: 409 }
+      );
+    }
+
+    let rows: { id: string; matter_id: string | null }[];
+    try {
+      rows = await db.execute<{ id: string; matter_id: string | null }>(
+        session.tenantId,
+        `DELETE FROM "LegalCase" WHERE id = $1 RETURNING id, matter_id`,
+        [id]
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('foreign key constraint')) {
+        // Defense in depth against a document or Court Note linked in the
+        // narrow window between the checks above and this delete — still a
+        // deterministic 409, never a raw 500 leaking a Postgres error.
+        return NextResponse.json(
+          {
+            error: 'CONFLICT',
+            code: 'CASE_HAS_LINKED_DOCUMENTS',
+            message: 'This case still has linked documents or Court Notes. Remove them before deleting this case.',
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+    if (rows[0].matter_id) {
+      await invalidateMatterContext(session.tenantId, rows[0].matter_id);
     }
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (error) {

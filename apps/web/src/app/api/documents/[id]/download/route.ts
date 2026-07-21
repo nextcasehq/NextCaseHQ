@@ -3,11 +3,17 @@ import type { NextRequest } from 'next/server';
 import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { isObjectStorageConfigured, getObject } from '@/lib/storage/object-storage';
+import { recordDocumentAccessEvent, extractCorrelationId } from '@/lib/documents/access-audit';
 
 interface DocumentEnvelopeRow {
   id: string;
   title: string;
   storage_structure: { object_key?: string; content_type?: string };
+}
+
+interface CurrentVersionRow {
+  id: string;
+  version_number: number;
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -62,7 +68,38 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const object = await getObject(objectKey);
+    let object;
+    try {
+      object = await getObject(objectKey);
+    } catch (error) {
+      // The metadata row exists, but the underlying object itself is gone
+      // or unreadable — distinct from "never had one" above, so an
+      // operator can tell orphan detection apart from a genuine bug
+      // (Sprint 3B, PR 3B-2 — same failure state /preview uses).
+      console.error('[DOCUMENTS_API] GET /api/documents/[id]/download failed to read stored object:', error);
+      return NextResponse.json(
+        { error: 'NOT_FOUND', code: 'DOCUMENT_OBJECT_MISSING', message: 'The stored file content could not be read.' },
+        { status: 404 }
+      );
+    }
+
+    const versionRows = await db.execute<CurrentVersionRow>(
+      session.tenantId,
+      `SELECT id, version_number FROM "DocumentVersion" WHERE envelope_id = $1 ORDER BY version_number DESC LIMIT 1`,
+      [id]
+    );
+    const currentVersion = versionRows[0] ?? null;
+
+    await recordDocumentAccessEvent({
+      tenantId: session.tenantId,
+      userId: session.sub,
+      envelopeId: id,
+      versionId: currentVersion?.id ?? null,
+      versionNumber: currentVersion?.version_number ?? null,
+      action: 'DOWNLOAD',
+      correlationId: extractCorrelationId(request),
+    });
+
     return new NextResponse(new Uint8Array(object.buffer), {
       status: 200,
       headers: {

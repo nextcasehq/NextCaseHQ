@@ -5,17 +5,22 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { askQuestion } from '@/lib/ai/rag';
 import { AIProviderNotConfiguredError, AIProviderRequestError } from '@/lib/ai/errors';
+import { MatterNotFoundError, EntitlementDeniedError } from '@/lib/ai/context/gateway';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const AskBodySchema = z.object({
   question: z.string().min(1).max(2000),
   case_id: z.string().regex(UUID_PATTERN).optional(),
+  matter_id: z.string().regex(UUID_PATTERN).optional(),
 });
 
 /**
  * RAG answer generation over the tenant's indexed documents (hybrid
- * search from the search milestone). Provider-agnostic: whichever vendor
+ * search from the search milestone), optionally enriched with a Matter's
+ * real structured context (Matter Intelligence Layer, Milestone 2) when
+ * matter_id is given — additive and backward compatible: omitting it
+ * preserves the exact prior behavior. Provider-agnostic: whichever vendor
  * AI_PROVIDER selects (openai by default, anthropic as the second
  * supported option) is invoked through lib/ai/llm-provider.ts — this
  * route never touches a vendor SDK directly.
@@ -54,7 +59,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await askQuestion(session.tenantId, parsed.data.question, parsed.data.case_id ?? null);
+    const result = await askQuestion(session.tenantId, session.sub, parsed.data.question, {
+      caseId: parsed.data.case_id ?? null,
+      matterId: parsed.data.matter_id ?? null,
+    });
     if (result.status === 'NO_CONTEXT_FOUND') {
       return NextResponse.json(
         { status: 'NO_CONTEXT_FOUND', message: 'No indexed documents matched this question.' },
@@ -62,11 +70,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // estimated_provider_tokens/estimated_cost_usd are deliberately never
+    // surfaced here (Milestone 2, Decision 7) — customers see operation
+    // costs and NextCase Credits once billing exists, never raw
+    // model-specific token counts.
     return NextResponse.json(
       { status: 'ANSWERED', answer: result.answer, sources: result.sources, provider: result.provider, model: result.model },
       { status: 200 }
     );
   } catch (error) {
+    if (error instanceof MatterNotFoundError) {
+      // RLS-indistinguishable from a cross-tenant matter_id — 404, not a
+      // permission leak, matching every other Matter-scoped route.
+      return NextResponse.json({ error: 'NOT_FOUND', message: 'Matter not found.' }, { status: 404 });
+    }
+    if (error instanceof EntitlementDeniedError) {
+      return NextResponse.json({ error: 'ENTITLEMENT_DENIED', message: error.reason }, { status: 403 });
+    }
     if (error instanceof AIProviderNotConfiguredError) {
       return NextResponse.json({ error: 'AI_PROVIDER_NOT_CONFIGURED' }, { status: 503 });
     }
