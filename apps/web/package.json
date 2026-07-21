@@ -42,6 +42,8 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "stripe": "^22.3.2",
+    "survey-core": "2.5.35",
+    "survey-react-ui": "2.5.35",
     "zod": "^4.4.3"
   },
   "devDependencies": {

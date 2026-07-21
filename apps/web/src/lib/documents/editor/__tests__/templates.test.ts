@@ -1,4 +1,12 @@
-import { LEGAL_TEMPLATES, DELHI_HC_WRIT_PETITION, CIVIL_SUIT_PLAINT, AFFIDAVIT, getTemplateById, COURT_VERTICALS } from '../templates';
+import {
+  LEGAL_TEMPLATES,
+  DELHI_HC_WRIT_PETITION,
+  CIVIL_SUIT_PLAINT,
+  AFFIDAVIT,
+  HIGH_COURT_WRIT_PETITION_GUIDED,
+  getTemplateById,
+  COURT_VERTICALS,
+} from '../templates';
 
 const REQUIRED_PLACEHOLDER_GROUPS: Record<string, string[]> = {
   [DELHI_HC_WRIT_PETITION.id]: [
@@ -27,6 +35,23 @@ const REQUIRED_PLACEHOLDER_GROUPS: Record<string, string[]> = {
     '[DATE]',
   ],
   [AFFIDAVIT.id]: ['[COURT NAME]', '[CASE NUMBER]', '[PETITIONER NAME]', '[RESPONDENT NAME]', '[FACTS]', '[PLACE]', '[DATE]'],
+  [HIGH_COURT_WRIT_PETITION_GUIDED.id]: [
+    '[COURT_NAME]',
+    '[CASE_NUMBER]',
+    '[CASE_YEAR]',
+    '[WRIT_ARTICLE]',
+    '[TERRITORIAL_JURISDICTION]',
+    '[FACTS]',
+    '[GROUNDS]',
+    '[MAIN_RELIEF]',
+    '[VERIFICATION_PLACE]',
+    '[VERIFICATION_DATE]',
+    '[DEPONENT_NAME]',
+    '[PETITIONERS_BLOCK]',
+    '[RESPONDENTS_BLOCK]',
+    '[ANNEXURES_BLOCK]',
+    '[ADVOCATES_BLOCK]',
+  ],
 };
 
 const STRUCTURAL_SECTIONS: Record<string, RegExp[]> = {
@@ -40,11 +65,19 @@ const STRUCTURAL_SECTIONS: Record<string, RegExp[]> = {
   ],
   [CIVIL_SUIT_PLAINT.id]: [/IN THE COURT OF/i, /VERSUS/, /PLAINT/, /FACTS/, /GROUNDS/, /PRAYER/, /VERIFICATION/],
   [AFFIDAVIT.id]: [/IN THE COURT OF/i, /VERSUS/, /AFFIDAVIT/, /VERIFICATION/, /DEPONENT/],
+  [HIGH_COURT_WRIT_PETITION_GUIDED.id]: [
+    /IN THE \[COURT_NAME\]/,
+    /VERSUS/,
+    /PETITION UNDER \[WRIT_ARTICLE\]/,
+    /GROUNDS/,
+    /PRAYER/,
+    /VERIFICATION/,
+  ],
 };
 
 describe('Legal templates — master content is complete and Indian-jurisdiction-first', () => {
-  test('exactly three templates are registered, all jurisdiction IN', () => {
-    expect(LEGAL_TEMPLATES).toHaveLength(3);
+  test('exactly four templates are registered, all jurisdiction IN', () => {
+    expect(LEGAL_TEMPLATES).toHaveLength(4);
     expect(LEGAL_TEMPLATES.every((t) => t.jurisdiction === 'IN')).toBe(true);
   });
 
@@ -132,5 +165,13 @@ describe('Legal templates — Court Vertical organisation (UI/UX Specification A
     // Tribunals correctly have zero templates today rather than a fake
     // placeholder created just to fill every group.
     expect(populatedVerticals).toEqual(new Set(['HIGH_COURTS', 'DISTRICT_COURTS']));
+  });
+
+  test('the guided-interview Writ Petition is generic — no specific state or High Court is hardcoded', () => {
+    expect(HIGH_COURT_WRIT_PETITION_GUIDED.courtVertical).toBe('HIGH_COURTS');
+    expect(HIGH_COURT_WRIT_PETITION_GUIDED.court.toLowerCase()).not.toMatch(
+      /delhi|mumbai|bombay|calcutta|madras|allahabad|karnataka|kerala|punjab|gujarat/
+    );
+    expect(HIGH_COURT_WRIT_PETITION_GUIDED.html).not.toMatch(/delhi|mumbai|bombay|calcutta|madras/i);
   });
 });

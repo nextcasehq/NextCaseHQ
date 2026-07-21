@@ -5,6 +5,8 @@ import { useDurableAutosave, type AutosaveStatus } from '@/lib/documents/useDura
 import { serializeDraftPayload, parseDraftPayload } from '@/lib/documents/editor/draft-payload';
 import { DEFAULT_PAGE_SETUP, clampZoom, pageDimensionsMm, type PageSetup } from '@/lib/documents/editor/page-setup';
 import { LEGAL_TEMPLATES, BLANK_DRAFT_TITLE, type LegalTemplate } from '@/lib/documents/editor/templates';
+import { getInterviewConfigForTemplate } from '@/lib/documents/survey/registry';
+import type { InterviewConfig } from '@/lib/documents/survey/types';
 import { useDocumentEditor } from '@/components/document-editor/useDocumentEditor';
 import { Ribbon } from '@/components/document-editor/Ribbon';
 import { PageSetupPanel } from '@/components/document-editor/PageSetupPanel';
@@ -15,6 +17,7 @@ import { StatusBar } from '@/components/document-editor/StatusBar';
 import { PageThumbnails } from '@/components/document-editor/PageThumbnails';
 import { FormattingBubble } from '@/components/document-editor/FormattingBubble';
 import { EditorContextMenu } from '@/components/document-editor/EditorContextMenu';
+import { SurveyWizard } from '@/components/document-editor/SurveyWizard';
 
 const AUTOSAVE_STATUS_LABEL: Record<AutosaveStatus, string> = {
   saving: 'Saving',
@@ -58,6 +61,15 @@ export default function DraftBuilderPage() {
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string | null>(null);
   const [currentHtml, setCurrentHtml] = React.useState('');
   const [pendingTemplate, setPendingTemplate] = React.useState<LegalTemplate | null | 'blank'>(null);
+  // A guided interview's generated draft, awaiting the same
+  // substantial-content confirmation gate direct template selection
+  // already goes through — set only once the advocate clicks "Generate
+  // Draft" inside the wizard, never while the interview itself is open.
+  const [pendingGeneratedDraft, setPendingGeneratedDraft] = React.useState<{ template: LegalTemplate; html: string } | null>(null);
+  // Which guided interview (if any) is currently open in place of the
+  // document canvas. Opening one never touches the current draft — only
+  // completing it (via pendingGeneratedDraft above) can.
+  const [activeInterview, setActiveInterview] = React.useState<{ template: LegalTemplate; config: InterviewConfig } | null>(null);
   const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
   // Computed in an effect (client-only, after hydration) rather than a
   // useState lazy initializer: this component is server-rendered first,
@@ -130,8 +142,12 @@ export default function DraftBuilderPage() {
   }, [autosave.status]);
 
   const applyTemplate = React.useCallback(
-    async (template: LegalTemplate | null) => {
-      const html = template?.html ?? '';
+    // `htmlOverride` is how a guided interview's generated draft reaches
+    // the editor: same independent-new-draft path as a directly-loaded
+    // template, just with the interview's filled-in HTML instead of the
+    // template's raw master HTML.
+    async (template: LegalTemplate | null, htmlOverride?: string) => {
+      const html = htmlOverride ?? template?.html ?? '';
       const nextPageSetup = template?.pageSetup ?? DEFAULT_PAGE_SETUP;
       const nextTitle = template?.name ?? BLANK_DRAFT_TITLE;
 
@@ -141,6 +157,7 @@ export default function DraftBuilderPage() {
       setSelectedTemplateId(template?.id ?? null);
       setDraftTitle(nextTitle);
       setPendingTemplate(null);
+      setPendingGeneratedDraft(null);
 
       // Selecting a template always starts an independent draft — it
       // must never overwrite whatever the advocate was already working
@@ -156,6 +173,18 @@ export default function DraftBuilderPage() {
   );
 
   const handleSelectTemplate = (template: LegalTemplate) => {
+    // On mobile the library lives in a slide-out drawer over the canvas —
+    // dismiss it as soon as a choice is made so the wizard/editor
+    // underneath is actually visible, instead of staying hidden behind it.
+    setMobileDrawer('none');
+    const interviewConfig = getInterviewConfigForTemplate(template.id);
+    if (interviewConfig) {
+      // Opening the interview never touches the current draft — it's a
+      // wizard rendered in place of the canvas, on this same page, until
+      // "Generate Draft" is clicked.
+      setActiveInterview({ template, config: interviewConfig });
+      return;
+    }
     const hasSubstantialContent = currentHtml.replace(/<[^>]+>/g, '').trim().length > 40;
     if (hasSubstantialContent && template.id !== selectedTemplateId) {
       setPendingTemplate(template);
@@ -164,7 +193,18 @@ export default function DraftBuilderPage() {
     void applyTemplate(template);
   };
 
+  const handleSurveyGenerate = (template: LegalTemplate, html: string) => {
+    setActiveInterview(null);
+    const hasSubstantialContent = currentHtml.replace(/<[^>]+>/g, '').trim().length > 40;
+    if (hasSubstantialContent) {
+      setPendingGeneratedDraft({ template, html });
+      return;
+    }
+    void applyTemplate(template, html);
+  };
+
   const handleStartBlank = () => {
+    setMobileDrawer('none');
     const hasSubstantialContent = currentHtml.replace(/<[^>]+>/g, '').trim().length > 40;
     if (hasSubstantialContent && selectedTemplateId !== null) {
       setPendingTemplate('blank');
@@ -174,6 +214,10 @@ export default function DraftBuilderPage() {
   };
 
   const confirmReplaceTemplate = () => {
+    if (pendingGeneratedDraft) {
+      void applyTemplate(pendingGeneratedDraft.template, pendingGeneratedDraft.html);
+      return;
+    }
     if (pendingTemplate === 'blank') void applyTemplate(null);
     else if (pendingTemplate) void applyTemplate(pendingTemplate);
   };
@@ -269,9 +313,10 @@ export default function DraftBuilderPage() {
       </div>
       {/* The Document Creator's two creation modes — "Create Manually"
           (Start Blank Draft, below) and "Create Using Template" (the
-          template cards). Guided questionnaire-driven assembly is a
-          separate, later milestone — selecting a template here loads its
-          complete static content directly into the manual editor. */}
+          template cards). Templates tagged "Guided Interview" open a
+          step-based questionnaire (see SurveyWizard) whose answers
+          generate the draft; all other templates load their static
+          content directly into the manual editor. */}
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create Manually</h3>
         <button
@@ -285,8 +330,8 @@ export default function DraftBuilderPage() {
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">Create Using Template</h3>
         <p className="text-[10px] text-[#B0A588] mb-3">
-          Guided, questionnaire-driven assembly is a separate upcoming milestone. For now, selecting a template loads its full
-          content directly into the editor below for manual completion.
+          Templates marked &ldquo;Guided Interview&rdquo; open a step-based questionnaire that generates the draft from your
+          answers. Other templates load their full content directly into the editor below for manual completion.
         </p>
         <TemplateLibrary
           selectedTemplateId={selectedTemplateId}
@@ -487,7 +532,7 @@ export default function DraftBuilderPage() {
         </div>
       )}
 
-      {pendingTemplate && (
+      {(pendingTemplate || pendingGeneratedDraft) && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
             <h2 className="text-sm font-bold text-[#111111]">Create New Draft?</h2>
@@ -497,7 +542,10 @@ export default function DraftBuilderPage() {
             </p>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setPendingTemplate(null)}
+                onClick={() => {
+                  setPendingTemplate(null);
+                  setPendingGeneratedDraft(null);
+                }}
                 className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]"
               >
                 Cancel
@@ -540,16 +588,27 @@ export default function DraftBuilderPage() {
           </button>
         )}
 
-        <main ref={canvasScrollRef} onContextMenu={handleContextMenu} className={`relative flex-1 overflow-auto ${canvasPaneBg}`}>
-          <FormattingBubble editor={editor} />
-          <div className="absolute top-3 right-3 z-10 no-print bg-white/90 border border-[#E7DFC9] rounded-lg px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#8A6D2F] shadow-sm">
-            {pageSetup.paperSize} · {pageSetup.orientation === 'landscape' ? 'Landscape' : 'Portrait'} · {pageSetup.margins.top}/
-            {pageSetup.margins.right}/{pageSetup.margins.bottom}/{pageSetup.margins.left}mm
-          </div>
-          <DocumentCanvas editor={editor} pageSetup={pageSetup} defaultFontFamily={activeTemplate?.defaultFontFamily ?? 'Times New Roman'} />
+        <main ref={canvasScrollRef} onContextMenu={activeInterview ? undefined : handleContextMenu} className={`relative flex-1 overflow-auto ${canvasPaneBg}`}>
+          {activeInterview ? (
+            <SurveyWizard
+              config={activeInterview.config}
+              templateHtml={activeInterview.template.html}
+              onCancel={() => setActiveInterview(null)}
+              onGenerate={(html) => handleSurveyGenerate(activeInterview.template, html)}
+            />
+          ) : (
+            <>
+              <FormattingBubble editor={editor} />
+              <div className="absolute top-3 right-3 z-10 no-print bg-white/90 border border-[#E7DFC9] rounded-lg px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#8A6D2F] shadow-sm">
+                {pageSetup.paperSize} · {pageSetup.orientation === 'landscape' ? 'Landscape' : 'Portrait'} · {pageSetup.margins.top}/
+                {pageSetup.margins.right}/{pageSetup.margins.bottom}/{pageSetup.margins.left}mm
+              </div>
+              <DocumentCanvas editor={editor} pageSetup={pageSetup} defaultFontFamily={activeTemplate?.defaultFontFamily ?? 'Times New Roman'} />
+            </>
+          )}
         </main>
 
-        {!focusMode && (
+        {!focusMode && !activeInterview && (
           <div className={`no-print hidden md:block w-16 shrink-0 overflow-y-auto border-l ${chromeBg}`}>
             <PageThumbnails pageCount={pageCount} currentPage={currentPage} onNavigate={handleNavigateToPage} orientation={pageSetup.orientation} />
           </div>

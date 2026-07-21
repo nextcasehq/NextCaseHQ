@@ -91,9 +91,10 @@ describe('Document Creator rebuild — page composition', () => {
     expect(page).toContain('Create Using Template');
   });
 
-  test('the guided SurveyJS questionnaire workflow is explicitly deferred, not silently faked', () => {
-    expect(page).not.toMatch(/survey-?js/i);
-    expect(page).toMatch(/separate upcoming milestone/i);
+  test('the guided SurveyJS questionnaire workflow is genuinely wired in, not a static placeholder', () => {
+    expect(page).toContain('SurveyWizard');
+    expect(page).toContain('getInterviewConfigForTemplate');
+    expect(page).toContain('handleSurveyGenerate');
   });
 
   test('Matter linkage is presented honestly — no fabricated Matter Register connection', () => {

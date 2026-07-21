@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { LEGAL_TEMPLATES, COURT_VERTICALS, type LegalTemplate, type CourtVertical } from '@/lib/documents/editor/templates';
+import { getInterviewConfigForTemplate } from '@/lib/documents/survey/registry';
 
 interface TemplateLibraryProps {
   selectedTemplateId: string | null;
@@ -12,6 +13,7 @@ interface TemplateLibraryProps {
 }
 
 function TemplateCard({ template, selected, onSelect }: { template: LegalTemplate; selected: boolean; onSelect: () => void }) {
+  const hasInterview = !!getInterviewConfigForTemplate(template.id);
   return (
     <button
       type="button"
@@ -42,6 +44,15 @@ function TemplateCard({ template, selected, onSelect }: { template: LegalTemplat
             }`}
           >
             Starter Template
+          </span>
+        )}
+        {hasInterview && (
+          <span
+            className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+              selected ? 'bg-white/15 text-[#FDFBF7]/80' : 'bg-[#EAF2FB] text-[#1D4ED8] border border-[#1D4ED8]/30'
+            }`}
+          >
+            Guided Interview
           </span>
         )}
       </span>
