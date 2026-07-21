@@ -131,15 +131,6 @@ export default function HeroSection() {
 
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#8A6D2F]/20 transition-all duration-200 hover:bg-[#6F5624] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2 active:scale-[0.98]"
-          >
-            Access your chamber
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
-          <Link
             href="/features"
             className="inline-flex items-center gap-2 rounded-xl border border-[#E7DFC9] bg-white/60 px-5 py-2.5 text-sm font-semibold text-[#241E17] backdrop-blur-sm transition-all duration-200 hover:border-[#C6A253]/50 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2"
           >
