@@ -122,9 +122,9 @@ interface PreparationItem {
  * Honest placeholder for a future sub-milestone's real data — never
  * fabricated content (Milestone 1 condition: empty states must be honest).
  */
-function ComingSoonPanel({ title, description }: { title: string; description: string }) {
+function ComingSoonPanel({ title, description, id }: { title: string; description: string; id?: string }) {
   return (
-    <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+    <div id={id} className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
       <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-3">{title}</h3>
       <div className="text-center py-8 bg-[#FBF8F1]/50 border border-dashed border-[#E7DFC9] rounded-xl">
         <p className="text-xs font-semibold text-[#8A7A56]">Not yet available.</p>
@@ -377,22 +377,20 @@ export default function MatterDetailsChamberPage() {
 
   if (matter === null) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <main className="flex-1 flex flex-col justify-center items-center py-20">
-          <span className="text-3xl">⚠️</span>
-          <h2 className="text-lg font-bold mt-2">Matter Not Found</h2>
-          <p className="text-xs text-[#B0A588] mt-1">This matter does not exist or you don&apos;t have access to it.</p>
-          <Link href="/matters" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Back to Matters
-          </Link>
-        </main>
+      <div className="flex-1 flex flex-col justify-center items-center py-20">
+        <span className="text-3xl">⚠️</span>
+        <h2 className="text-lg font-bold mt-2">Matter Not Found</h2>
+        <p className="text-xs text-[#B0A588] mt-1">This matter does not exist or you don&apos;t have access to it.</p>
+        <Link href="/matters" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
+          Back to Matters
+        </Link>
       </div>
     );
   }
 
   if (matter === undefined) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] flex flex-1 justify-center items-center">
+      <div className="flex flex-1 justify-center items-center py-20">
         <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
       </div>
     );
@@ -405,27 +403,15 @@ export default function MatterDetailsChamberPage() {
   // above), so reviewers see the whole form, not just a blocked button.
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
-      <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
-        <BrandBackground />
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/matters" className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors flex items-center gap-1">
-            ← Back to Matter Workspace
-          </Link>
-          {/* Matter-scoped Universal Search entry point (Product Direction,
-              Milestone 5) — reuses the existing matter_id filter, restricted
-              to the entity types meaningful within a single Matter (not
-              other Matters/Clients). */}
-          <Link
-            href={`/search?matter_id=${id}&type=document,proceeding,court_note`}
-            className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
-          >
-            🔍 Search this Matter
-          </Link>
-        </div>
-
-        {/* Matter Title Card */}
-        <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 md:p-8 shadow-sm mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+    <div className="relative isolate max-w-6xl w-full mx-auto px-6 pb-10">
+      <BrandBackground />
+        {/* Matter Title Card — "Overview" anchor target for the Matter
+            Navigator. The old in-page "Back to Matters" and "Search this
+            Matter" links are retired here: both are now provided by the
+            shell (matters/layout.tsx's Matter Navigator and Command
+            Center search bar respectively) — keeping them here too would
+            be duplicate navigation, against the Zero-Clutter Rule. */}
+        <div id="matter-overview" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 md:p-8 shadow-sm mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
@@ -1019,6 +1005,7 @@ export default function MatterDetailsChamberPage() {
               )}
             </div>
             <ComingSoonPanel
+              id="matter-evidence"
               title="Evidence"
               description="Structured evidence registry for this matter is planned for a future milestone."
             />
@@ -1052,7 +1039,6 @@ export default function MatterDetailsChamberPage() {
             </div>
           </div>
         </div>
-      </main>
     </div>
   );
 }

@@ -13,6 +13,7 @@ export default function NavbarWrapper() {
   const shouldHide =
     hideNavbarRoutes.includes(pathname) ||
     pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/matters') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/system') ||
     pathname.startsWith('/matters');
