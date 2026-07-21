@@ -30,3 +30,7 @@ As of Phase 0, the real AI generation pipeline (`POST /api/ai/draft`, `lib/ai/dr
 ## Auditability
 
 Every reservation, debit, release, and reversal is an audit event per `DOCUMENT_SECURITY_AND_AUDIT.md`'s event list — traceable back to the job, the tenant, and the advocate who initiated it.
+
+## Execution Kernel Alignment
+
+Steps 2 and 5 above are, respectively, the `ReserveAiCreditsCommand` and `ReleaseAiCreditReservationCommand` in `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §3.1; step 4 (debit only after permanent storage) is not its own separate command but a side effect the `CompleteGenerationJobCommand` handler performs within the same transaction that confirms the completion checklist in `DOCUMENT_STORAGE_AND_VERSIONING_SPEC.md`. The kernel's state machine (§4) names `CREDIT_RESERVED` as the explicit state a request occupies immediately after policy evaluation and before queueing — reservation is not an implicit side effect of enqueueing, it is its own state, evaluated and recorded before a `DocumentGenerationJob` row is even created. Every one of these four commands follows the kernel's command-handler contract (§3.3) in full, including the idempotency-key enforcement that makes rule 6 above concrete rather than aspirational.

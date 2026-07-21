@@ -34,3 +34,7 @@ This constitution defines the rules the Document Creator must never violate, reg
 ## Precedence
 
 If any future specification, pull request, or Product Owner instruction appears to require violating one of these rules, that conflict must be raised explicitly before implementation — not resolved silently in code. See `DOCUMENT_CREATOR_GOVERNANCE.md` §"Architecture-Deviation Approval Process."
+
+## Execution Kernel Alignment
+
+`DOCUMENT_CREATOR_EXECUTION_KERNEL.md` defines the internal execution architecture (authoritative-state model, command pattern, validated state machine, Policy Engine, Context Loader, Prompt Composer, Worker Runtime) that *enforces* these rules in code once implemented — it introduces no new rule and may not weaken any rule above. Rule 9's "workers hold no long-term state" and Rule 10's "PostgreSQL, object storage, and GitHub remain authoritative" are given their fullest, most specific expression in that document's §1 ("Authoritative-State Architecture"); Rule 7's crash-survival guarantee is given its fullest expression in that document's §9–§11 (Ephemeral-Worker Execution Rules, Idempotency Boundaries, Failure-Recovery Rules). The Execution Kernel document is scoped only to the Document Creator, exactly as this Constitution is — it is not a platform-wide kernel.

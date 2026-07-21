@@ -7,6 +7,8 @@ Scope: Process rules for every Document Creator milestone from Phase 1 onward. S
 
 Each phase in `DOCUMENT_CREATOR_IMPLEMENTATION_ROADMAP.md` is implemented on its own branch and lands as its own pull request. A branch never carries work from two phases. A PR description states which single phase it implements; if the diff contains anything outside that phase's declared scope, the diff is wrong, not the rule.
 
+This is a milestone boundary, not a file-count boundary: `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §14's future module plan explicitly allows one phase's PR to introduce several of its listed TypeScript modules together when they form one coherent subsystem (e.g., `DocumentKernelDispatcher.ts` and `DocumentGenerationStateMachine.ts` landing together, since a dispatcher without a validated state machine to enforce is not a coherent, reviewable unit). One task equals one coherent feature or subsystem — never one file forced artificially into its own PR where correctness requires several files delivered together, and never several unrelated features bundled into one PR because they happened to land in the same week.
+
 ## 2. No Unrelated Refactoring
 
 A Document Creator PR touches the files its phase's scope requires and nothing else. Renaming a variable, reformatting a file, or "cleaning up while I'm here" in a file outside scope is deferred to its own change, proposed separately. This mirrors the standing project-wide discipline already enforced across every milestone in this repository.

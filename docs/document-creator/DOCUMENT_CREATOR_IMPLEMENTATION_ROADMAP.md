@@ -26,6 +26,8 @@ Editor
 
 Every phase below implements one segment of this flow, leaving every other segment exactly as it already works (or, for not-yet-reached segments, as an honest "not yet available" state, per the Constitution).
 
+This plain-language flow is given its full, precise, state-by-state definition in `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §4 (the validated finite state machine) — each arrow above corresponds to one or more named states and the typed command (kernel §3) that causes the transition between them. Phases 4 and 5 below are where that kernel is actually built, per its §14 module plan.
+
 ---
 
 ## Phase 1 — Functional Recovery
@@ -62,8 +64,8 @@ Every phase below implements one segment of this flow, leaving every other segme
 
 ## Phase 4 — Durable Generation-Job Foundation
 
-- **Objective**: Implement `DOCUMENT_GENERATION_JOB_SPEC.md` and `DOCUMENT_AI_CREDITS_LIFECYCLE.md` — the `DocumentGenerationJob` table, the state machine, real AI Credit reservation/debit/release wired into the entitlement checkpoint, and the `POST` (202-returning) / `GET` (status) API pair.
-- **Scope**: New table + migration; queue-message contract (identifiers/references only); idempotency key handling; real wallet integration per the ADR's decision on reservation representation.
+- **Objective**: Implement `DOCUMENT_GENERATION_JOB_SPEC.md` and `DOCUMENT_AI_CREDITS_LIFECYCLE.md` — the `DocumentGenerationJob` table, the state machine, real AI Credit reservation/debit/release wired into the entitlement checkpoint, and the `POST` (202-returning) / `GET` (status) API pair. Introduces the Execution Kernel's foundational modules per `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §14: `DocumentKernelTypes.ts`, `DocumentKernelCommands.ts`, `DocumentKernelStateRepository.ts`, `DocumentKernelDispatcher.ts`, `DocumentGenerationStateMachine.ts`, `DocumentPolicyEngine.ts` (entitlement/credit checks only — concurrency/traffic checks arrive in Phase 8), and `DocumentGenerationAuditService.ts`.
+- **Scope**: New table + migration; queue-message contract (identifiers/references only); idempotency key handling; real wallet integration per the ADR's decision on reservation representation; the command-handler contract (kernel §3.3) enforced for every command in this phase's slice of the catalogue (`RequestGenerationCommand`, `EvaluateGenerationPolicyCommand`, `ReserveAiCreditsCommand`, `EnqueueGenerationCommand`, `CancelGenerationJobCommand`, `ReleaseAiCreditReservationCommand`).
 - **Exclusions**: No actual worker execution yet — jobs are created and queued, but Phase 4 may run generation synchronously *behind* the new async-shaped API (a job is created, immediately processed, immediately completed) as a bridge, explicitly labeled as such, before Phase 5 makes execution genuinely ephemeral/asynchronous. This bridging approach must be called out explicitly in the Phase 4 PR if used.
 - **Dependencies**: Phase 3 (a version to attach the job's output to); the ADR's decision #3 (reservation representation) must be resolved first.
 - **Migrations**: `DocumentGenerationJob` table; wallet reservation-state migration per the ADR decision.
@@ -75,8 +77,8 @@ Every phase below implements one segment of this flow, leaving every other segme
 
 ## Phase 5 — Ephemeral Worker Foundation
 
-- **Objective**: Implement `EPHEMERAL_WORKER_ARCHITECTURE.md` — genuinely asynchronous, crash-safe execution, replacing Phase 4's synchronous bridge.
-- **Scope**: The full 17-step worker lifecycle; lease acquisition/expiry/recovery; streaming provider output to temporary storage; the platform-selection decision from the ADR.
+- **Objective**: Implement `EPHEMERAL_WORKER_ARCHITECTURE.md` and `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §§6–9 — genuinely asynchronous, crash-safe execution, replacing Phase 4's synchronous bridge. Introduces `DocumentContextLoader.ts`, `DocumentPromptComposer.ts`, `DocumentWorkerRuntime.ts`, and `DocumentWorkerLeaseService.ts` per the kernel's §14 module plan.
+- **Scope**: The full 17-step (kernel-aligned: 20-step) worker lifecycle; lease acquisition/expiry/recovery; streaming provider output to temporary storage; the platform-selection decision from the ADR; the Context Loader and Prompt Composer as distinct, separately-testable components (kernel §6–§7), not inlined into the worker itself.
 - **Exclusions**: No indexing orchestration changes yet (Phase 6) — the worker enqueues an indexing job but does not implement its processing.
 - **Dependencies**: Phase 4 (a durable job to claim); the ADR's decision #1 (worker platform) must be resolved first.
 - **Migrations**: None beyond what Phase 4 already added, unless the platform decision requires new coordination columns.
@@ -114,7 +116,7 @@ Every phase below implements one segment of this flow, leaving every other segme
 
 ## Phase 8 — High-Traffic Hardening, Monitoring and Recovery
 
-- **Objective**: Implement `DOCUMENT_TRAFFIC_AND_CONCURRENCY.md` and `DOCUMENT_MEMORY_EFFICIENCY.md`'s remaining configurable limits under real or realistically-simulated load, plus monitoring/alerting for job-queue depth, worker health, and recovery-sweep effectiveness.
+- **Objective**: Implement `DOCUMENT_TRAFFIC_AND_CONCURRENCY.md` and `DOCUMENT_MEMORY_EFFICIENCY.md`'s remaining configurable limits under real or realistically-simulated load, plus monitoring/alerting for job-queue depth, worker health, and recovery-sweep effectiveness. Extends `DocumentPolicyEngine.ts` (introduced in Phase 4 for entitlement/credit checks) with the concurrency, queue-admission, and provider-capacity evaluations named in `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §5.1.
 - **Scope**: Configurable concurrency/queue-depth/timeout limits actually enforced (not just documented); circuit breaker implementation; worker recycling; load-test verification of memory-efficiency claims from Phase 5.
 - **Exclusions**: No premature infrastructure (Kafka/Kubernetes) unless this phase's own load evidence justifies it, per `DOCUMENT_CREATOR_GOVERNANCE.md` §3 — and if so, that is its own Product Owner-approved decision, not assumed here.
 - **Dependencies**: Phases 4–7 fully operational, to have a real system to load-test.

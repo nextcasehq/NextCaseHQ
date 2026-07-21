@@ -42,6 +42,8 @@ Today, `POST /api/ai/draft` (`apps/web/src/app/api/ai/draft/route.ts`) generates
 
 ## State Machine
 
+`DocumentGenerationJob.status` tracks the portion of the full kernel state machine that applies once a job row exists:
+
 ```
 QUEUED → CLAIMED → GENERATING → SAVING → INDEXING_PENDING → COMPLETED
 ```
@@ -54,6 +56,18 @@ Failure/terminal branches, reachable from any non-terminal state:
 - `RETRY_PENDING` — an expired or transiently-failed job is scheduled to re-enter `QUEUED` after backoff, up to `maximum_attempts`.
 
 A job in `EXPIRED` or a retryable failure moves to `RETRY_PENDING` → `QUEUED` rather than being lost; only after `attempt_count` reaches `maximum_attempts` does it become terminally `FAILED`.
+
+### Execution Kernel Alignment
+
+This six-state sequence is the `QUEUED`-onward subset of the full, authoritative state machine defined in `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §4:
+
+```
+DRAFT → AUTOSAVED → GENERATION_REQUESTED → POLICY_EVALUATION → CREDIT_RESERVED
+  → QUEUED → CLAIMED → CONTEXT_LOADING → GENERATING → SAVING → VERSION_CREATED
+  → INDEXING_PENDING → COMPLETED
+```
+
+`DRAFT` through `CREDIT_RESERVED` are kernel-level states that precede `DocumentGenerationJob` row creation — `EnqueueGenerationCommand` is what actually inserts the row, entering it at `QUEUED`. `CONTEXT_LOADING` and `VERSION_CREATED` are finer-grained sub-states within what this document's simpler six-state view collapses into `CLAIMED`→`GENERATING` and `SAVING`→`INDEXING_PENDING` respectively; an implementation may choose to persist `DocumentGenerationJob.status` at this finer granularity once Phase 4/5 is actually built, provided the six states named in this document remain a valid, orderable projection of it. The kernel document's table — including its explicit illegal-transition examples — is authoritative wherever this document's simpler sequence and that one might otherwise be read as disagreeing.
 
 ## Authoritative Storage Rule
 

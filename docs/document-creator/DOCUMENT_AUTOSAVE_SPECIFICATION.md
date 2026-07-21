@@ -23,12 +23,14 @@ Satisfy Constitution Rule 1 ("an advocate's typed work must never disappear") wi
 
 ## Status Indicators
 
-The editor UI always reflects one of exactly four states, sourced from the actual outcome of the last autosave attempt — never optimistically assumed:
+The editor UI always reflects one of exactly six states, sourced from the actual outcome of the last autosave attempt — never optimistically assumed:
 
 - **Saving** — a debounced autosave request is in flight.
 - **Saved** — the last autosave request succeeded; the durable draft record reflects the content shown.
 - **Offline** — the client has detected it cannot reach the server (network loss); local recovery (Tier 1) continues to protect the content.
 - **Save Failed** — a server autosave request was attempted and failed for a reason other than being offline (e.g., a 5xx, a validation rejection); the advocate is shown this distinctly from "Offline" so they know a network fix alone will not resolve it.
+- **Conflict Detected** — a server autosave write was rejected because the server's current revision has moved since this client last read it (see "Concurrency Control" below); the advocate is shown both versions' recency rather than either being silently discarded.
+- **Recovered Draft** — the editor opened with content restored from Tier 1 (local) or Tier 2 (server) recovery rather than a fresh empty state; shown briefly so the advocate knows they are looking at recovered, not newly-created, content.
 
 ## Recovery Scenarios
 
@@ -59,3 +61,7 @@ This keeps version history meaningful (a handful of real checkpoints per documen
 ## No Dependence on a Final Save Button
 
 The system must never require the advocate to remember to click a terminal "Save" button to avoid data loss — that guarantee is what Tier 1 + Tier 2 autosave together provide. A manual "Save Version" button remains available (event 1 above), but its absence of use is never a loss scenario.
+
+## Execution Kernel Alignment
+
+The `DRAFT` and `AUTOSAVED` states in `DOCUMENT_CREATOR_EXECUTION_KERNEL.md` §4's state machine correspond directly to this document's Tier 1/Tier 2 model: a draft enters `DRAFT` on first content, and reaches `AUTOSAVED` once a server autosave (Tier 2) has succeeded at least once — this is a kernel-level state describing the draft's own lifecycle stage, distinct from (and prior to) the per-request UI status indicators above, which describe the *current* save attempt's outcome rather than the draft's overall stage. `CreateDraftCommand` and `AutosaveDraftCommand` (kernel §3.1) are the typed commands behind, respectively, the first content entering `DRAFT` and each subsequent Tier 2 write; both flow through the same command-handler contract (kernel §3.3), including its idempotency and audit-event requirements.
