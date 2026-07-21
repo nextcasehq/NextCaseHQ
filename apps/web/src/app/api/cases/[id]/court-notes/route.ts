@@ -5,7 +5,13 @@ import { requireSession, UnauthenticatedError } from '@/lib/auth/session';
 import { isTrustedOrigin } from '@/lib/security/origin-check';
 import { DatabaseClient } from '@/lib/db/db-client';
 import { invalidateMatterContext } from '@/lib/ai/context/cache';
-import { COURT_FORUM_TYPES, COURT_NOTE_INPUT_METHODS, resolveCourtForumDisplay } from '@/lib/domain/court-note';
+import {
+  COURT_FORUM_TYPES,
+  COURT_NOTE_INPUT_METHODS,
+  COURT_NOTE_SOURCES,
+  COURT_NOTE_VERIFICATION_STATUSES,
+  resolveCourtForumDisplay,
+} from '@/lib/domain/court-note';
 
 /**
  * Court Note Quick Entry Foundation (Product Direction, Milestone 1).
@@ -31,6 +37,8 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const CourtForumTypeSchema = z.enum(COURT_FORUM_TYPES);
 const InputMethodSchema = z.enum(COURT_NOTE_INPUT_METHODS);
+const SourceSchema = z.enum(COURT_NOTE_SOURCES);
+const VerificationStatusSchema = z.enum(COURT_NOTE_VERIFICATION_STATUSES);
 
 interface CourtNoteRow {
   id: string;
@@ -47,12 +55,19 @@ interface CourtNoteRow {
   note: string;
   next_actions: string | null;
   input_method: string;
+  source: string;
+  verification_status: string;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  previous_hearing_date: string | null;
+  previous_stage: string | null;
   created_at: string;
 }
 
 const COURT_NOTE_COLUMNS = `id, tenant_id, case_id, matter_id, author_user_id, hearing_date, next_hearing_date,
                             court_forum_type, court_forum_other, court_forum_display, stage, note, next_actions,
-                            input_method, created_at`;
+                            input_method, source, verification_status, confirmed_by, confirmed_at,
+                            previous_hearing_date, previous_stage, created_at`;
 
 const CreateCourtNoteSchema = z
   .object({
@@ -64,6 +79,8 @@ const CreateCourtNoteSchema = z
     note: z.string().min(1).max(10000),
     next_actions: z.string().max(5000).nullable().optional(),
     input_method: InputMethodSchema.optional().default('MANUAL'),
+    source: SourceSchema.optional().default('ADVOCATE_ENTRY'),
+    verification_status: VerificationStatusSchema.optional(),
   })
   .refine(
     (data) => data.court_forum_type !== 'OTHER' || Boolean(data.court_forum_other && data.court_forum_other.trim()),
@@ -156,10 +173,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // A case_id FK check bypasses RLS — confirm the Proceeding exists in the
     // caller's own tenant before inserting a child row under it (same rule
-    // as POST /api/matters/[id]/events).
-    const caseRows = await db.execute<{ id: string }>(
+    // as POST /api/matters/[id]/events). Also captures the Proceeding's
+    // current hearing_date/stage before this update, so the new Court Note
+    // can record previous_hearing_date/previous_stage.
+    const caseRows = await db.execute<{ id: string; hearing_date: string | null; stage: string | null }>(
       session.tenantId,
-      `SELECT id FROM "LegalCase" WHERE id = $1`,
+      `SELECT id, hearing_date, stage FROM "LegalCase" WHERE id = $1`,
       [id]
     );
     if (caseRows.length === 0) {
@@ -170,6 +189,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       input.court_forum_type,
       input.court_forum_other ?? null
     );
+
+    // Idempotency / no-op detection: if the most recent Court Note for this
+    // Proceeding already recorded these exact hearing_date/next_hearing_date/
+    // stage/court_forum_display/note values, this is a duplicate submission
+    // (double-click, retried request) rather than a real new hearing — return
+    // the existing record instead of creating a second, identical timeline
+    // event.
+    const latestNoteRows = await db.execute<CourtNoteRow>(
+      session.tenantId,
+      `SELECT ${COURT_NOTE_COLUMNS} FROM "CourtNote" WHERE case_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [id]
+    );
+    const latest = latestNoteRows[0];
+    if (
+      latest &&
+      latest.hearing_date === input.hearing_date &&
+      (latest.next_hearing_date ?? null) === (input.next_hearing_date ?? null) &&
+      latest.stage === input.stage &&
+      latest.court_forum_display === courtForumDisplay &&
+      latest.note === input.note
+    ) {
+      return NextResponse.json({ court_note: latest, no_op: true }, { status: 200 });
+    }
+
+    const verificationStatus =
+      input.verification_status ?? (input.source === 'ECOURTS_CONFIRMED' ? 'ECOURTS_CONFIRMED' : 'ADVOCATE_CONFIRMED');
 
     const eventDescriptionParts = [
       `Court Note — ${input.stage} (${courtForumDisplay}): ${input.note}`,
@@ -193,21 +238,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
        inserted_note AS (
          INSERT INTO "CourtNote" (
            tenant_id, case_id, matter_id, author_user_id, hearing_date, next_hearing_date,
-           court_forum_type, court_forum_other, court_forum_display, stage, note, next_actions, input_method
+           court_forum_type, court_forum_other, court_forum_display, stage, note, next_actions, input_method,
+           source, verification_status, confirmed_by, confirmed_at, previous_hearing_date, previous_stage
          )
-         SELECT $2, target_case.id, target_case.matter_id, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+         SELECT $2, target_case.id, target_case.matter_id, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                $14, $15, $3, now(), $16, $17
          FROM target_case
          RETURNING ${COURT_NOTE_COLUMNS}
        ),
        updated_case AS (
          UPDATE "LegalCase"
-         SET hearing_date = $5, stage = $9, court = $8, updated_at = now()
+         SET hearing_date = $4, stage = $9, court = $8, updated_at = now()
          WHERE id = (SELECT id FROM target_case)
          RETURNING id
        ),
        inserted_event AS (
-         INSERT INTO "MatterEvent" (tenant_id, matter_id, event_date, description, source_type)
-         SELECT $2, target_case.matter_id, $4::date, $13, 'HEARING'
+         INSERT INTO "MatterEvent" (tenant_id, matter_id, event_date, description, source_type, actor_user_id)
+         SELECT $2, target_case.matter_id, $4::date, $13, 'HEARING', $3
          FROM target_case
          WHERE target_case.matter_id IS NOT NULL
          RETURNING id
@@ -236,6 +283,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         input.next_actions ?? null,
         input.input_method,
         eventDescription,
+        input.source,
+        verificationStatus,
+        caseRows[0].hearing_date,
+        caseRows[0].stage,
       ]
     );
 

@@ -68,6 +68,15 @@ describe('GET/PATCH/DELETE /api/matters/[id]', () => {
     await db.execute(TENANT_B, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "Client" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_A, `DELETE FROM "User" WHERE tenant_id = $1`, [TENANT_A]);
+    // PATCH /api/matters/[id] now stamps updated_by_user_id (Production
+    // Matter Register Foundation) — a real FK to "User" — so the session
+    // subject must exist as a real row. Re-seeded every beforeEach since
+    // the DELETE above (pre-existing, for unrelated cleanup) wipes it.
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "User" (id, tenant_id, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+      [USER_ID, TENANT_A, 'matters-id-test-author@nextcase.local']
+    );
   });
 
   afterAll(async () => {
