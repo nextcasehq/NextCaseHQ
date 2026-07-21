@@ -3,13 +3,18 @@
 import React from 'react';
 import { useDurableAutosave, type AutosaveStatus } from '@/lib/documents/useDurableAutosave';
 import { serializeDraftPayload, parseDraftPayload } from '@/lib/documents/editor/draft-payload';
-import { DEFAULT_PAGE_SETUP, type PageSetup } from '@/lib/documents/editor/page-setup';
+import { DEFAULT_PAGE_SETUP, clampZoom, pageDimensionsMm, type PageSetup } from '@/lib/documents/editor/page-setup';
 import { LEGAL_TEMPLATES, BLANK_DRAFT_TITLE, type LegalTemplate } from '@/lib/documents/editor/templates';
 import { useDocumentEditor } from '@/components/document-editor/useDocumentEditor';
-import { Toolbar } from '@/components/document-editor/Toolbar';
+import { Ribbon } from '@/components/document-editor/Ribbon';
 import { PageSetupPanel } from '@/components/document-editor/PageSetupPanel';
 import { TemplateLibrary } from '@/components/document-editor/TemplateLibrary';
-import { DocumentCanvas } from '@/components/document-editor/DocumentCanvas';
+import { AttachmentsPanel } from '@/components/document-editor/AttachmentsPanel';
+import { DocumentCanvas, MM_TO_PX } from '@/components/document-editor/DocumentCanvas';
+import { StatusBar } from '@/components/document-editor/StatusBar';
+import { PageThumbnails } from '@/components/document-editor/PageThumbnails';
+import { FormattingBubble } from '@/components/document-editor/FormattingBubble';
+import { EditorContextMenu } from '@/components/document-editor/EditorContextMenu';
 
 const AUTOSAVE_STATUS_LABEL: Record<AutosaveStatus, string> = {
   saving: 'Saving',
@@ -33,16 +38,19 @@ const AUTOSAVE_STATUS_DOT: Record<AutosaveStatus, string> = {
 
 const UNAUTHENTICATED_MESSAGE = 'Local draft — phone verification required for permanent saving.';
 
+type MobileDrawer = 'none' | 'left' | 'right';
+
 /**
- * Document Creator — the Document Creator/manual-drafting workspace.
- * Rebuilt on top of the same durable-draft/autosave foundation Phase 2
- * shipped (useDurableAutosave, IndexedDB recovery, revision-guarded
- * conflict detection, the local-only unauthenticated path) — only the
- * page's own UI and the editor itself changed. See
- * lib/documents/editor/draft-payload.ts for how the rich-text content,
- * page setup, and template identity are packed into the one opaque
- * `content` string that autosave/draft-store.ts and the DocumentDraft API
- * already know how to store, so none of that server-side contract moved.
+ * Document Creator — a Microsoft Word–style legal drafting workspace,
+ * rebuilt on top of the exact same durable-draft/autosave foundation
+ * Phase 2 shipped (useDurableAutosave, IndexedDB recovery, revision-
+ * guarded conflict detection, the local-only unauthenticated path) — only
+ * the page's own presentation changed, per
+ * docs/document-creator/DOCUMENT_CREATOR_UI_UX_SPECIFICATION.md. See
+ * lib/documents/editor/draft-payload.ts for how rich-text content, page
+ * setup, and template identity are packed into the one opaque `content`
+ * string the DocumentDraft API already knows how to store — that server
+ * contract has not moved.
  */
 export default function DraftBuilderPage() {
   const [draftTitle, setDraftTitle] = React.useState(BLANK_DRAFT_TITLE);
@@ -51,12 +59,20 @@ export default function DraftBuilderPage() {
   const [currentHtml, setCurrentHtml] = React.useState('');
   const [pendingTemplate, setPendingTemplate] = React.useState<LegalTemplate | null | 'blank'>(null);
   const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
-  const [mobilePanel, setMobilePanel] = React.useState<'none' | 'templates' | 'pageSetup'>('none');
+  const [sessionStartedAt] = React.useState(() => new Date());
 
-  const editor = useDocumentEditor({
-    editable: true,
-    onUpdateHtml: setCurrentHtml,
-  });
+  const [mobileDrawer, setMobileDrawer] = React.useState<MobileDrawer>('none');
+  const [leftOpen, setLeftOpen] = React.useState(true);
+  const [rightOpen, setRightOpen] = React.useState(true);
+  const [zoomMode, setZoomMode] = React.useState<'fixed' | 'fit-width'>('fixed');
+  const [focusMode, setFocusMode] = React.useState(false);
+  const [darkWorkspace, setDarkWorkspace] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [contextMenuPos, setContextMenuPos] = React.useState<{ x: number; y: number } | null>(null);
+
+  const canvasScrollRef = React.useRef<HTMLDivElement>(null);
+
+  const editor = useDocumentEditor({ editable: true, onUpdateHtml: setCurrentHtml });
 
   const serializedContent = React.useMemo(
     () => serializeDraftPayload({ html: currentHtml, pageSetup, templateId: selectedTemplateId }),
@@ -153,65 +169,268 @@ export default function DraftBuilderPage() {
     else if (pendingTemplate) void applyTemplate(pendingTemplate);
   };
 
-  return (
-    <div className="min-h-screen bg-[#FDFBF7] font-sans">
-      {/* Application header */}
-      <div className="border-b border-[#111111]/10 bg-white px-4 md:px-8 py-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap max-w-[1600px] mx-auto">
-          <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest text-[#111111]">
-              Document Creator
-            </h1>
-            <input
-              aria-label="Document title"
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-              className="mt-1 text-sm font-serif italic text-[#111111]/70 bg-transparent border-none outline-none focus:underline w-full max-w-md"
-              placeholder="Untitled Draft"
-            />
+  const handlePrint = () => window.print();
+
+  const activeTemplate = LEGAL_TEMPLATES.find((t) => t.id === selectedTemplateId);
+
+  const plainText = editor?.getText() ?? '';
+  const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+  // Legal-drafting convention: character count excludes whitespace.
+  const characterCount = plainText.replace(/\s/g, '').length;
+  const pageCount = (currentHtml.match(/data-page-break/g) ?? []).length + 1;
+
+  const computeFitWidthZoom = React.useCallback(() => {
+    const container = canvasScrollRef.current;
+    if (!container) return;
+    const { width } = pageDimensionsMm(pageSetup.paperSize, pageSetup.orientation);
+    const widthPx = width * MM_TO_PX;
+    const available = container.clientWidth - 64;
+    const nextZoom = clampZoom(Math.round((available / widthPx) * 100));
+    setZoomMode('fit-width');
+    setPageSetup((prev) => ({ ...prev, zoom: nextZoom }));
+  }, [pageSetup.paperSize, pageSetup.orientation]);
+
+  React.useEffect(() => {
+    if (zoomMode !== 'fit-width') return;
+    const handleResize = () => computeFitWidthZoom();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [zoomMode, computeFitWidthZoom]);
+
+  const handlePageSetupChange = (next: PageSetup) => {
+    setZoomMode('fixed');
+    setPageSetup(next);
+  };
+
+  const handleNavigateToPage = (page: number) => {
+    const container = canvasScrollRef.current;
+    if (!container) return;
+    if (page <= 1) {
+      container.scrollTo({ top: 0, behavior: 'smooth' });
+      setCurrentPage(1);
+      return;
+    }
+    const breaks = container.querySelectorAll('#nchq-print-page [data-page-break]');
+    const target = breaks[page - 2] as HTMLElement | undefined;
+    if (target) {
+      container.scrollTo({ top: target.offsetTop - 40, behavior: 'smooth' });
+      setCurrentPage(page);
+    }
+  };
+
+  React.useEffect(() => {
+    const container = canvasScrollRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const breaks = Array.from(container.querySelectorAll('#nchq-print-page [data-page-break]')) as HTMLElement[];
+      const threshold = container.scrollTop + container.clientHeight / 3;
+      let page = 1;
+      for (const el of breaks) {
+        if (el.offsetTop < threshold) page += 1;
+        else break;
+      }
+      setCurrentPage(page);
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const workspaceBg = darkWorkspace ? 'bg-[#1C1B19]' : 'bg-[#FDFBF7]';
+  const chromeBg = darkWorkspace ? 'bg-[#232220] border-[#3A3830]' : 'bg-white border-[#E7DFC9]/80';
+  const chromeText = darkWorkspace ? 'text-[#D8D3C4]' : 'text-[#3A3222]';
+  const canvasPaneBg = darkWorkspace ? 'bg-[#2A2925]' : 'bg-[#E4E0D6]';
+
+  const leftSidebarContent = (
+    <>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Templates &amp; Attachments</h2>
+        <button
+          type="button"
+          onClick={() => setLeftOpen(false)}
+          aria-label="Collapse left panel"
+          className="hidden md:block text-[#B0A588] hover:text-[#8A6D2F] text-xs font-bold"
+        >
+          ‹
+        </button>
+      </div>
+      {/* The Document Creator's two creation modes — "Create Manually"
+          (Start Blank Draft, below) and "Create Using Template" (the
+          template cards). Guided questionnaire-driven assembly is a
+          separate, later milestone — selecting a template here loads its
+          complete static content directly into the manual editor. */}
+      <div className="pb-4 border-b border-[#F4EEE0]">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create Manually</h3>
+        <button
+          type="button"
+          onClick={handleStartBlank}
+          className="w-full py-2 bg-[#111111] hover:bg-[#111111]/90 text-white text-[10px] uppercase tracking-widest font-bold rounded-lg transition-all"
+        >
+          Start Blank Draft
+        </button>
+      </div>
+      <div className="pb-4 border-b border-[#F4EEE0]">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">Create Using Template</h3>
+        <p className="text-[10px] text-[#B0A588] mb-3">
+          Guided, questionnaire-driven assembly is a separate upcoming milestone. For now, selecting a template loads its full
+          content directly into the editor below for manual completion.
+        </p>
+        <TemplateLibrary
+          selectedTemplateId={selectedTemplateId}
+          onSelectTemplate={handleSelectTemplate}
+          onStartBlank={handleStartBlank}
+          hideBlankAction
+        />
+      </div>
+      <AttachmentsPanel />
+      <div className="pt-4 border-t border-[#F4EEE0] opacity-60">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">AI Panel</h3>
+        <p className="text-[10px] text-[#B0A588] italic">Reserved for a future milestone.</p>
+      </div>
+    </>
+  );
+
+  const rightSidebarContent = (
+    <>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Page Setup &amp; Properties</h2>
+        <button
+          type="button"
+          onClick={() => setRightOpen(false)}
+          aria-label="Collapse right panel"
+          className="hidden md:block text-[#B0A588] hover:text-[#8A6D2F] text-xs font-bold"
+        >
+          ›
+        </button>
+      </div>
+      <PageSetupPanel
+        pageSetup={pageSetup}
+        onChange={handlePageSetupChange}
+        onFitWidth={computeFitWidthZoom}
+        isFitWidth={zoomMode === 'fit-width'}
+      />
+      <div className="space-y-2 pt-4 border-t border-[#F4EEE0]">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Document Information</h2>
+        <dl className="space-y-1.5 text-xs">
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Template</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.name ?? 'Blank Draft'}</dd>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest text-[#111111]/60">
-              <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`}></span>
-              {AUTOSAVE_STATUS_LABEL[autosave.status]}
-            </span>
-            {lastSavedAt && (
-              <span className="text-[10px] text-[#B0A588] font-semibold hidden sm:inline">
-                Last saved {lastSavedAt.toLocaleTimeString()}
-              </span>
-            )}
-            <button
-              onClick={() => window.print()}
-              className="px-3 py-1.5 border border-[#E7DFC9] text-[#8A6D2F] text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-[#FBF8F1] transition-all no-print"
-            >
-              🖨 Print / Preview
-            </button>
-            <div className="flex lg:hidden gap-2">
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Document Type</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.documentType ?? 'UNTYPED'}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Matter</dt>
+            {/* Honest by construction: this page never fetches or links a
+                Matter Register record — claiming a real link here would be
+                a fabricated connection. */}
+            <dd className="text-[#3A3222] font-bold text-right">Unlinked Draft</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Status</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{AUTOSAVE_STATUS_LABEL[autosave.status]}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Created</dt>
+            {/* No server-side created_at is exposed by the autosave API
+                (an API-contract change, out of scope here), so this is
+                honestly labeled as this browser session's start time, not
+                claimed as the document's true original creation date. */}
+            <dd className="text-[#3A3222] font-bold text-right">
+              {sessionStartedAt.toLocaleTimeString()} <span className="font-normal text-[#B0A588]">(session)</span>
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Last Saved</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{lastSavedAt ? lastSavedAt.toLocaleTimeString() : '—'}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Page Count</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{pageCount}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Word Count</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{wordCount}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-[#8A7A56] font-semibold">Character Count</dt>
+            <dd className="text-[#3A3222] font-bold text-right">{characterCount}</dd>
+          </div>
+        </dl>
+      </div>
+    </>
+  );
+
+  return (
+    <div className={`h-screen flex flex-col overflow-hidden font-sans ${workspaceBg}`}>
+      {!focusMode && (
+        <header className={`no-print shrink-0 border-b px-4 md:px-6 py-3 ${chromeBg}`}>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="min-w-0 flex items-center gap-3">
               <button
-                onClick={() => setMobilePanel(mobilePanel === 'templates' ? 'none' : 'templates')}
-                className="px-3 py-1.5 border border-[#E7DFC9] text-[#3A3222] text-[10px] font-bold uppercase tracking-widest rounded-lg"
+                type="button"
+                onClick={() => setMobileDrawer(mobileDrawer === 'left' ? 'none' : 'left')}
+                aria-label="Toggle templates and attachments"
+                className={`md:hidden px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                Templates
+                ☰
+              </button>
+              <div>
+                <h1 className={`text-lg md:text-xl font-black uppercase tracking-widest ${chromeText}`}>Document Creator</h1>
+                <input
+                  aria-label="Document title"
+                  value={draftTitle}
+                  onChange={(e) => setDraftTitle(e.target.value)}
+                  className={`mt-0.5 text-xs font-serif italic bg-transparent border-none outline-none focus:underline w-full max-w-md ${chromeText} opacity-70`}
+                  placeholder="Untitled Draft"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest ${chromeText} opacity-70`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`}></span>
+                {AUTOSAVE_STATUS_LABEL[autosave.status]}
+              </span>
+              <button
+                type="button"
+                onClick={() => setDarkWorkspace((v) => !v)}
+                className={`px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+              >
+                {darkWorkspace ? '☀ Light' : '● Dark'}
               </button>
               <button
-                onClick={() => setMobilePanel(mobilePanel === 'pageSetup' ? 'none' : 'pageSetup')}
-                className="px-3 py-1.5 border border-[#E7DFC9] text-[#3A3222] text-[10px] font-bold uppercase tracking-widest rounded-lg"
+                type="button"
+                onClick={() => setFocusMode(true)}
+                className={`px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                Page Setup
+                ⛶ Focus Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileDrawer(mobileDrawer === 'right' ? 'none' : 'right')}
+                aria-label="Toggle page setup and properties"
+                className={`md:hidden px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+              >
+                ⚙
               </button>
             </div>
           </div>
-        </div>
-      </div>
+        </header>
+      )}
 
       {autosave.status === 'unauthenticated' && (
-        <div className="no-print px-4 md:px-8 py-2 bg-sky-50 border-b border-sky-200 text-center">
+        <div className="no-print shrink-0 px-4 md:px-6 py-2 bg-sky-50 border-b border-sky-200 text-center">
           <p className="text-xs font-semibold text-sky-800">{UNAUTHENTICATED_MESSAGE}</p>
         </div>
       )}
 
       {autosave.conflict && (
-        <div className="no-print px-4 md:px-8 py-3 bg-red-50 border-b border-red-200 flex items-center justify-between gap-4 flex-wrap">
+        <div className="no-print shrink-0 px-4 md:px-6 py-3 bg-red-50 border-b border-red-200 flex items-center justify-between gap-4 flex-wrap">
           <p className="text-xs font-semibold text-red-700">
             This draft was updated elsewhere since it was last loaded here.
           </p>
@@ -258,104 +477,115 @@ export default function DraftBuilderPage() {
         </div>
       )}
 
-      <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[240px_1fr_260px] gap-6 px-4 md:px-8 py-6">
-        {/* Left panel: the Document Creator's two creation modes —
-            "Create Manually" (Start Blank Draft, below) and "Create
-            Using Template" (the template cards). The full guided
-            questionnaire-driven template assembly workflow is a separate,
-            later milestone — selecting a template here loads its
-            complete static content directly into the manual editor for
-            unrestricted editing, per this milestone's scope. */}
-        <aside
-          className={`no-print bg-white border border-[#E7DFC9]/80 rounded-xl p-5 shadow-sm h-fit lg:sticky lg:top-6 ${
-            mobilePanel === 'templates' ? 'block' : 'hidden'
-          } lg:block`}
-        >
-          <div className="mb-4 pb-4 border-b border-[#F4EEE0]">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create Manually</h2>
-            <button
-              type="button"
-              onClick={handleStartBlank}
-              className="w-full py-2 bg-[#111111] hover:bg-[#111111]/90 text-white text-[10px] uppercase tracking-widest font-bold rounded-lg transition-all"
-            >
-              Start Blank Draft
-            </button>
-          </div>
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">Create Using Template</h2>
-            <p className="text-[10px] text-[#B0A588] mb-3">
-              Guided, questionnaire-driven assembly is a separate upcoming milestone. For now, selecting a template
-              loads its full content directly into the editor below for manual completion.
-            </p>
-            <TemplateLibrary
-              selectedTemplateId={selectedTemplateId}
-              onSelectTemplate={handleSelectTemplate}
-              onStartBlank={handleStartBlank}
-              hideBlankAction
-            />
-          </div>
-        </aside>
+      {!focusMode && (
+        <div className="no-print shrink-0 px-4 md:px-6 pt-3">
+          <Ribbon editor={editor} pageSetup={pageSetup} onPageSetupChange={handlePageSetupChange} onPrint={handlePrint} />
+        </div>
+      )}
 
-        {/* Main: Toolbar + Document Canvas */}
-        <main className="space-y-4 min-w-0">
-          <div className="no-print sticky top-0 z-10">
-            <Toolbar editor={editor} />
+      <div className="flex-1 flex overflow-hidden">
+        {!focusMode && (
+          <aside
+            style={{ width: leftOpen ? '272px' : '0px' }}
+            className={`no-print hidden md:flex flex-col overflow-hidden transition-all duration-200 border-r ${chromeBg}`}
+          >
+            <div className="w-[272px] shrink-0 overflow-y-auto p-4 space-y-4">{leftSidebarContent}</div>
+          </aside>
+        )}
+
+        {!focusMode && !leftOpen && (
+          <button
+            type="button"
+            onClick={() => setLeftOpen(true)}
+            aria-label="Expand left panel"
+            className={`no-print hidden md:flex items-center justify-center w-4 shrink-0 border-r ${chromeBg} ${chromeText} hover:bg-[#FBF8F1]`}
+          >
+            ›
+          </button>
+        )}
+
+        <main ref={canvasScrollRef} onContextMenu={handleContextMenu} className={`relative flex-1 overflow-auto ${canvasPaneBg}`}>
+          <FormattingBubble editor={editor} />
+          <div className="absolute top-3 right-3 z-10 no-print bg-white/90 border border-[#E7DFC9] rounded-lg px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#8A6D2F] shadow-sm">
+            {pageSetup.paperSize} · {pageSetup.orientation === 'landscape' ? 'Landscape' : 'Portrait'} · {pageSetup.margins.top}/
+            {pageSetup.margins.right}/{pageSetup.margins.bottom}/{pageSetup.margins.left}mm
           </div>
-          <div className="bg-[#F4EEE0]/30 rounded-xl border border-[#F4EEE0]">
-            <DocumentCanvas
-              editor={editor}
-              pageSetup={pageSetup}
-              defaultFontFamily={LEGAL_TEMPLATES.find((t) => t.id === selectedTemplateId)?.defaultFontFamily ?? 'Times New Roman'}
-            />
-          </div>
+          <DocumentCanvas editor={editor} pageSetup={pageSetup} defaultFontFamily={activeTemplate?.defaultFontFamily ?? 'Times New Roman'} />
         </main>
 
-        {/* Right panel: Page Setup + document properties */}
-        <aside
-          className={`no-print bg-white border border-[#E7DFC9]/80 rounded-xl p-5 shadow-sm h-fit lg:sticky lg:top-6 space-y-6 ${
-            mobilePanel === 'pageSetup' ? 'block' : 'hidden'
-          } lg:block`}
-        >
-          <PageSetupPanel pageSetup={pageSetup} onChange={setPageSetup} />
-
-          <div className="space-y-2 pt-4 border-t border-[#F4EEE0]">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Document Properties</h2>
-            <dl className="space-y-1.5 text-xs">
-              <div className="flex justify-between gap-2">
-                <dt className="text-[#8A7A56] font-semibold">Template</dt>
-                <dd className="text-[#3A3222] font-bold text-right">
-                  {LEGAL_TEMPLATES.find((t) => t.id === selectedTemplateId)?.name ?? 'Blank Draft'}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-[#8A7A56] font-semibold">Jurisdiction</dt>
-                <dd className="text-[#3A3222] font-bold text-right">
-                  {LEGAL_TEMPLATES.find((t) => t.id === selectedTemplateId)?.jurisdiction ?? '—'}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-[#8A7A56] font-semibold">Document Type</dt>
-                <dd className="text-[#3A3222] font-bold text-right">
-                  {LEGAL_TEMPLATES.find((t) => t.id === selectedTemplateId)?.documentType ?? 'UNTYPED'}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-[#8A7A56] font-semibold">Matter</dt>
-                {/* Honest by construction: this page never fetches or
-                    links a Matter Register record — the visible Matter
-                    Register is still mock/prototype data (see
-                    dashboard/matters), so claiming a real link here would
-                    be a fabricated connection. */}
-                <dd className="text-[#3A3222] font-bold text-right">Unlinked Draft</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-[#8A7A56] font-semibold">Draft Status</dt>
-                <dd className="text-[#3A3222] font-bold text-right">{AUTOSAVE_STATUS_LABEL[autosave.status]}</dd>
-              </div>
-            </dl>
+        {!focusMode && (
+          <div className={`no-print hidden md:block w-16 shrink-0 overflow-y-auto border-l ${chromeBg}`}>
+            <PageThumbnails pageCount={pageCount} currentPage={currentPage} onNavigate={handleNavigateToPage} orientation={pageSetup.orientation} />
           </div>
-        </aside>
+        )}
+
+        {!focusMode && !rightOpen && (
+          <button
+            type="button"
+            onClick={() => setRightOpen(true)}
+            aria-label="Expand right panel"
+            className={`no-print hidden md:flex items-center justify-center w-4 shrink-0 border-l ${chromeBg} ${chromeText} hover:bg-[#FBF8F1]`}
+          >
+            ‹
+          </button>
+        )}
+
+        {!focusMode && (
+          <aside
+            style={{ width: rightOpen ? '288px' : '0px' }}
+            className={`no-print hidden md:flex flex-col overflow-hidden transition-all duration-200 border-l ${chromeBg}`}
+          >
+            <div className="w-[288px] shrink-0 overflow-y-auto p-4 space-y-4">{rightSidebarContent}</div>
+          </aside>
+        )}
+
+        {mobileDrawer !== 'none' && (
+          <>
+            <div className="no-print fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setMobileDrawer('none')} />
+            <div
+              className={`no-print fixed inset-y-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4 ${
+                mobileDrawer === 'left' ? 'left-0' : 'right-0'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setMobileDrawer('none')}
+                aria-label="Close panel"
+                className="text-[#B0A588] hover:text-[#8A6D2F] text-xs font-bold uppercase tracking-widest"
+              >
+                ✕ Close
+              </button>
+              {mobileDrawer === 'left' ? leftSidebarContent : rightSidebarContent}
+            </div>
+          </>
+        )}
       </div>
+
+      {!focusMode && (
+        <StatusBar
+          currentPage={currentPage}
+          pageCount={pageCount}
+          zoom={pageSetup.zoom}
+          paperSize={pageSetup.paperSize}
+          orientation={pageSetup.orientation}
+          autosaveLabel={AUTOSAVE_STATUS_LABEL[autosave.status]}
+          autosaveDotClass={AUTOSAVE_STATUS_DOT[autosave.status]}
+          wordCount={wordCount}
+          characterCount={characterCount}
+        />
+      )}
+
+      {focusMode && (
+        <button
+          type="button"
+          onClick={() => setFocusMode(false)}
+          className="no-print fixed bottom-4 right-4 z-40 px-4 py-2 bg-[#111111] text-white text-xs font-bold uppercase tracking-widest rounded-lg shadow-lg"
+        >
+          Exit Focus Mode
+        </button>
+      )}
+
+      <EditorContextMenu editor={editor} position={contextMenuPos} onClose={() => setContextMenuPos(null)} />
     </div>
   );
 }

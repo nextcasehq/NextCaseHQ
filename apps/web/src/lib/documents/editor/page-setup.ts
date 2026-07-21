@@ -7,7 +7,7 @@
  * content.
  */
 
-export type PaperSize = 'A4' | 'LETTER';
+export type PaperSize = 'A4' | 'LETTER' | 'LEGAL';
 export type Orientation = 'portrait' | 'landscape';
 
 export interface Margins {
@@ -43,6 +43,14 @@ export const DEFAULT_PAGE_SETUP: PageSetup = {
 const PAPER_SIZE_MM: Record<PaperSize, { width: number; height: number }> = {
   A4: { width: 210, height: 297 },
   LETTER: { width: 215.9, height: 279.4 },
+  // US Legal, 8.5in x 14in.
+  LEGAL: { width: 215.9, height: 355.6 },
+};
+
+export const PAPER_SIZE_LABELS: Record<PaperSize, string> = {
+  A4: 'A4',
+  LETTER: 'Letter',
+  LEGAL: 'Legal',
 };
 
 export function pageDimensionsMm(paperSize: PaperSize, orientation: Orientation): { width: number; height: number } {
@@ -51,8 +59,15 @@ export function pageDimensionsMm(paperSize: PaperSize, orientation: Orientation)
 }
 
 export const ZOOM_MIN = 50;
-export const ZOOM_MAX = 150;
-export const ZOOM_STEP = 10;
+export const ZOOM_MAX = 200;
+export const ZOOM_STEP = 25;
+
+// Fixed zoom presets shown in the status bar / page setup panel, per the
+// Document Creator UI/UX Specification's zoom requirement. "Fit Width" is
+// not a stored numeric preset — it's computed at render time from the
+// container's real available width (see DocumentCanvas's fit-width mode)
+// and then applied as an ordinary numeric zoom value.
+export const ZOOM_PRESETS = [50, 75, 100, 125, 150, 200] as const;
 
 export function clampZoom(zoom: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));

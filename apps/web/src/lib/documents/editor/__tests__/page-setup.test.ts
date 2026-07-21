@@ -1,4 +1,4 @@
-import { pageDimensionsMm, clampZoom, ZOOM_MIN, ZOOM_MAX, DEFAULT_PAGE_SETUP } from '../page-setup';
+import { pageDimensionsMm, clampZoom, ZOOM_MIN, ZOOM_MAX, ZOOM_PRESETS, DEFAULT_PAGE_SETUP } from '../page-setup';
 
 describe('page-setup — paper dimensions and zoom clamping', () => {
   test('A4 portrait is 210mm x 297mm', () => {
@@ -17,10 +17,23 @@ describe('page-setup — paper dimensions and zoom clamping', () => {
     expect(pageDimensionsMm('LETTER', 'landscape')).toEqual({ width: 279.4, height: 215.9 });
   });
 
+  test('Legal portrait is 215.9mm x 355.6mm (8.5in x 14in)', () => {
+    expect(pageDimensionsMm('LEGAL', 'portrait')).toEqual({ width: 215.9, height: 355.6 });
+  });
+
+  test('Legal landscape swaps width and height', () => {
+    expect(pageDimensionsMm('LEGAL', 'landscape')).toEqual({ width: 355.6, height: 215.9 });
+  });
+
   test('zoom clamps to the documented min/max range', () => {
     expect(clampZoom(10)).toBe(ZOOM_MIN);
     expect(clampZoom(500)).toBe(ZOOM_MAX);
     expect(clampZoom(100)).toBe(100);
+  });
+
+  test('zoom presets span 50% to 200% in the required steps', () => {
+    expect(ZOOM_PRESETS).toEqual([50, 75, 100, 125, 150, 200]);
+    expect(ZOOM_MAX).toBe(200);
   });
 
   test('default page setup uses A4 portrait with sensible legal-drafting defaults', () => {

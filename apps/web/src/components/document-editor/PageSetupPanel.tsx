@@ -2,11 +2,13 @@
 
 import React from 'react';
 import type { PageSetup, PaperSize, Orientation } from '@/lib/documents/editor/page-setup';
-import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, clampZoom } from '@/lib/documents/editor/page-setup';
+import { PAPER_SIZE_LABELS, ZOOM_PRESETS, clampZoom } from '@/lib/documents/editor/page-setup';
 
 interface PageSetupPanelProps {
   pageSetup: PageSetup;
   onChange: (next: PageSetup) => void;
+  onFitWidth: () => void;
+  isFitWidth: boolean;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -20,12 +22,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const inputClass = 'w-full px-2 py-1.5 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs';
 
-export function PageSetupPanel({ pageSetup, onChange }: PageSetupPanelProps) {
+export function PageSetupPanel({ pageSetup, onChange, onFitWidth, isFitWidth }: PageSetupPanelProps) {
   const update = (patch: Partial<PageSetup>) => onChange({ ...pageSetup, ...patch });
 
   return (
     <div className="space-y-4" aria-label="Page setup">
       <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Page Setup</h2>
+
+      <div className="bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg px-2.5 py-2 text-[10px] font-semibold text-[#3A3222]">
+        {PAPER_SIZE_LABELS[pageSetup.paperSize]} · {pageSetup.orientation === 'landscape' ? 'Landscape' : 'Portrait'} ·{' '}
+        {pageSetup.margins.top}/{pageSetup.margins.right}/{pageSetup.margins.bottom}/{pageSetup.margins.left}mm margins
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Paper Size">
@@ -34,8 +41,11 @@ export function PageSetupPanel({ pageSetup, onChange }: PageSetupPanelProps) {
             value={pageSetup.paperSize}
             onChange={(e) => update({ paperSize: e.target.value as PaperSize })}
           >
-            <option value="A4">A4</option>
-            <option value="LETTER">Letter</option>
+            {(Object.keys(PAPER_SIZE_LABELS) as PaperSize[]).map((size) => (
+              <option key={size} value={size}>
+                {PAPER_SIZE_LABELS[size]}
+              </option>
+            ))}
           </select>
         </Field>
         <Field label="Orientation">
@@ -98,33 +108,32 @@ export function PageSetupPanel({ pageSetup, onChange }: PageSetupPanelProps) {
         </div>
       </div>
 
-      <Field label={`Zoom — ${pageSetup.zoom}%`}>
-        <div className="flex items-center gap-2">
+      <Field label="Zoom">
+        <div className="grid grid-cols-4 gap-1.5">
+          {ZOOM_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => update({ zoom: clampZoom(preset) })}
+              aria-pressed={!isFitWidth && pageSetup.zoom === preset}
+              className={`px-2 py-1.5 rounded-md border text-[10px] font-bold transition-colors ${
+                !isFitWidth && pageSetup.zoom === preset
+                  ? 'bg-[#111111] border-[#111111] text-white'
+                  : 'bg-white border-[#E7DFC9] text-[#3A3222] hover:bg-[#FBF8F1]'
+              }`}
+            >
+              {preset}%
+            </button>
+          ))}
           <button
             type="button"
-            aria-label="Zoom out"
-            onClick={() => update({ zoom: clampZoom(pageSetup.zoom - ZOOM_STEP) })}
-            className="w-7 h-7 shrink-0 rounded-md border border-[#E7DFC9] bg-white text-xs font-bold"
+            onClick={onFitWidth}
+            aria-pressed={isFitWidth}
+            className={`col-span-2 px-2 py-1.5 rounded-md border text-[10px] font-bold transition-colors ${
+              isFitWidth ? 'bg-[#111111] border-[#111111] text-white' : 'bg-white border-[#E7DFC9] text-[#3A3222] hover:bg-[#FBF8F1]'
+            }`}
           >
-            −
-          </button>
-          <input
-            aria-label="Zoom level"
-            type="range"
-            min={ZOOM_MIN}
-            max={ZOOM_MAX}
-            step={ZOOM_STEP}
-            value={pageSetup.zoom}
-            onChange={(e) => update({ zoom: clampZoom(Number(e.target.value)) })}
-            className="flex-1"
-          />
-          <button
-            type="button"
-            aria-label="Zoom in"
-            onClick={() => update({ zoom: clampZoom(pageSetup.zoom + ZOOM_STEP) })}
-            className="w-7 h-7 shrink-0 rounded-md border border-[#E7DFC9] bg-white text-xs font-bold"
-          >
-            +
+            Fit Width
           </button>
         </div>
       </Field>

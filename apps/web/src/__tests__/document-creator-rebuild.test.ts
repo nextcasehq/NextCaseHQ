@@ -22,11 +22,16 @@ function readSource(relativePath: string): string {
 describe('Document Creator rebuild — page composition', () => {
   const page = readSource('app/dashboard/draft-builder/page.tsx');
 
-  test('assembles the full workspace: template library, toolbar, page setup, and canvas', () => {
+  test('assembles the full workspace: template library, ribbon, attachments, page setup, and canvas', () => {
     expect(page).toContain('<TemplateLibrary');
-    expect(page).toContain('<Toolbar');
+    expect(page).toContain('<Ribbon');
+    expect(page).toContain('<AttachmentsPanel');
     expect(page).toContain('<PageSetupPanel');
     expect(page).toContain('<DocumentCanvas');
+    expect(page).toContain('<StatusBar');
+    expect(page).toContain('<PageThumbnails');
+    expect(page).toContain('<FormattingBubble');
+    expect(page).toContain('<EditorContextMenu');
   });
 
   test('recovered content is never silently dropped by the immediatelyRender:false editor-not-ready race', () => {
@@ -54,10 +59,26 @@ describe('Document Creator rebuild — page composition', () => {
     expect(page).toContain('no-print');
   });
 
-  test('mobile panels are reachable via explicit toggles, not lost off-screen', () => {
-    expect(page).toContain('mobilePanel');
-    expect(page).toMatch(/lg:hidden/);
-    expect(page).toMatch(/lg:block/);
+  test('mobile panels are reachable via explicit slide-out drawer toggles, not lost off-screen', () => {
+    expect(page).toContain('mobileDrawer');
+    expect(page).toMatch(/md:hidden/);
+    expect(page).toMatch(/md:flex|md:block/);
+  });
+
+  test('sidebars are independently collapsible, not an all-or-nothing panel', () => {
+    expect(page).toContain('leftOpen');
+    expect(page).toContain('rightOpen');
+  });
+
+  test('a full-screen focus mode and a dark workspace toggle are wired to real state, not decorative buttons', () => {
+    expect(page).toMatch(/focusMode/);
+    expect(page).toMatch(/darkWorkspace/);
+  });
+
+  test('word and character counts are derived from the real editor text, not a placeholder', () => {
+    expect(page).toContain('editor?.getText()');
+    expect(page).toContain('wordCount');
+    expect(page).toContain('characterCount');
   });
 
   test('no AI-credit-charging or AI-generation-queue features are wired into the rebuilt page (out of scope for this milestone)', () => {
@@ -140,8 +161,12 @@ describe('Document Creator rebuild — print output is clean', () => {
   });
 });
 
-describe('Document Creator rebuild — toolbar exposes every required control', () => {
-  const toolbar = readSource('components/document-editor/Toolbar.tsx');
+describe('Document Creator rebuild — ribbon exposes every required control', () => {
+  const ribbon = readSource('components/document-editor/Ribbon.tsx');
+  const styles = readSource('lib/documents/editor/styles.ts');
+  // toggleHeading is now applied via the legal style gallery's presets
+  // (styles.ts) rather than a raw H1/H2/H3 select in the ribbon itself.
+  const combined = ribbon + styles;
 
   test.each([
     'setFontFamily',
@@ -166,11 +191,81 @@ describe('Document Creator rebuild — toolbar exposes every required control', 
     'redo',
     'setPageBreak',
   ])('wires the %s command to a visible control', (command) => {
-    expect(toolbar).toContain(command);
+    expect(combined).toContain(command);
+  });
+
+  test.each(['Home', 'Insert', 'Layout', 'References', 'Review', 'AI', 'Export'])(
+    'the ribbon defines a %s tab',
+    (tab) => {
+      expect(ribbon).toMatch(new RegExp(`label:\\s*'${tab}'`));
+    }
+  );
+
+  test('clipboard actions use the real browser Clipboard API, not document.execCommand', () => {
+    expect(ribbon).not.toContain('document.execCommand');
+    expect(ribbon).toMatch(/cutSelection|copySelection|pasteClipboard/);
+  });
+
+  test('reserved future tabs (References, Review, AI) are honestly labeled, not fake-functional', () => {
+    expect(ribbon).toMatch(/planned for a future milestone/i);
   });
 
   test('toolbar controls have accessible names', () => {
-    const ariaLabelCount = (toolbar.match(/aria-label=/g) ?? []).length;
+    const ariaLabelCount = (ribbon.match(/aria-label=/g) ?? []).length;
     expect(ariaLabelCount).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('Document Creator rebuild — legal style gallery', () => {
+  const styles = readSource('lib/documents/editor/styles.ts');
+
+  test.each([
+    'Normal',
+    'Court Heading',
+    'Cause Title',
+    'Party Name',
+    'Body',
+    'Prayer',
+    'Affidavit',
+    'Signature Block',
+    'Annexure',
+    'Schedule',
+  ])('the %s style is defined with a real apply() command chain', (name) => {
+    expect(styles).toContain(`name: '${name}'`);
+  });
+});
+
+describe('Document Creator rebuild — attachments panel is honest UI-only staging', () => {
+  const attachments = readSource('components/document-editor/AttachmentsPanel.tsx');
+
+  test('supports drag-and-drop and an explicit upload button', () => {
+    expect(attachments).toContain('onDrop');
+    expect(attachments).toMatch(/type="file"/);
+  });
+
+  test('accepts PDF, DOCX, and image files and shows a type icon', () => {
+    expect(attachments).toContain('.pdf');
+    expect(attachments).toContain('.docx');
+    expect(attachments.toLowerCase()).toMatch(/\.(png|jpe?g)/);
+  });
+
+  test('never calls a backend upload endpoint — explicitly session-only until wired up', () => {
+    expect(attachments).not.toMatch(/fetch\(/);
+    expect(attachments).toMatch(/not yet saved to your account/i);
+  });
+});
+
+describe('Document Creator rebuild — page setup supports the required paper sizes and zoom range', () => {
+  const pageSetup = readSource('lib/documents/editor/page-setup.ts');
+
+  test('A4, Letter, and Legal are all supported', () => {
+    expect(pageSetup).toMatch(/A4/);
+    expect(pageSetup).toMatch(/LETTER/);
+    expect(pageSetup).toMatch(/LEGAL/);
+  });
+
+  test('zoom presets cover 50-200% plus fit width is computed elsewhere from real container width', () => {
+    expect(pageSetup).toContain('ZOOM_PRESETS');
+    expect(pageSetup).toContain('200');
   });
 });
