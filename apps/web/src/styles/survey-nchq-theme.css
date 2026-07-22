@@ -1,0 +1,38 @@
+/*
+ * Restyles SurveyJS's own navigation buttons (Previous / Next / Review
+ * Answers / Generate Draft) to read as part of NextCaseHQ, not a
+ * third-party form embed — SurveyJS's own default theme uses a plain
+ * teal, low-weight style where every button, including the primary
+ * forward action, looks like the same secondary link.
+ *
+ * SurveyJS only tags the very last button in the whole flow
+ * (.sd-navigation__complete-btn, "Generate Draft") with its own
+ * .sd-btn--action "primary" class — inspected the real DOM to confirm
+ * this rather than assuming: "Next" (.sd-navigation__next-btn) and
+ * "Review Answers" (.sd-navigation__preview-btn) are each the forward/
+ * primary action on their own page too, but SurveyJS renders them as
+ * plain, unfilled .sd-btn like "Previous" and "Cancel". All three
+ * forward actions get the same solid fill explicitly below, rather than
+ * relying only on SurveyJS's own --sjs-primary-* theming variables
+ * (which only reach .sd-btn--action) — "Previous" is the one button
+ * that correctly stays secondary/bordered.
+ */
+.nchq-survey-wizard .sd-btn {
+  border: 1px solid #e7dfc9;
+  border-radius: 8px;
+}
+
+.nchq-survey-wizard .sd-btn--action,
+.nchq-survey-wizard .sd-navigation__next-btn,
+.nchq-survey-wizard .sd-navigation__preview-btn {
+  background: #8a6d2f;
+  color: #ffffff;
+  border-color: #8a6d2f;
+}
+
+.nchq-survey-wizard .sd-btn--action:hover,
+.nchq-survey-wizard .sd-navigation__next-btn:hover,
+.nchq-survey-wizard .sd-navigation__preview-btn:hover {
+  background: #6f5624;
+  border-color: #6f5624;
+}

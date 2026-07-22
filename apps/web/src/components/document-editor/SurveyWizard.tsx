@@ -4,6 +4,7 @@ import React from 'react';
 import { Model } from 'survey-core';
 import { Survey } from 'survey-react-ui';
 import '@/styles/survey-core-no-webfonts.css';
+import '@/styles/survey-nchq-theme.css';
 import type { InterviewConfig } from '@/lib/documents/survey/types';
 import { fillTemplatePlaceholders } from '@/lib/documents/survey/fill-template';
 

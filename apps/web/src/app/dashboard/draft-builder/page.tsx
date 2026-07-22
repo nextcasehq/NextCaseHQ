@@ -158,6 +158,34 @@ export default function DraftBuilderPage() {
     };
   }, [headerMenuOpen]);
 
+  // Ctrl/Cmd+S is near-involuntary muscle memory from years of Word/Docs —
+  // left alone, it triggers the browser's own native "Save Page As"
+  // dialog, a jarring interruption with no relationship to the document
+  // (autosave already covers this). Reviewed Tiptap's own default keymap
+  // (StarterKit) for other shortcuts worth adding here: Bold/Italic/
+  // Underline/Undo/Redo are already bound by Tiptap itself and confirmed
+  // working, so Ctrl+S — a browser-level shortcut Tiptap has no reason to
+  // know about — is the one genuine gap.
+  const [showAutosaveToast, setShowAutosaveToast] = React.useState(false);
+  React.useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        // Suppressing the browser dialog matters even before a document
+        // exists (the chooser screen), but the confirmation message only
+        // makes sense once there's actually a draft being autosaved.
+        if (phase === 'editing') setShowAutosaveToast(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [phase]);
+  React.useEffect(() => {
+    if (!showAutosaveToast) return;
+    const id = window.setTimeout(() => setShowAutosaveToast(false), 2200);
+    return () => window.clearTimeout(id);
+  }, [showAutosaveToast]);
+
   const canvasScrollRef = React.useRef<HTMLDivElement>(null);
 
   const editor = useDocumentEditor({ editable: true, onUpdateHtml: setCurrentHtml });
@@ -363,6 +391,35 @@ export default function DraftBuilderPage() {
     computeFitWidthZoom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
+
+  // Product rule, not a one-off fix: whenever the workspace transitions
+  // into an editable canvas, keyboard focus moves there automatically —
+  // an advocate should never need an extra click before typing. This one
+  // effect is the single place that rule lives; every transition that
+  // should trigger it changes one of these dependencies: `phase` (blank/
+  // template/interview selection, and resuming an existing draft all set
+  // it to 'editing'), `activeInterview` (becomes null once a Guided
+  // Interview generates its draft or is cancelled, revealing the canvas
+  // underneath it), and `selectedTemplateId` (changes on every template
+  // switch mid-edit, including via the "Create New Draft?" confirmation —
+  // each one loads fresh content the advocate will want to start typing
+  // into immediately). 'start' places the cursor at the top of whatever
+  // just loaded, matching where a lawyer's eye actually goes first.
+  React.useEffect(() => {
+    if (phase !== 'editing' || activeInterview || !editor) return;
+    editor.commands.focus('start');
+  }, [phase, activeInterview, editor, selectedTemplateId]);
+
+  // Same rule, the one transition above can't cover: entering Focus Mode
+  // doesn't change phase/activeInterview/selectedTemplateId (the advocate
+  // was already editing), so it needs its own trigger. Plain `.focus()`
+  // (no 'start'/'end') deliberately preserves wherever the cursor already
+  // was — unlike a fresh document, there's real mid-draft position here
+  // worth keeping, not resetting.
+  React.useEffect(() => {
+    if (!focusMode || !editor) return;
+    editor.commands.focus();
+  }, [focusMode, editor]);
 
   // Selecting a template (or blank) replaces pageSetup wholesale with the
   // template's own — always zoom: 100 — undoing Fit Width the same way a
@@ -669,9 +726,15 @@ export default function DraftBuilderPage() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
             <h2 className="text-sm font-bold text-[#111111]">Create New Draft?</h2>
+            {/* Previously claimed the old draft "remains available from
+                Draft History" — no such feature exists anywhere in the
+                app, so that was a promise the product couldn't keep. What
+                is actually true: the old draft is preserved, not deleted
+                or overwritten, there just isn't yet an in-app way to
+                browse back to it. */}
             <p className="text-xs text-[#5C5340]">
-              Your current draft is safely preserved. A new independent draft will now be created. Your existing
-              draft remains available from Draft History.
+              Your current draft is safely preserved — it won&rsquo;t be deleted or overwritten. There isn&rsquo;t yet a
+              way to browse back to it from within the app, so a new, independent draft will be created now.
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -837,6 +900,20 @@ export default function DraftBuilderPage() {
         >
           Exit Focus Mode
         </button>
+      )}
+
+      {/* A reflexive Ctrl/Cmd+S (see the keydown handler above) is
+          intercepted silently everywhere except here — this is the one
+          acknowledgement that the keystroke did something, since autosave
+          already covers what the browser's own save dialog would have
+          tried to do. */}
+      {showAutosaveToast && (
+        <div
+          role="status"
+          className="no-print fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-[#111111] text-white text-[11px] font-semibold rounded-lg shadow-lg"
+        >
+          All changes are saved automatically.
+        </div>
       )}
 
       <EditorContextMenu editor={editor} position={contextMenuPos} onClose={() => setContextMenuPos(null)} />
