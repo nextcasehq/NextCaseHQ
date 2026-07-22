@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { LEGAL_TEMPLATES, type LegalTemplate } from '@/lib/documents/editor/templates';
-import { getInterviewConfigForTemplate } from '@/lib/documents/survey/registry';
+import { getInterviewConfigForTemplate } from '@/lib/documents/interview/registry';
 
 interface TemplateLibraryProps {
   selectedTemplateId: string | null;

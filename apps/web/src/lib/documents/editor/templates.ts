@@ -1,6 +1,6 @@
 import type { PageSetup } from './page-setup';
 import { DEFAULT_PAGE_SETUP } from './page-setup';
-import { WRIT_PETITION_TEMPLATE_HTML } from '../survey/schemas/writ-petition';
+import { WRIT_PETITION_TEMPLATE_HTML } from '../interview/schemas/writ-petition';
 
 /**
  * Master legal document templates — Indian jurisdiction primary. These
@@ -189,10 +189,11 @@ export const AFFIDAVIT: LegalTemplate = {
 /**
  * Guided-interview reference template: a generic High Court Writ
  * Petition. Unlike the three static templates above, this one's content
- * isn't loaded directly — selecting it opens the Legal Interview Engine's
- * wizard (see lib/documents/survey/), and the draft is generated from the
- * advocate's answers via simple placeholder substitution into this same
- * master HTML (lib/documents/survey/schemas/writ-petition.ts). No state
+ * isn't loaded directly — selecting it opens the NextCaseHQ Interview
+ * Engine's wizard (see lib/documents/interview/), and the draft is
+ * generated from the advocate's answers via simple placeholder
+ * substitution into this same master HTML
+ * (lib/documents/interview/schemas/writ-petition.ts). No state
  * or specific High Court is hardcoded — the court name is an interview
  * answer — so this one template represents any High Court writ petition.
  */

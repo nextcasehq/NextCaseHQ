@@ -32,6 +32,22 @@ export function GuidedInterview({ config, templateHtml, onCancel, onGenerate }: 
     onGenerate(fillTemplatePlaceholders(templateHtml, answers, config));
   };
 
+  // The confidence screen's preview: literally the same
+  // fillTemplatePlaceholders pipeline that runs for real on submit, run
+  // early against whatever answers exist right now. Not a mockup and not
+  // a second rendering path — if this preview looks right, the generated
+  // draft looks right, because it's the same function.
+  const renderPreview = (answers: EngineAnswers) => (
+    <div className="rounded-lg border border-[#E7DFC9] bg-white p-4">
+      <h4 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Draft Preview</h4>
+      <div
+        className="prose prose-sm max-w-none text-[#3A3222]"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: fillTemplatePlaceholders(templateHtml, answers, config) }}
+      />
+    </div>
+  );
+
   return (
     <InterviewEngine
       schema={config.schema}
@@ -40,6 +56,7 @@ export function GuidedInterview({ config, templateHtml, onCancel, onGenerate }: 
       submitLabel="Generate Draft"
       onCancel={onCancel}
       onComplete={handleComplete}
+      renderPreview={renderPreview}
     />
   );
 }

@@ -105,8 +105,8 @@ describe('Document Creator rebuild — page composition', () => {
     expect(page).not.toContain('Create Using Template');
   });
 
-  test('the guided SurveyJS questionnaire workflow is genuinely wired in, not a static placeholder', () => {
-    expect(page).toContain('SurveyWizard');
+  test('the guided interview workflow is genuinely wired in, not a static placeholder', () => {
+    expect(page).toContain('GuidedInterview');
     expect(page).toContain('getInterviewConfigForTemplate');
     expect(page).toContain('handleSurveyGenerate');
   });

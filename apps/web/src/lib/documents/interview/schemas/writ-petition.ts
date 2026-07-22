@@ -29,10 +29,35 @@ const schema: EngineSchema = {
       name: 'courtDetails',
       title: 'Court Details',
       fields: [
-        { type: 'text', name: 'courtName', title: 'Name of the High Court', isRequired: true, placeholder: 'e.g. High Court of Delhi at New Delhi' },
-        { type: 'text', name: 'courtBench', title: 'Bench (if applicable)', placeholder: 'e.g. Principal Bench' },
-        { type: 'text', name: 'caseNumber', title: 'Writ Petition Number (leave blank if not yet assigned)' },
-        { type: 'text', name: 'caseYear', title: 'Year', isRequired: true, inputType: 'number' },
+        {
+          type: 'text',
+          name: 'courtName',
+          title: 'Name of the High Court',
+          isRequired: true,
+          placeholder: 'e.g. High Court of Delhi at New Delhi',
+          description: 'Appears exactly as typed in the petition’s title and cause-title block.',
+        },
+        {
+          type: 'text',
+          name: 'courtBench',
+          title: 'Bench (if applicable)',
+          placeholder: 'e.g. Principal Bench',
+          description: 'Only if this High Court sits in multiple benches — leave blank otherwise.',
+        },
+        {
+          type: 'text',
+          name: 'caseNumber',
+          title: 'Writ Petition Number (leave blank if not yet assigned)',
+          description: 'The Registry assigns this on filing — safe to leave blank and add later.',
+        },
+        {
+          type: 'text',
+          name: 'caseYear',
+          title: 'Year',
+          isRequired: true,
+          inputType: 'number',
+          description: 'The calendar year this petition is being filed in.',
+        },
       ],
     },
     {
@@ -45,6 +70,7 @@ const schema: EngineSchema = {
           title: 'Constitutional provision invoked',
           isRequired: true,
           choices: ['Article 226', 'Article 227', 'Articles 226 and 227'],
+          description: 'Determines the constitutional ground the petition is framed under.',
         },
       ],
     },
@@ -58,6 +84,7 @@ const schema: EngineSchema = {
           title: 'Petitioner details',
           itemLabel: 'Petitioner',
           minItems: 1,
+          description: 'Add one entry per petitioner, in the order they should appear in the cause title.',
           fields: [
             { type: 'text', name: 'name', title: 'Full name', isRequired: true },
             { type: 'text', name: 'parentage', title: "Son/daughter/wife of" },
@@ -77,6 +104,7 @@ const schema: EngineSchema = {
           title: 'Respondent details',
           itemLabel: 'Respondent',
           minItems: 1,
+          description: 'Add one entry per respondent, in the order they should appear in the cause title.',
           fields: [
             { type: 'text', name: 'name', title: 'Full name / designation', isRequired: true },
             { type: 'text', name: 'description', title: 'Description (e.g. "State, through its Secretary")' },
@@ -95,6 +123,7 @@ const schema: EngineSchema = {
           title: 'Counsel for the Petitioner',
           itemLabel: 'Advocate',
           minItems: 1,
+          description: 'Appears on the petition’s signature block.',
           fields: [
             { type: 'text', name: 'name', title: 'Full name', isRequired: true },
             { type: 'text', name: 'enrollmentNumber', title: 'Bar Council enrollment number', isRequired: true },
@@ -105,35 +134,79 @@ const schema: EngineSchema = {
     {
       name: 'jurisdiction',
       title: 'Jurisdiction',
-      fields: [{ type: 'textarea', name: 'territorialJurisdiction', title: 'Basis on which this Court has territorial jurisdiction', isRequired: true }],
+      fields: [
+        {
+          type: 'textarea',
+          name: 'territorialJurisdiction',
+          title: 'Basis on which this Court has territorial jurisdiction',
+          isRequired: true,
+          description: 'Explain why this specific High Court — not any other — has the power to hear this matter.',
+        },
+      ],
     },
     {
       name: 'causeOfAction',
       title: 'Cause of Action',
       fields: [
-        { type: 'text', name: 'causeOfActionDate', title: 'Date the cause of action arose' },
-        { type: 'textarea', name: 'causeOfActionDescription', title: 'Describe the cause of action', isRequired: true },
+        {
+          type: 'text',
+          name: 'causeOfActionDate',
+          title: 'Date the cause of action arose',
+          description: 'Anchors any limitation argument — the date the legal right to sue first arose.',
+        },
+        {
+          type: 'textarea',
+          name: 'causeOfActionDescription',
+          title: 'Describe the cause of action',
+          isRequired: true,
+          description: 'The specific event or decision that gives rise to this petition.',
+        },
       ],
     },
     {
       name: 'facts',
       title: 'Facts of the Case',
-      fields: [{ type: 'textarea', name: 'facts', title: 'State the facts giving rise to this petition', isRequired: true, rows: 6 }],
+      fields: [
+        {
+          type: 'textarea',
+          name: 'facts',
+          title: 'State the facts giving rise to this petition',
+          isRequired: true,
+          rows: 6,
+          description: 'Written in narrative form — this becomes the petition’s "Facts of the Case" section verbatim.',
+        },
+      ],
     },
     {
       name: 'grounds',
       title: 'Grounds',
-      fields: [{ type: 'textarea', name: 'grounds', title: 'Grounds on which relief is sought', isRequired: true, rows: 6 }],
+      fields: [
+        {
+          type: 'textarea',
+          name: 'grounds',
+          title: 'Grounds on which relief is sought',
+          isRequired: true,
+          rows: 6,
+          description: 'The legal grounds argued — becomes the petition’s "Grounds" section verbatim.',
+        },
+      ],
     },
     {
       name: 'interimRelief',
       title: 'Interim Relief',
       fields: [
-        { type: 'boolean', name: 'seekingInterimRelief', title: 'Are you seeking interim relief?', defaultValue: false },
+        {
+          type: 'boolean',
+          name: 'seekingInterimRelief',
+          title: 'Are you seeking interim relief?',
+          defaultValue: false,
+          description: 'Interim relief is temporary protection sought while the main petition is still pending.',
+        },
         {
           type: 'textarea',
           name: 'interimReliefDetails',
           title: 'Describe the interim relief sought',
+          description: 'Be precise — this is the exact interim order you are asking the Court to pass.',
           visibleIf: { field: 'seekingInterimRelief', equals: true },
           requiredIf: { field: 'seekingInterimRelief', equals: true },
         },
@@ -142,7 +215,16 @@ const schema: EngineSchema = {
     {
       name: 'finalRelief',
       title: 'Final Relief',
-      fields: [{ type: 'textarea', name: 'mainRelief', title: 'Relief(s) sought from this Hon’ble Court', isRequired: true, rows: 4 }],
+      fields: [
+        {
+          type: 'textarea',
+          name: 'mainRelief',
+          title: 'Relief(s) sought from this Hon’ble Court',
+          isRequired: true,
+          rows: 4,
+          description: 'The final relief prayed for — becomes the petition’s "Prayer" section verbatim.',
+        },
+      ],
     },
     {
       name: 'annexures',
@@ -154,6 +236,7 @@ const schema: EngineSchema = {
           title: 'Documents annexed to this petition',
           itemLabel: 'Annexure',
           minItems: 0,
+          description: 'Referenced by label in the petition’s "List of Annexures" section.',
           fields: [
             { type: 'text', name: 'label', title: 'Annexure label', placeholder: 'e.g. Annexure P-1' },
             { type: 'text', name: 'description', title: 'Description', isRequired: true },
@@ -165,9 +248,15 @@ const schema: EngineSchema = {
       name: 'verification',
       title: 'Verification',
       fields: [
-        { type: 'text', name: 'verificationPlace', title: 'Place', isRequired: true },
-        { type: 'text', name: 'verificationDate', title: 'Date', isRequired: true },
-        { type: 'text', name: 'deponentName', title: 'Deponent name', isRequired: true },
+        { type: 'text', name: 'verificationPlace', title: 'Place', isRequired: true, description: 'Where this petition is being verified/signed.' },
+        { type: 'text', name: 'verificationDate', title: 'Date', isRequired: true, description: 'The date of verification — not necessarily the filing date.' },
+        {
+          type: 'text',
+          name: 'deponentName',
+          title: 'Deponent name',
+          isRequired: true,
+          description: 'The person swearing that the petition’s contents are true — usually the first petitioner.',
+        },
       ],
     },
   ],

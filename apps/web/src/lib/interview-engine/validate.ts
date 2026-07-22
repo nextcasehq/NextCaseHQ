@@ -1,4 +1,4 @@
-import type { EngineAnswers, EngineErrors, EngineField, EnginePage } from './types';
+import type { EngineAnswers, EngineErrors, EngineField, EnginePage, EngineSchema } from './types';
 import { isFieldRequired, isFieldVisible } from './visibility';
 
 function isEmpty(value: unknown): boolean {
@@ -49,5 +49,24 @@ export function validatePage(page: EnginePage, answers: EngineAnswers): EngineEr
     }
   }
 
+  return errors;
+}
+
+/**
+ * The single source of truth for "is this interview actually complete."
+ * Every page's own errors, merged — the exact same `validatePage` that
+ * gates "Next" on a single page, just run once per page instead of once.
+ * Nothing about generation-readiness is computed any other way: whether a
+ * lawyer reached the review screen by clicking Next thirteen times or by
+ * jumping straight there via a progress chip, this is the one function
+ * that decides whether generation is allowed, and it can never disagree
+ * with what "Next" already enforced along the way, because it's the same
+ * per-page logic, not a second implementation of it.
+ */
+export function validateSchema(schema: EngineSchema, answers: EngineAnswers): EngineErrors {
+  const errors: EngineErrors = {};
+  for (const page of schema.pages) {
+    Object.assign(errors, validatePage(page, answers));
+  }
   return errors;
 }

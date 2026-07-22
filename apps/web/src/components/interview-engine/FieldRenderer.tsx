@@ -8,6 +8,7 @@ import { TextAreaFieldInput } from './fields/TextAreaFieldInput';
 import { DropdownFieldInput } from './fields/DropdownFieldInput';
 import { BooleanFieldInput } from './fields/BooleanFieldInput';
 import { RepeatableGroupInput } from './fields/RepeatableGroupInput';
+import { FadeTransition } from './Transition';
 
 interface Props {
   field: EngineField;
@@ -26,17 +27,22 @@ interface Props {
 export function FieldRenderer({ field, answers, errors, setFieldValue, addGroupItem, removeGroupItem, setGroupItemValue }: Props) {
   if (!isFieldVisible(field, answers)) return null;
 
+  let rendered: React.ReactNode;
   switch (field.type) {
     case 'text':
-      return <TextFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      rendered = <TextFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      break;
     case 'textarea':
-      return <TextAreaFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      rendered = <TextAreaFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      break;
     case 'dropdown':
-      return <DropdownFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      rendered = <DropdownFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      break;
     case 'boolean':
-      return <BooleanFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      rendered = <BooleanFieldInput field={field} value={answers[field.name]} error={errors[field.name]} onChange={(v) => setFieldValue(field.name, v)} />;
+      break;
     case 'group':
-      return (
+      rendered = (
         <RepeatableGroupInput
           field={field}
           items={(answers[field.name] as Record<string, unknown>[] | undefined) ?? []}
@@ -46,7 +52,10 @@ export function FieldRenderer({ field, answers, errors, setFieldValue, addGroupI
           onItemChange={(index, fieldName, value) => setGroupItemValue(field.name, index, fieldName, value)}
         />
       );
+      break;
     default:
       return null;
   }
+
+  return field.visibleIf ? <FadeTransition key={field.name}>{rendered}</FadeTransition> : rendered;
 }

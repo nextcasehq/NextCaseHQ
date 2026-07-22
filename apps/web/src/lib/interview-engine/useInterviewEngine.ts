@@ -1,6 +1,12 @@
 import React from 'react';
 import type { EngineAnswers, EngineErrors, EngineField, EngineMode, EngineSchema } from './types';
-import { validatePage } from './validate';
+import { validatePage, validateSchema } from './validate';
+
+export interface IncompletePage {
+  index: number;
+  title: string;
+  errorCount: number;
+}
 
 /** One fresh repeatable-group entry, seeded with its own fields' default
  *  values — matters because fill-template.ts reads e.g. `item.capacity`
@@ -34,11 +40,29 @@ function collectDefaults(fields: EngineField[]): EngineAnswers {
   return defaults;
 }
 
-function readPersisted(key: string | undefined): EngineAnswers | null {
+interface PersistedState {
+  answers: EngineAnswers;
+  currentPageIndex?: number;
+}
+
+/**
+ * A lawyer who accidentally taps the browser Back button, or whose tab
+ * gets reloaded, keeps every answer already typed (proven in Checkpoint 3)
+ * — but until now was always dropped back to page 1 regardless of how far
+ * they'd gotten, silently making them re-page through everything to find
+ * where they left off. Persisting `currentPageIndex` alongside `answers`
+ * fixes that. Reads the older answers-only blob shape gracefully (no
+ * migration needed — the whole value doubles as `answers` with an absent
+ * `currentPageIndex`, defaulting to page 1 exactly as before).
+ */
+function readPersisted(key: string | undefined): PersistedState | null {
   if (!key || typeof window === 'undefined') return null;
   try {
     const saved = window.localStorage.getItem(key);
-    return saved ? (JSON.parse(saved) as EngineAnswers) : null;
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (parsed && typeof parsed === 'object' && 'answers' in parsed) return parsed as PersistedState;
+    return { answers: parsed as EngineAnswers };
   } catch {
     // Corrupt or inaccessible storage — start fresh rather than failing to
     // open the interview at all.
@@ -53,6 +77,15 @@ export interface UseInterviewEngineResult {
   pageCount: number;
   mode: EngineMode;
   errors: EngineErrors;
+  /** Whether the ENTIRE interview — every page, not just the current one
+   *  — currently satisfies every validation rule. This is the one signal
+   *  that gates generation; nothing about it is computed from a separate
+   *  code path than what gates "Next" on an individual page. */
+  canGenerate: boolean;
+  /** Which pages (if any) still have unresolved errors, regardless of how
+   *  the lawyer navigated here — used by the review/confidence screen to
+   *  say exactly what's incomplete and let them jump straight to it. */
+  incompletePages: IncompletePage[];
   setFieldValue: (name: string, value: unknown) => void;
   addGroupItem: (groupName: string, groupFields: EngineField[]) => void;
   removeGroupItem: (groupName: string, index: number) => void;
@@ -80,23 +113,48 @@ export function useInterviewEngine(schema: EngineSchema, persistenceKey?: string
   const [answers, setAnswers] = React.useState<EngineAnswers>(() => {
     const defaults = schema.pages.flatMap((p) => Object.entries(collectDefaults(p.fields)));
     const persisted = readPersisted(persistenceKey);
-    return { ...Object.fromEntries(defaults), ...(persisted ?? {}) };
+    return { ...Object.fromEntries(defaults), ...(persisted?.answers ?? {}) };
   });
-  const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
+  const [currentPageIndex, setCurrentPageIndex] = React.useState(() => readPersisted(persistenceKey)?.currentPageIndex ?? 0);
   const [mode, setMode] = React.useState<EngineMode>('filling');
-  const [errors, setErrors] = React.useState<EngineErrors>({});
+  // Errors are never shown until the lawyer has tried to advance at least
+  // once on the current page (no red borders on a page they haven't
+  // touched yet) — but once shown, they must recompute live on every
+  // keystroke, not only on the next Next/Review click. Getting this wrong
+  // either nags before any mistake was made, or leaves a fixed error lit
+  // after the lawyer has already corrected it — both are real interaction-
+  // quality defects, not cosmetic ones.
+  const [hasAttempted, setHasAttempted] = React.useState(false);
 
   React.useEffect(() => {
     if (!persistenceKey || typeof window === 'undefined') return;
     try {
-      window.localStorage.setItem(persistenceKey, JSON.stringify(answers));
+      window.localStorage.setItem(persistenceKey, JSON.stringify({ answers, currentPageIndex }));
     } catch {
       // Best-effort save/resume only — never blocks the interview itself.
     }
-  }, [answers, persistenceKey]);
+  }, [answers, currentPageIndex, persistenceKey]);
 
   const safePageIndex = Math.min(currentPageIndex, Math.max(schema.pages.length - 1, 0));
   const currentPage = schema.pages[safePageIndex];
+
+  const errors = React.useMemo(() => (hasAttempted ? validatePage(currentPage, answers) : {}), [hasAttempted, currentPage, answers]);
+
+  // Always live, never gated behind `hasAttempted` — this isn't about
+  // nagging the lawyer on a page they haven't tried to leave yet, it's a
+  // background "is this actually done" signal the confidence screen and
+  // the generate button both read directly, recomputed via the exact
+  // same validatePage the per-page gating above uses, once per page.
+  const incompletePages = React.useMemo<IncompletePage[]>(() => {
+    return schema.pages
+      .map((p, index) => ({ index, title: p.title, errorCount: Object.keys(validatePage(p, answers)).length }))
+      .filter((p) => p.errorCount > 0);
+  }, [schema, answers]);
+
+  // The literal single source of truth for "can this be generated" —
+  // validateSchema, not a locally re-derived boolean, so this can never
+  // quietly drift from what the per-page Next-button gating enforces.
+  const canGenerate = React.useMemo(() => Object.keys(validateSchema(schema, answers)).length === 0, [schema, answers]);
 
   const setFieldValue = React.useCallback((name: string, value: unknown) => {
     setAnswers((prev) => ({ ...prev, [name]: value }));
@@ -125,18 +183,19 @@ export function useInterviewEngine(schema: EngineSchema, persistenceKey?: string
   }, []);
 
   const goNext = React.useCallback(() => {
+    setHasAttempted(true);
     const pageErrors = validatePage(currentPage, answers);
-    setErrors(pageErrors);
     if (Object.keys(pageErrors).length > 0) return;
     if (safePageIndex >= schema.pages.length - 1) {
       setMode('review');
       return;
     }
+    setHasAttempted(false);
     setCurrentPageIndex(safePageIndex + 1);
   }, [currentPage, answers, safePageIndex, schema.pages.length]);
 
   const goPrevious = React.useCallback(() => {
-    setErrors({});
+    setHasAttempted(false);
     if (mode === 'review') {
       setMode('filling');
       return;
@@ -145,14 +204,14 @@ export function useInterviewEngine(schema: EngineSchema, persistenceKey?: string
   }, [mode]);
 
   const goToPage = React.useCallback((index: number) => {
-    setErrors({});
+    setHasAttempted(false);
     setMode('filling');
     setCurrentPageIndex(Math.min(Math.max(index, 0), schema.pages.length - 1));
   }, [schema.pages.length]);
 
   const goToReview = React.useCallback(() => {
+    setHasAttempted(true);
     const pageErrors = validatePage(currentPage, answers);
-    setErrors(pageErrors);
     if (Object.keys(pageErrors).length > 0) return;
     setMode('review');
   }, [currentPage, answers]);
@@ -164,6 +223,8 @@ export function useInterviewEngine(schema: EngineSchema, persistenceKey?: string
     pageCount: schema.pages.length,
     mode,
     errors,
+    canGenerate,
+    incompletePages,
     setFieldValue,
     addGroupItem,
     removeGroupItem,

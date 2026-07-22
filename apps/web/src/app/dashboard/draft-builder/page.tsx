@@ -5,8 +5,8 @@ import { useDurableAutosave, pointerKey, type AutosaveStatus } from '@/lib/docum
 import { serializeDraftPayload, parseDraftPayload } from '@/lib/documents/editor/draft-payload';
 import { DEFAULT_PAGE_SETUP, clampZoom, pageDimensionsMm, type PageSetup } from '@/lib/documents/editor/page-setup';
 import { LEGAL_TEMPLATES, BLANK_DRAFT_TITLE, type LegalTemplate } from '@/lib/documents/editor/templates';
-import { getInterviewConfigForTemplate } from '@/lib/documents/survey/registry';
-import type { InterviewConfig } from '@/lib/documents/survey/types';
+import { getInterviewConfigForTemplate } from '@/lib/documents/interview/registry';
+import type { InterviewConfig } from '@/lib/documents/interview/types';
 import { useDocumentEditor } from '@/components/document-editor/useDocumentEditor';
 import { Ribbon } from '@/components/document-editor/Ribbon';
 import { MobileToolbar } from '@/components/document-editor/MobileToolbar';
@@ -19,7 +19,7 @@ import { StatusBar } from '@/components/document-editor/StatusBar';
 import { PageThumbnails } from '@/components/document-editor/PageThumbnails';
 import { FormattingBubble } from '@/components/document-editor/FormattingBubble';
 import { EditorContextMenu } from '@/components/document-editor/EditorContextMenu';
-import { SurveyWizard } from '@/components/document-editor/SurveyWizard';
+import { GuidedInterview } from '@/components/document-editor/GuidedInterview';
 
 const AUTOSAVE_STATUS_LABEL: Record<AutosaveStatus, string> = {
   saving: 'Saving',
@@ -505,7 +505,7 @@ export default function DraftBuilderPage() {
           the first card, same weight as every template, the way Google
           Docs' and Word's own "new document" picker work. Templates
           tagged "Guided Interview" open a step-based questionnaire (see
-          SurveyWizard) whose answers generate the draft; all other
+          GuidedInterview) whose answers generate the draft; all other
           templates load their static content directly into the manual
           editor — see the badge on each card. */}
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
@@ -800,7 +800,7 @@ export default function DraftBuilderPage() {
 
         <main ref={canvasScrollRef} onContextMenu={activeInterview ? undefined : handleContextMenu} className={`relative flex-1 overflow-auto ${canvasPaneBg}`}>
           {activeInterview ? (
-            <SurveyWizard
+            <GuidedInterview
               config={activeInterview.config}
               templateHtml={activeInterview.template.html}
               onCancel={() => setActiveInterview(null)}
