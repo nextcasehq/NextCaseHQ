@@ -65,9 +65,15 @@ describe('Document Creator rebuild — page composition', () => {
     expect(page).toMatch(/md:flex|md:block/);
   });
 
-  test('sidebars are independently collapsible, not an all-or-nothing panel', () => {
+  test('the left sidebar collapses independently, and Page Setup opens as its own slide-over drawer', () => {
+    // Page Setup & Properties stopped being a persistent, collapsible
+    // sidebar (rightOpen) in a later screen-real-estate pass — it's
+    // touched at most a few times per document (paper size, margins, and
+    // read-only Document Properties nobody edits), so it's a slide-over
+    // drawer at every breakpoint instead, tracked by pageSetupOpen.
     expect(page).toContain('leftOpen');
-    expect(page).toContain('rightOpen');
+    expect(page).toContain('pageSetupOpen');
+    expect(page).not.toContain('rightOpen');
   });
 
   test('a full-screen focus mode and a dark workspace toggle are wired to real state, not decorative buttons', () => {
@@ -98,7 +104,11 @@ describe('Document Creator rebuild — page composition', () => {
   });
 
   test('Matter linkage is presented honestly — no fabricated Matter Register connection', () => {
-    expect(page).toContain('Unlinked Draft');
+    // The sidebar's "Matter: Unlinked Draft" row was removed in a later
+    // screen-real-estate pass — it never varied (there was no Matter
+    // Register link to show either way), so it was static clutter, not
+    // useful metadata. Honesty here now just means the page still never
+    // fetches or implies a Matter Register connection that doesn't exist.
     expect(page).not.toMatch(/fetch\(.*\/api\/matters/);
   });
 });
@@ -195,8 +205,21 @@ describe('Document Creator rebuild — ribbon exposes every required control', (
     expect(combined).toContain(command);
   });
 
-  test.each(['Home', 'Insert', 'Layout', 'Export'])('the ribbon defines a %s tab', (tab) => {
-    expect(ribbon).toMatch(new RegExp(`label:\\s*'${tab}'`));
+  test.each(['Insert', 'Layout', 'Export'])('the ribbon defines an %s dropdown menu', (menu) => {
+    expect(ribbon).toMatch(new RegExp(`label="${menu}"`));
+  });
+
+  test('Home formatting controls are always visible — no tab hides them behind a click', () => {
+    // Regression: Insert/Layout/Export used to be ribbon TABS (with an
+    // implicit "Home" tab too) — clicking into one hid Bold/Italic/lists/
+    // alignment entirely until you clicked back, real friction for
+    // someone typing continuously. They're dropdown menus now, appended
+    // after the formatting controls rather than replacing them, so Home
+    // never needs to be "switched back to."
+    expect(ribbon).not.toContain('RIBBON_TABS');
+    expect(ribbon).not.toContain('activeTab');
+    expect(ribbon).toContain('label="Bold"');
+    expect(ribbon).toContain('label="Bullet list"');
   });
 
   test('clipboard actions use the real browser Clipboard API, not document.execCommand', () => {

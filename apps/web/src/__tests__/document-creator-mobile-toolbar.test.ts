@@ -95,25 +95,42 @@ describe('Document Creator — dedicated mobile editing experience', () => {
     // (zoom: 100), silently undoing Fit Width. Depending only on
     // paperSize/orientation misses same-size templates (e.g. two A4
     // portrait templates) — selectedTemplateId must be in the dependency
-    // list too.
+    // list too. rightOpen was dropped from this list when Page Setup &
+    // Properties became a slide-over drawer: a drawer overlays the
+    // canvas rather than resizing it, so opening/closing it never
+    // changes the available width the way toggling leftOpen still does.
     expect(page).toMatch(
-      /if \(zoomMode === 'fit-width'\) computeFitWidthZoom\(\);[\s\S]{0,200}\[pageSetup\.paperSize, pageSetup\.orientation, selectedTemplateId, leftOpen, rightOpen\]/
+      /if \(zoomMode === 'fit-width'\) computeFitWidthZoom\(\);[\s\S]{0,200}\[pageSetup\.paperSize, pageSetup\.orientation, selectedTemplateId, leftOpen\]/
     );
   });
 
-  test('both sidebars default to collapsed below desktop (lg), reusing the existing expand/collapse toggle', () => {
-    // Regression: on tablet, both sidebars stayed permanently open (only
-    // mobile got drawers), squeezing the canvas down to ~130px wide —
-    // even the 50% zoom floor didn't fit, so the page silently overflowed
-    // behind the left sidebar and clicks meant for the editor landed on
-    // sidebar content instead. Defaulting collapsed below lg reuses the
-    // desktop-only "reclaim canvas space" toggle that already existed.
+  test('the left sidebar defaults to collapsed below desktop (lg), reusing the existing expand/collapse toggle', () => {
+    // Regression: on tablet, both sidebars used to stay permanently open
+    // (only mobile got drawers), squeezing the canvas down to ~130px wide
+    // — even the 50% zoom floor didn't fit, so the page silently
+    // overflowed behind the left sidebar and clicks meant for the editor
+    // landed on sidebar content instead. Defaulting collapsed below lg
+    // reuses the desktop-only "reclaim canvas space" toggle that already
+    // existed. Page Setup & Properties needs no equivalent anymore — it's
+    // a slide-over drawer everywhere now, never a persistent sidebar to
+    // collapse in the first place.
     const collapseEffectStart = page.indexOf("if (window.matchMedia('(max-width: 1023px)').matches) {\n      setLeftOpen(false);");
     expect(collapseEffectStart).toBeGreaterThan(-1);
   });
 
-  test('the sidebar auto-collapse defaults leftOpen/rightOpen to true first (matching the server-rendered default) to avoid a hydration mismatch', () => {
+  test('the sidebar auto-collapse defaults leftOpen to true first (matching the server-rendered default) to avoid a hydration mismatch', () => {
     expect(page).toContain('const [leftOpen, setLeftOpen] = React.useState(true)');
-    expect(page).toContain('const [rightOpen, setRightOpen] = React.useState(true)');
+  });
+
+  test('Page Setup & Properties is a slide-over drawer at every breakpoint, not a persistent sidebar', () => {
+    // Paper size/orientation/margins are already one click away via the
+    // ribbon's Layout menu, and Document Properties is read-only,
+    // derived metadata nobody edits — neither earned 240px of permanent
+    // width. pageSetupOpen defaults to false (unlike leftOpen, there's no
+    // hydration-mismatch concern to reconcile: it never renders anything
+    // server-side either way).
+    expect(page).toContain('const [pageSetupOpen, setPageSetupOpen] = React.useState(false)');
+    expect(page).toContain('setPageSetupOpen(true)');
+    expect(page).not.toContain('const [rightOpen, setRightOpen]');
   });
 });

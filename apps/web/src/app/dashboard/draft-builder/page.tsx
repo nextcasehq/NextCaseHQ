@@ -42,7 +42,11 @@ const AUTOSAVE_STATUS_DOT: Record<AutosaveStatus, string> = {
 
 const UNAUTHENTICATED_MESSAGE = 'Local draft — phone verification required for permanent saving.';
 
-type MobileDrawer = 'none' | 'left' | 'right';
+// 'left' (Templates & Attachments) is the only sidebar with this
+// mobile-only overlay-drawer behavior now — Page Setup & Properties is a
+// slide-over drawer at every breakpoint, tracked separately by
+// `pageSetupOpen` below, since it's never a persistent sidebar anymore.
+type MobileDrawer = 'none' | 'left';
 
 /**
  * Document Creator — a Microsoft Word–style legal drafting workspace,
@@ -103,22 +107,27 @@ export default function DraftBuilderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [leftOpen, setLeftOpen] = React.useState(true);
-  const [rightOpen, setRightOpen] = React.useState(true);
-  // Below desktop (lg), both sidebars persistently open (unlike mobile,
-  // they don't collapse into drawers here — see the aside elements' own
-  // `hidden md:flex`) leave the canvas so narrow that even the 50% zoom
-  // floor doesn't fit, so the page silently overflows behind the sidebar
-  // and becomes unclickable there. Defaulting to collapsed reuses the
-  // existing expand/collapse toggle already built for reclaiming canvas
-  // space — the advocate can still reopen either panel with one tap.
-  // Starts true/true to match the server-rendered default (avoiding a
+  // Page Setup & Properties is a slide-over drawer at every breakpoint —
+  // never a persistent sidebar the way it used to be. It's touched once
+  // per document at most (paper size, margins, the read-only Document
+  // Properties block); no benchmark editor (Docs, Word, Pages) keeps page
+  // setup as permanent chrome, so there is no default-open state to
+  // reconcile with the server render the way leftOpen has to below.
+  const [pageSetupOpen, setPageSetupOpen] = React.useState(false);
+  // Below desktop (lg), the left sidebar persistently open (unlike
+  // mobile, it doesn't collapse into a drawer here — see the aside
+  // element's own `hidden md:flex`) leaves the canvas so narrow that even
+  // the 50% zoom floor doesn't fit, so the page silently overflows behind
+  // the sidebar and becomes unclickable there. Defaulting to collapsed
+  // reuses the existing expand/collapse toggle already built for
+  // reclaiming canvas space — the advocate can still reopen it with one
+  // tap. Starts true to match the server-rendered default (avoiding a
   // hydration mismatch) and flips after mount, same pattern as
   // sessionStartedAt above.
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     if (window.matchMedia('(max-width: 1023px)').matches) {
       setLeftOpen(false);
-      setRightOpen(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -127,6 +136,20 @@ export default function DraftBuilderPage() {
   const [darkWorkspace, setDarkWorkspace] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [contextMenuPos, setContextMenuPos] = React.useState<{ x: number; y: number } | null>(null);
+  // Dark workspace is a set-once-per-session preference, not something
+  // reached for continuously the way Focus Mode is — no benchmark editor
+  // (Docs, Word, Notion) gives it the same permanent top-bar weight as the
+  // document title, so it lives behind a small overflow menu instead.
+  const [headerMenuOpen, setHeaderMenuOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (!headerMenuOpen) return;
+    const close = () => setHeaderMenuOpen(false);
+    const id = window.setTimeout(() => window.addEventListener('click', close), 0);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('click', close);
+    };
+  }, [headerMenuOpen]);
 
   const canvasScrollRef = React.useRef<HTMLDivElement>(null);
 
@@ -321,15 +344,17 @@ export default function DraftBuilderPage() {
   // selectedTemplateId changes (not just paperSize/orientation) catches
   // the common case of two templates sharing the same A4/portrait
   // dimensions, where paperSize/orientation alone wouldn't change.
-  // leftOpen/rightOpen are included too: toggling a sidebar changes the
-  // canvas's available width just as much as a resize does, but doesn't
-  // fire a window 'resize' event — without this, the auto-collapse above
-  // would leave zoom computed against the still-narrow pre-collapse
-  // width from the very first render.
+  // leftOpen is included too: toggling that sidebar changes the canvas's
+  // available width just as much as a resize does, but doesn't fire a
+  // window 'resize' event — without this, the auto-collapse above would
+  // leave zoom computed against the still-narrow pre-collapse width from
+  // the very first render. Page Setup & Properties needs no equivalent
+  // entry: it's a slide-over drawer that overlays the canvas rather than
+  // resizing it, so opening/closing it never changes the available width.
   React.useEffect(() => {
     if (zoomMode === 'fit-width') computeFitWidthZoom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSetup.paperSize, pageSetup.orientation, selectedTemplateId, leftOpen, rightOpen]);
+  }, [pageSetup.paperSize, pageSetup.orientation, selectedTemplateId, leftOpen]);
 
   const handlePageSetupChange = (next: PageSetup) => {
     setZoomMode('fixed');
@@ -421,36 +446,18 @@ export default function DraftBuilderPage() {
           hideBlankAction
         />
       </div>
+      {/* Trimmed from a 9-row block (Status, Matter, Template, Pages,
+          Words, Characters, Created, Last Saved, Autosave Status) down to
+          the two rows that were genuinely unique here. Status and
+          Autosave Status showed the identical value twice in this same
+          panel, Pages/Words/Characters duplicate the status bar exactly,
+          Matter never varies (always "Unlinked Draft" — no Matter Register
+          link exists yet), and Template repeats what's already visible via
+          the highlighted card in Create Using Template above. Created and
+          Last Saved are the only facts not shown anywhere else on screen. */}
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0 space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Current Draft</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Draft Info</h3>
         <dl className="space-y-1.5 text-xs">
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Status</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{AUTOSAVE_STATUS_LABEL[autosave.status]}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Matter</dt>
-            {/* Honest by construction: this page never fetches or links a
-                Matter Register record — claiming a real link here would be
-                a fabricated connection. */}
-            <dd className="text-[#3A3222] font-bold text-right">Unlinked Draft</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Template</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.name ?? 'Blank Draft'}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Pages</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{pageCount}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Words</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{wordCount}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Characters</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{characterCount}</dd>
-          </div>
           <div className="flex justify-between gap-2">
             <dt className="text-[#8A7A56] font-semibold">Created</dt>
             {/* No server-side created_at is exposed by the autosave API
@@ -466,21 +473,10 @@ export default function DraftBuilderPage() {
             <dt className="text-[#8A7A56] font-semibold">Last Saved</dt>
             <dd className="text-[#3A3222] font-bold text-right">{lastSavedAt ? lastSavedAt.toLocaleTimeString() : '—'}</dd>
           </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Autosave Status</dt>
-            <dd className="text-[#3A3222] font-bold text-right flex items-center gap-1.5 justify-end">
-              <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`} />
-              {AUTOSAVE_STATUS_LABEL[autosave.status]}
-            </dd>
-          </div>
         </dl>
       </div>
-      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
+      <div className="pb-4 last:border-b-0 last:pb-0">
         <AttachmentsPanel />
-      </div>
-      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0 opacity-60">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">AI Panel</h3>
-        <p className="text-[10px] text-[#B0A588] italic">Reserved for a future milestone.</p>
       </div>
     </>
   );
@@ -491,11 +487,11 @@ export default function DraftBuilderPage() {
         <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Page Setup &amp; Properties</h2>
         <button
           type="button"
-          onClick={() => setRightOpen(false)}
-          aria-label="Collapse right panel"
-          className="hidden md:block text-[#B0A588] hover:text-[#8A6D2F] text-xs font-bold"
+          onClick={() => setPageSetupOpen(false)}
+          aria-label="Close panel"
+          className="text-[#B0A588] hover:text-[#8A6D2F] text-xs font-bold uppercase tracking-widest"
         >
-          ›
+          ✕ Close
         </button>
       </div>
       <PageSetupPanel
@@ -549,9 +545,10 @@ export default function DraftBuilderPage() {
                 <span aria-hidden="true">☰</span>
                 <span>Templates</span>
               </button>
-              <span className={`hidden sm:inline shrink-0 text-[9px] font-bold uppercase tracking-widest ${chromeText} opacity-50`}>
-                Document
-              </span>
+              {/* No "Document" label here — it was purely decorative (no
+                  function, nothing it clarified that the title input
+                  itself doesn't already), and the shared dashboard header
+                  above already establishes app context. */}
               <input
                 aria-label="Document title"
                 value={draftTitle}
@@ -561,18 +558,9 @@ export default function DraftBuilderPage() {
               />
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`hidden sm:flex items-center gap-1.5 text-[9px] font-mono uppercase font-bold tracking-widest ${chromeText} opacity-70`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`}></span>
-                {AUTOSAVE_STATUS_LABEL[autosave.status]}
-              </span>
-              <button
-                type="button"
-                onClick={() => setDarkWorkspace((v) => !v)}
-                aria-label="Toggle dark workspace"
-                className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
-              >
-                {darkWorkspace ? '☀' : '●'}
-              </button>
+              {/* Autosave status used to also appear here, duplicating the
+                  status bar (and, in the sidebar, itself) — removed in
+                  favor of the status bar as the one place it's shown. */}
               <button
                 type="button"
                 onClick={() => setFocusMode(true)}
@@ -582,12 +570,43 @@ export default function DraftBuilderPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setMobileDrawer(mobileDrawer === 'right' ? 'none' : 'right')}
-                aria-label="Toggle page setup and properties"
-                className={`md:hidden px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                onClick={() => setPageSetupOpen(true)}
+                aria-label="Open page setup and properties"
+                className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                ⚙
+                ⚙<span className="hidden sm:inline"> Page Setup</span>
               </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHeaderMenuOpen((v) => !v);
+                  }}
+                  aria-label="More workspace options"
+                  aria-expanded={headerMenuOpen}
+                  className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                >
+                  ⋯
+                </button>
+                {headerMenuOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute right-0 top-full mt-1 z-30 w-40 rounded-lg border shadow-lg p-1 ${chromeBg}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDarkWorkspace((v) => !v);
+                        setHeaderMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-2 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-[#FBF8F1] ${chromeText}`}
+                    >
+                      {darkWorkspace ? '☀ Light workspace' : '● Dark workspace'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -705,30 +724,13 @@ export default function DraftBuilderPage() {
           )}
         </main>
 
-        {!focusMode && !activeInterview && (
+        {/* Only shown for genuinely multi-page documents — a single
+            thumbnail has no navigational value and, before this, took up
+            60px of permanent width on every fresh (one-page) draft. */}
+        {!focusMode && !activeInterview && pageCount > 1 && (
           <div className={`no-print hidden md:block w-[60px] shrink-0 overflow-y-auto border-l ${chromeBg}`}>
             <PageThumbnails pageCount={pageCount} currentPage={currentPage} onNavigate={handleNavigateToPage} orientation={pageSetup.orientation} />
           </div>
-        )}
-
-        {!focusMode && !rightOpen && (
-          <button
-            type="button"
-            onClick={() => setRightOpen(true)}
-            aria-label="Expand right panel"
-            className={`no-print hidden md:flex items-center justify-center w-4 shrink-0 border-l ${chromeBg} ${chromeText} hover:bg-[#FBF8F1]`}
-          >
-            ‹
-          </button>
-        )}
-
-        {!focusMode && (
-          <aside
-            style={{ width: rightOpen ? '240px' : '0px' }}
-            className={`no-print hidden md:flex flex-col overflow-hidden ${rightOpen ? 'border-l' : 'border-l-0'} ${chromeBg}`}
-          >
-            <div className="w-[240px] shrink-0 overflow-y-auto p-[12px] space-y-3">{rightSidebarContent}</div>
-          </aside>
         )}
 
         {mobileDrawer !== 'none' && (
@@ -745,11 +747,7 @@ export default function DraftBuilderPage() {
               className="no-print fixed top-16 inset-x-0 bottom-0 bg-black/40 z-40 md:hidden"
               onClick={() => setMobileDrawer('none')}
             />
-            <div
-              className={`no-print fixed top-16 bottom-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4 ${
-                mobileDrawer === 'left' ? 'left-0' : 'right-0'
-              }`}
-            >
+            <div className="no-print fixed top-16 bottom-0 left-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4">
               <button
                 type="button"
                 onClick={() => setMobileDrawer('none')}
@@ -758,7 +756,24 @@ export default function DraftBuilderPage() {
               >
                 ✕ Close
               </button>
-              {mobileDrawer === 'left' ? leftSidebarContent : rightSidebarContent}
+              {leftSidebarContent}
+            </div>
+          </>
+        )}
+
+        {/* Page Setup & Properties: a slide-over drawer at every
+            breakpoint, not a persistent sidebar — paper size/orientation/
+            margins are already one click away via the ribbon's Layout
+            menu, and Document Properties is read-only, derived metadata
+            nobody edits. Neither earns 240px of permanent width. Same
+            top-16 reasoning as the left drawer above, but not md:hidden:
+            this one replaces what used to be a desktop-only aside, so it
+            has to work at every width, not just mobile. */}
+        {pageSetupOpen && (
+          <>
+            <div className="no-print fixed top-16 inset-x-0 bottom-0 bg-black/40 z-40" onClick={() => setPageSetupOpen(false)} />
+            <div className={`no-print fixed top-16 bottom-0 right-0 z-50 w-72 sm:w-80 shadow-2xl overflow-y-auto p-4 space-y-4 ${chromeBg}`}>
+              {rightSidebarContent}
             </div>
           </>
         )}
