@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { AiCreditsTopBarControl } from '@/components/ai-credits/credits-popover';
 
@@ -48,6 +48,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // The Document Creator is a drafting workspace, not a document library —
+  // searching for another document mid-draft isn't part of that workflow,
+  // so the top bar's search (a matter/document lookup that navigates away
+  // to /search) doesn't belong here. Search still stays exactly as-is on
+  // every other page this shared layout serves.
+  const hideSearch = (pathname ?? '').startsWith('/dashboard/draft-builder');
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
@@ -55,6 +62,14 @@ export default function DashboardLayout({
   const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const profileRef = React.useRef<HTMLDivElement>(null);
+
+  // Closes any mobile search overlay left open from a prior page — this
+  // layout persists across client-side navigation within /dashboard/*, so
+  // isMobileSearchOpen can otherwise still be true from before the advocate
+  // navigated into the Document Creator.
+  React.useEffect(() => {
+    if (hideSearch) setIsMobileSearchOpen(false);
+  }, [hideSearch]);
 
   React.useEffect(() => {
     if (!isProfileOpen) return;
@@ -132,33 +147,38 @@ export default function DashboardLayout({
           </Link>
 
           {/* Search — the one dashboard search experience; the main
-              content area does not duplicate this. */}
-          <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center flex-1 max-w-sm bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg px-3 py-1.5 focus-within:border-[#8A6D2F] transition-colors">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#B0A588] flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search matters, case numbers, parties, courts, documents..."
-              aria-label="Search"
-              className="w-full bg-transparent border-none outline-none text-xs font-medium text-[#241E17] placeholder-[#B0A588] px-2 py-0.5"
-            />
-          </form>
-          <button
-            type="button"
-            onClick={() => setIsMobileSearchOpen((v) => !v)}
-            aria-label="Search"
-            aria-expanded={isMobileSearchOpen}
-            className="sm:hidden flex-none p-2 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
-            </svg>
-          </button>
+              content area does not duplicate this. Not rendered on the
+              Document Creator (see hideSearch above). */}
+          {!hideSearch && (
+            <>
+              <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center flex-1 max-w-sm bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg px-3 py-1.5 focus-within:border-[#8A6D2F] transition-colors">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#B0A588] flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search matters, case numbers, parties, courts, documents..."
+                  aria-label="Search"
+                  className="w-full bg-transparent border-none outline-none text-xs font-medium text-[#241E17] placeholder-[#B0A588] px-2 py-0.5"
+                />
+              </form>
+              <button
+                type="button"
+                onClick={() => setIsMobileSearchOpen((v) => !v)}
+                aria-label="Search"
+                aria-expanded={isMobileSearchOpen}
+                className="sm:hidden flex-none p-2 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 md:gap-4 flex-none">
@@ -217,7 +237,7 @@ export default function DashboardLayout({
 
         {/* Mobile search overlay — keeps the header itself uncluttered
             below sm, per "no horizontal overflow" / "no crowding". */}
-        {isMobileSearchOpen && (
+        {!hideSearch && isMobileSearchOpen && (
           <form
             onSubmit={handleSearchSubmit}
             className="sm:hidden absolute top-full left-0 right-0 bg-white border-b border-[#E7DFC9] shadow-md p-3 flex items-center gap-2 z-40"
