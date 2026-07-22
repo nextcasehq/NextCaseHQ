@@ -53,14 +53,13 @@ describe('Landing page — eCourts Connection panel', () => {
     expect(panel).toContain('Manual verification');
   });
 
-  test('the call-to-action launches the existing verification workflow, not a fabricated one', () => {
-    // /dashboard/matters is where ECourtsCompactStrip / CheckECourtsCaseUpdateModal
-    // (app/dashboard/matters/ecourts.tsx) actually live — the real, already-shipped
-    // "Check eCourts Case Update" flow, not a new landing-page mechanism.
-    expect(panel).toMatch(/href="\/dashboard\/matters"/);
+  test('the call-to-action launches the dedicated explainer page, not the dashboard directly', () => {
+    // A direct drop into /dashboard/matters skipped explaining the workflow
+    // first. /ecourts-verification (app/ecourts-verification/page.tsx) gives
+    // context, then hands off to the same real, already-shipped
+    // "Check eCourts Case Update" flow.
+    expect(panel).toMatch(/href="\/ecourts-verification"/);
     expect(panel).toContain('Start eCourts Verification');
-    const dashboardMattersUsesECourtsFlow = readSource('app/dashboard/matters/page.tsx');
-    expect(dashboardMattersUsesECourtsFlow).toContain('CheckECourtsCaseUpdateModal');
   });
 
   test('never implies the user is logging into eCourts itself', () => {

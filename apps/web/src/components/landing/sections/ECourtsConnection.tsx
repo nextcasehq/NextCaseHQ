@@ -35,7 +35,7 @@ const STATUS_ROWS = [
 
 export default function ECourtsConnection() {
   return (
-    <section id="ecourts-connection" className="bg-white">
+    <section id="ecourts-connection" className="bg-[#FBF8F1]">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-6 py-16 md:px-12 lg:grid-cols-2 lg:py-24">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A6D2F]">
@@ -71,14 +71,15 @@ export default function ECourtsConnection() {
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Link
-              href="/dashboard/matters"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#8A6D2F] px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-[#6F5624] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2"
+              href="/ecourts-verification"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#8A6D2F]/50 bg-white px-6 py-3 text-sm font-bold text-[#6F5624] transition-all duration-200 hover:bg-[#8A6D2F]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2"
             >
               Start eCourts Verification
             </Link>
             <p className="max-w-[16rem] text-xs leading-relaxed text-[#8A7A56]">
-              Opens your Matter Register — verification itself always happens
-              on the official eCourts portal.
+              Explains what&rsquo;s needed, then opens your Matter Register —
+              verification itself always happens on the official eCourts
+              portal.
             </p>
           </div>
         </div>
@@ -86,7 +87,7 @@ export default function ECourtsConnection() {
         {/* Visual: connection status panel, mirroring the Security section's
             envelope-status card so the two trust panels read as one family. */}
         <div className="relative">
-          <div className="rounded-2xl border border-[#D9CDB2] bg-[#FBF8F1] p-8">
+          <div className="rounded-2xl border border-[#D9CDB2] bg-white p-8">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-widest text-[#8A7A56]">
                 Connection status
@@ -100,7 +101,7 @@ export default function ECourtsConnection() {
               {STATUS_ROWS.map((row) => (
                 <div
                   key={row.label}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-[#D9CDB2] bg-white px-4 py-3"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-[#D9CDB2] bg-[#FBF8F1] px-4 py-3"
                 >
                   <span className="text-[#8A7A56]">{row.label}</span>
                   <span className="text-right text-[#3A3222]">{row.value}</span>
