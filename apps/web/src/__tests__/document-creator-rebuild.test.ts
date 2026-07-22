@@ -92,9 +92,17 @@ describe('Document Creator rebuild — page composition', () => {
     expect(page).not.toContain('ConfirmChargeModal');
   });
 
-  test('the two locked creation modes are both present and clearly labelled', () => {
-    expect(page).toContain('Create Manually');
-    expect(page).toContain('Create Using Template');
+  test('document creation is a single, intent-first gallery — not split into a separate blank-vs-template mode choice', () => {
+    // A UX pass merged the earlier two-section split ("Create Manually"
+    // above a separately-labelled "Create Using Template" accordion,
+    // itself grouped into five Court Verticals where three groups showed
+    // only "No starter templates yet for this court") into one flat
+    // gallery: Blank Document plus every starter template as equal-weight
+    // cards in the same list, the way Google Docs'/Word's own "new
+    // document" picker present the choice.
+    expect(page).toContain('Create a Document');
+    expect(page).not.toContain('Create Manually');
+    expect(page).not.toContain('Create Using Template');
   });
 
   test('the guided SurveyJS questionnaire workflow is genuinely wired in, not a static placeholder', () => {

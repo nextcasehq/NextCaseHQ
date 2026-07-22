@@ -1,19 +1,29 @@
 'use client';
 
 import React from 'react';
-import { LEGAL_TEMPLATES, COURT_VERTICALS, type LegalTemplate, type CourtVertical } from '@/lib/documents/editor/templates';
+import { LEGAL_TEMPLATES, type LegalTemplate } from '@/lib/documents/editor/templates';
 import { getInterviewConfigForTemplate } from '@/lib/documents/survey/registry';
 
 interface TemplateLibraryProps {
   selectedTemplateId: string | null;
   onSelectTemplate: (template: LegalTemplate) => void;
   onStartBlank: () => void;
-  /** The caller already renders its own "Create Manually" action. */
-  hideBlankAction?: boolean;
+  isBlankSelected: boolean;
 }
 
-function TemplateCard({ template, selected, onSelect }: { template: LegalTemplate; selected: boolean; onSelect: () => void }) {
-  const hasInterview = !!getInterviewConfigForTemplate(template.id);
+function DocumentCard({
+  selected,
+  onSelect,
+  title,
+  subtitle,
+  badges,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  subtitle: string;
+  badges?: React.ReactNode;
+}) {
   return (
     <button
       type="button"
@@ -24,116 +34,86 @@ function TemplateCard({ template, selected, onSelect }: { template: LegalTemplat
       }`}
     >
       <div>
-        <span className="block text-xs font-bold leading-snug">{template.name}</span>
-        <span className={`block text-[10px] mt-0.5 ${selected ? 'text-[#FDFBF7]/70' : 'text-[#8A7A56]'}`}>
-          {template.court} · {template.practiceArea}
-        </span>
+        <span className="block text-xs font-bold leading-snug">{title}</span>
+        <span className={`block text-[10px] mt-0.5 ${selected ? 'text-[#FDFBF7]/70' : 'text-[#8A7A56]'}`}>{subtitle}</span>
       </div>
-      <span className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-        <span
-          className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-            selected ? 'bg-white/15 text-[#FDFBF7]/80' : 'bg-[#F4EEE0] text-[#8A7A56]'
-          }`}
-        >
-          {template.version}
-        </span>
-        {template.isStarterTemplate && (
-          <span
-            className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-              selected ? 'bg-white/15 text-[#FDFBF7]/80' : 'bg-[#FBF6EA] text-[#8A6D2F] border border-[#C6A253]/40'
-            }`}
-          >
-            Starter Template
-          </span>
-        )}
-        {hasInterview && (
-          <span
-            className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-              selected ? 'bg-white/15 text-[#FDFBF7]/80' : 'bg-[#EAF2FB] text-[#1D4ED8] border border-[#1D4ED8]/30'
-            }`}
-          >
-            Guided Interview
-          </span>
-        )}
-      </span>
+      {badges && <span className="flex items-center gap-1.5 mt-1.5 flex-wrap">{badges}</span>}
     </button>
   );
 }
 
-/**
- * Templates grouped by Court Vertical, per the UI/UX Specification's
- * Appendix A. Only the three genuine starter templates that exist today
- * are shown — verticals with none show an honest empty note rather than
- * a fabricated placeholder card.
- */
-export function TemplateLibrary({ selectedTemplateId, onSelectTemplate, onStartBlank, hideBlankAction }: TemplateLibraryProps) {
-  const templatesByVertical = React.useMemo(() => {
-    const map = new Map<CourtVertical, LegalTemplate[]>();
-    for (const vertical of COURT_VERTICALS) map.set(vertical.id, []);
-    for (const template of LEGAL_TEMPLATES) map.get(template.courtVertical)?.push(template);
-    return map;
-  }, []);
-
-  const [openVerticals, setOpenVerticals] = React.useState<Set<CourtVertical>>(
-    () => new Set(COURT_VERTICALS.filter((v) => (templatesByVertical.get(v.id)?.length ?? 0) > 0).map((v) => v.id))
-  );
-
-  const toggleVertical = (id: CourtVertical) => {
-    setOpenVerticals((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
+function Badge({
+  selected,
+  tone,
+  title,
+  children,
+}: {
+  selected: boolean;
+  tone: 'neutral' | 'starter' | 'interview';
+  title?: string;
+  children: React.ReactNode;
+}) {
+  const toneClass = selected
+    ? 'bg-white/15 text-[#FDFBF7]/80'
+    : tone === 'starter'
+      ? 'bg-[#FBF6EA] text-[#8A6D2F] border border-[#C6A253]/40'
+      : tone === 'interview'
+        ? 'bg-[#EAF2FB] text-[#1D4ED8] border border-[#1D4ED8]/30'
+        : 'bg-[#F4EEE0] text-[#8A7A56]';
   return (
-    <div className="space-y-2" aria-label="Template library">
-      {COURT_VERTICALS.map((vertical) => {
-        const templates = templatesByVertical.get(vertical.id) ?? [];
-        const isOpen = openVerticals.has(vertical.id);
+    <span title={title} className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${toneClass}`}>
+      {children}
+    </span>
+  );
+}
+
+/**
+ * A single flat gallery — Blank Document plus every starter template, all
+ * the same size and in the same list, the way Google Docs' and Word's own
+ * "new document" picker present a blank page alongside templates. This
+ * used to be a five-Court-Vertical accordion (per the UI/UX Specification's
+ * Appendix A taxonomy): with only a handful of starter templates so far,
+ * three of the five groups showed nothing but "No starter templates yet
+ * for this court" — a lawyer had to scan past that noise before reaching
+ * the two groups that actually had anything. Court and Practice Area are
+ * still shown on each card; the enclosing taxonomy can come back once
+ * there are enough templates that a flat list stops being the fastest way
+ * to scan them.
+ */
+export function TemplateLibrary({ selectedTemplateId, onSelectTemplate, onStartBlank, isBlankSelected }: TemplateLibraryProps) {
+  return (
+    <div className="space-y-2" aria-label="Create a document">
+      <DocumentCard selected={isBlankSelected} onSelect={onStartBlank} title="Blank Document" subtitle="Start with an empty page" />
+      {LEGAL_TEMPLATES.map((template) => {
+        const hasInterview = !!getInterviewConfigForTemplate(template.id);
+        const selected = selectedTemplateId === template.id;
         return (
-          <div key={vertical.id} className="border border-[#E7DFC9] rounded-lg overflow-hidden">
-            <button
-              type="button"
-              onClick={() => toggleVertical(vertical.id)}
-              aria-expanded={isOpen}
-              className="w-full flex items-center justify-between px-3 py-2 bg-[#FBF8F1] text-xs font-bold text-[#3A3222] hover:bg-[#F4EEE0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F]"
-            >
-              <span>{vertical.label}</span>
-              <span className="flex items-center gap-2">
-                <span className="text-[9px] font-semibold text-[#B0A588]">{templates.length}</span>
-                <span className="text-[#B0A588]">{isOpen ? '▾' : '▸'}</span>
-              </span>
-            </button>
-            {isOpen && (
-              <div className="p-2 space-y-2 bg-white">
-                {templates.length > 0 ? (
-                  templates.map((template) => (
-                    <TemplateCard
-                      key={template.id}
-                      template={template}
-                      selected={selectedTemplateId === template.id}
-                      onSelect={() => onSelectTemplate(template)}
-                    />
-                  ))
-                ) : (
-                  <p className="text-[10px] text-[#B0A588] italic px-1 py-1">No starter templates yet for this court.</p>
+          <DocumentCard
+            key={template.id}
+            selected={selected}
+            onSelect={() => onSelectTemplate(template)}
+            title={template.name}
+            subtitle={`${template.court} · ${template.practiceArea}`}
+            badges={
+              <>
+                <Badge selected={selected} tone="neutral">
+                  {template.version}
+                </Badge>
+                {template.isStarterTemplate && (
+                  <Badge selected={selected} tone="starter">
+                    Starter Template
+                  </Badge>
                 )}
-              </div>
-            )}
-          </div>
+                {hasInterview && (
+                  <Badge selected={selected} tone="interview" title="Answers a short questionnaire to generate this draft">
+                    Guided Interview
+                  </Badge>
+                )}
+              </>
+            }
+          />
         );
       })}
-      {!hideBlankAction && (
-        <button
-          type="button"
-          onClick={onStartBlank}
-          className="w-full py-2 border border-[#E7DFC9] text-[#8A6D2F] text-[10px] uppercase tracking-widest font-bold rounded-lg hover:bg-[#FBF8F1] transition-all"
-        >
-          Start Blank Draft
-        </button>
-      )}
     </div>
   );
 }

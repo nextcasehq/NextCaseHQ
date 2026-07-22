@@ -417,33 +417,21 @@ export default function DraftBuilderPage() {
           ‹
         </button>
       </div>
-      {/* The Document Creator's two creation modes — "Create Manually"
-          (Start Blank Draft, below) and "Create Using Template" (the
-          template cards). Templates tagged "Guided Interview" open a
-          step-based questionnaire (see SurveyWizard) whose answers
-          generate the draft; all other templates load their static
-          content directly into the manual editor. */}
+      {/* One flat gallery, not two separately-labelled sections for
+          starting blank vs. picking a template — Blank Document is just
+          the first card, same weight as every template, the way Google
+          Docs' and Word's own "new document" picker work. Templates
+          tagged "Guided Interview" open a step-based questionnaire (see
+          SurveyWizard) whose answers generate the draft; all other
+          templates load their static content directly into the manual
+          editor — see the badge on each card. */}
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create Manually</h3>
-        <button
-          type="button"
-          onClick={handleStartBlank}
-          className="w-full py-2 bg-[#111111] hover:bg-[#111111]/90 text-white text-[10px] uppercase tracking-widest font-bold rounded-lg transition-all"
-        >
-          Start Blank Draft
-        </button>
-      </div>
-      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">Create Using Template</h3>
-        <p className="text-[10px] text-[#B0A588] mb-3">
-          Templates marked &ldquo;Guided Interview&rdquo; open a step-based questionnaire that generates the draft from your
-          answers. Other templates load their full content directly into the editor below for manual completion.
-        </p>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create a Document</h3>
         <TemplateLibrary
           selectedTemplateId={selectedTemplateId}
           onSelectTemplate={handleSelectTemplate}
           onStartBlank={handleStartBlank}
-          hideBlankAction
+          isBlankSelected={selectedTemplateId === null}
         />
       </div>
       {/* Trimmed from a 9-row block (Status, Matter, Template, Pages,
@@ -453,8 +441,8 @@ export default function DraftBuilderPage() {
           panel, Pages/Words/Characters duplicate the status bar exactly,
           Matter never varies (always "Unlinked Draft" — no Matter Register
           link exists yet), and Template repeats what's already visible via
-          the highlighted card in Create Using Template above. Created and
-          Last Saved are the only facts not shown anywhere else on screen. */}
+          the highlighted card in the gallery above. Created and Last Saved
+          are the only facts not shown anywhere else on screen. */}
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0 space-y-2">
         <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Draft Info</h3>
         <dl className="space-y-1.5 text-xs">
