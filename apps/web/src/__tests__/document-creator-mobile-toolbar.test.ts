@@ -88,7 +88,23 @@ describe('Document Creator — dedicated mobile editing experience', () => {
     // portrait templates) — selectedTemplateId must be in the dependency
     // list too.
     expect(page).toMatch(
-      /if \(zoomMode === 'fit-width'\) computeFitWidthZoom\(\);[\s\S]{0,120}\[pageSetup\.paperSize, pageSetup\.orientation, selectedTemplateId\]/
+      /if \(zoomMode === 'fit-width'\) computeFitWidthZoom\(\);[\s\S]{0,200}\[pageSetup\.paperSize, pageSetup\.orientation, selectedTemplateId, leftOpen, rightOpen\]/
     );
+  });
+
+  test('both sidebars default to collapsed below desktop (lg), reusing the existing expand/collapse toggle', () => {
+    // Regression: on tablet, both sidebars stayed permanently open (only
+    // mobile got drawers), squeezing the canvas down to ~130px wide —
+    // even the 50% zoom floor didn't fit, so the page silently overflowed
+    // behind the left sidebar and clicks meant for the editor landed on
+    // sidebar content instead. Defaulting collapsed below lg reuses the
+    // desktop-only "reclaim canvas space" toggle that already existed.
+    const collapseEffectStart = page.indexOf("if (window.matchMedia('(max-width: 1023px)').matches) {\n      setLeftOpen(false);");
+    expect(collapseEffectStart).toBeGreaterThan(-1);
+  });
+
+  test('the sidebar auto-collapse defaults leftOpen/rightOpen to true first (matching the server-rendered default) to avoid a hydration mismatch', () => {
+    expect(page).toContain('const [leftOpen, setLeftOpen] = React.useState(true)');
+    expect(page).toContain('const [rightOpen, setRightOpen] = React.useState(true)');
   });
 });

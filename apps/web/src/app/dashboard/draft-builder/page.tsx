@@ -104,6 +104,24 @@ export default function DraftBuilderPage() {
   }, []);
   const [leftOpen, setLeftOpen] = React.useState(true);
   const [rightOpen, setRightOpen] = React.useState(true);
+  // Below desktop (lg), both sidebars persistently open (unlike mobile,
+  // they don't collapse into drawers here — see the aside elements' own
+  // `hidden md:flex`) leave the canvas so narrow that even the 50% zoom
+  // floor doesn't fit, so the page silently overflows behind the sidebar
+  // and becomes unclickable there. Defaulting to collapsed reuses the
+  // existing expand/collapse toggle already built for reclaiming canvas
+  // space — the advocate can still reopen either panel with one tap.
+  // Starts true/true to match the server-rendered default (avoiding a
+  // hydration mismatch) and flips after mount, same pattern as
+  // sessionStartedAt above.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      setLeftOpen(false);
+      setRightOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [zoomMode, setZoomMode] = React.useState<'fixed' | 'fit-width'>('fixed');
   const [focusMode, setFocusMode] = React.useState(false);
   const [darkWorkspace, setDarkWorkspace] = React.useState(false);
@@ -294,10 +312,15 @@ export default function DraftBuilderPage() {
   // selectedTemplateId changes (not just paperSize/orientation) catches
   // the common case of two templates sharing the same A4/portrait
   // dimensions, where paperSize/orientation alone wouldn't change.
+  // leftOpen/rightOpen are included too: toggling a sidebar changes the
+  // canvas's available width just as much as a resize does, but doesn't
+  // fire a window 'resize' event — without this, the auto-collapse above
+  // would leave zoom computed against the still-narrow pre-collapse
+  // width from the very first render.
   React.useEffect(() => {
     if (zoomMode === 'fit-width') computeFitWidthZoom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSetup.paperSize, pageSetup.orientation, selectedTemplateId]);
+  }, [pageSetup.paperSize, pageSetup.orientation, selectedTemplateId, leftOpen, rightOpen]);
 
   const handlePageSetupChange = (next: PageSetup) => {
     setZoomMode('fixed');
