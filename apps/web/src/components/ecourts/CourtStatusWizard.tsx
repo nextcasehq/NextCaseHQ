@@ -2,13 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { COURT_SYSTEMS, getCourtSystem } from '@/lib/ecourts-registry/registry';
-import type { SearchMethodStepConfig, StepConfig } from '@/lib/ecourts-registry/types';
+import { districtCourtsConfig } from '@/lib/ecourts-registry/configs/district-courts';
+import type { SearchMethodStepConfig, SelectOption, StepConfig } from '@/lib/ecourts-registry/types';
 
 function resolveOptions(
   step: Extract<StepConfig, { kind: 'select' }>,
   selections: Record<string, string>
-): string[] | 'free-text' {
+): SelectOption[] | 'free-text' {
   return typeof step.options === 'function' ? step.options(selections) : step.options;
 }
 
@@ -20,7 +20,17 @@ function isStepComplete(step: StepConfig, selections: Record<string, string>, se
 /** Small pill summarizing a completed step, e.g. "State: Kerala ✕". Click
  * to jump back — clears this step and every step after it, matching the
  * official eCourts pattern of re-narrowing a prior selection. */
-function CompletedStepChip({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
+function CompletedStepChip({
+  label,
+  value,
+  detail,
+  onReset,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  onReset: () => void;
+}) {
   return (
     <button
       type="button"
@@ -28,37 +38,30 @@ function CompletedStepChip({ label, value, onReset }: { label: string; value: st
       className="inline-flex items-center gap-1.5 rounded-full border border-[#E7DFC9] bg-[#FBF8F1] px-3 py-1.5 text-xs font-semibold text-[#3A3222] transition-colors hover:border-[#C6A253] hover:bg-white"
     >
       <span className="text-[#8A7A56]">{label}:</span> {value}
+      {detail && <span className="text-[#B0A588]">({detail})</span>}
       <span aria-hidden="true" className="text-[#B0A588]">✕</span>
     </button>
   );
 }
 
 /**
- * Registry-driven eCourts Case Status wizard. Reads exactly one court
- * system's `steps` array and renders whichever generic step widget
- * matches each step's `kind` — no per-court branching lives here. Adding
- * a future court system means writing one new config
- * (lib/ecourts-registry/configs/) and registering it; this component
- * never changes.
+ * Registry-driven eCourts Case Status wizard. The visible flow is always
+ * District Courts' real, verified hierarchy — geography drives it, with
+ * no "pick a court system" step ahead of State. Every step's rendering is
+ * decided purely by its `kind` (from lib/ecourts-registry/configs/
+ * district-courts.ts) — no per-step-key or per-court branching lives
+ * here, so adding a field, a search method, or a district's real Court
+ * Establishment list is a config change only.
  */
 export default function CourtStatusWizard() {
-  const [courtId, setCourtId] = React.useState('');
   const [selections, setSelections] = React.useState<Record<string, string>>({});
   const [searchMethodKey, setSearchMethodKey] = React.useState('');
   const [fieldValues, setFieldValues] = React.useState<Record<string, string>>({});
   const [submitted, setSubmitted] = React.useState(false);
 
-  const court = courtId ? getCourtSystem(courtId) : undefined;
+  const steps = districtCourtsConfig.steps;
 
-  function resetCourt(nextCourtId: string) {
-    setCourtId(nextCourtId);
-    setSelections({});
-    setSearchMethodKey('');
-    setFieldValues({});
-    setSubmitted(false);
-  }
-
-  function resetFromStep(stepKey: string, steps: StepConfig[]) {
+  function resetFromStep(stepKey: string) {
     const idx = steps.findIndex((s) => s.key === stepKey);
     const keysFromHere = steps.slice(idx).map((s) => s.key);
     setSelections((prev) => {
@@ -73,53 +76,6 @@ export default function CourtStatusWizard() {
     setSubmitted(false);
   }
 
-  if (!court) {
-    return (
-      <div className="space-y-2">
-        <label htmlFor="court-system-select" className="block text-xs font-bold uppercase tracking-wider text-[#8A7A56]">
-          Court System
-        </label>
-        <select
-          id="court-system-select"
-          value=""
-          onChange={(e) => resetCourt(e.target.value)}
-          className="w-full rounded-xl border border-[#E7DFC9] bg-[#FBFAF6] px-4 py-3 text-sm font-medium text-[#241E17] focus:border-[#8A6D2F] focus:outline-none"
-        >
-          <option value="" disabled>
-            Select Court
-          </option>
-          {COURT_SYSTEMS.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  const courtChip = (
-    <div className="flex flex-wrap items-center gap-2">
-      <CompletedStepChip label="Court System" value={court.label} onReset={() => resetCourt('')} />
-    </div>
-  );
-
-  if (court.status === 'coming-soon') {
-    return (
-      <div className="space-y-4">
-        {courtChip}
-        <div className="rounded-xl border border-[#E7DFC9] bg-[#FBF8F1] p-4 text-sm text-[#5C5340]">
-          <p className="font-semibold text-[#241E17]">{court.label} isn&rsquo;t available here yet.</p>
-          <p className="mt-1 text-xs text-[#8A7A56]">
-            This court system doesn&rsquo;t yet have a verified, standardized self-service case-status search we can
-            connect to honestly. Choose District Courts (eCourts) above, or check back later.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const steps = court.steps;
   const completed: StepConfig[] = [];
   let activeStep: StepConfig | undefined;
   for (const step of steps) {
@@ -135,28 +91,44 @@ export default function CourtStatusWizard() {
   const chosenMethod = searchMethodStep?.methods.find((m) => m.key === searchMethodKey);
   const allStaticStepsComplete = !activeStep;
 
-  function chipValueFor(step: StepConfig): string {
-    if (step.kind === 'select') return selections[step.key] ?? '';
-    return searchMethodStep?.methods.find((m) => m.key === searchMethodKey)?.label ?? '';
+  // Cache each select step's resolved options so both the chip label and
+  // the active widget read the exact same resolution (important once a
+  // step's options carry per-option metadata, like a Court
+  // Establishment's real court type).
+  const resolvedByKey = new Map<string, SelectOption[] | 'free-text'>();
+  for (const step of steps) {
+    if (step.kind === 'select') resolvedByKey.set(step.key, resolveOptions(step, selections));
+  }
+
+  function chipFor(step: StepConfig): { value: string; detail?: string } {
+    if (step.kind === 'select') {
+      const raw = selections[step.key] ?? '';
+      const resolved = resolvedByKey.get(step.key);
+      const match = Array.isArray(resolved) ? resolved.find((o) => o.value === raw) : undefined;
+      return { value: raw, detail: match?.meta?.courtType };
+    }
+    return { value: searchMethodStep?.methods.find((m) => m.key === searchMethodKey)?.label ?? '' };
   }
 
   return (
     <div className="space-y-4">
-      {courtChip}
-
-      {completed.map((step) => (
-        <CompletedStepChip
-          key={step.key}
-          label={step.label.replace(/^Select /, '')}
-          value={chipValueFor(step)}
-          onReset={() => resetFromStep(step.key, steps)}
-        />
-      ))}
+      {completed.map((step) => {
+        const { value, detail } = chipFor(step);
+        return (
+          <CompletedStepChip
+            key={step.key}
+            label={step.label.replace(/^Select /, '')}
+            value={value}
+            detail={detail}
+            onReset={() => resetFromStep(step.key)}
+          />
+        );
+      })}
 
       {activeStep && activeStep.kind === 'select' && (
         <SelectStep
           step={activeStep}
-          resolvedOptions={resolveOptions(activeStep, selections)}
+          resolvedOptions={resolvedByKey.get(activeStep.key) ?? []}
           onChoose={(value) => setSelections((prev) => ({ ...prev, [activeStep.key]: value }))}
         />
       )}
@@ -255,7 +227,7 @@ function SelectStep({
   onChoose,
 }: {
   step: Extract<StepConfig, { kind: 'select' }>;
-  resolvedOptions: string[] | 'free-text';
+  resolvedOptions: SelectOption[] | 'free-text';
   onChoose: (value: string) => void;
 }) {
   const [freeText, setFreeText] = React.useState('');
@@ -303,8 +275,8 @@ function SelectStep({
           {step.placeholder}
         </option>
         {resolvedOptions.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
           </option>
         ))}
       </select>

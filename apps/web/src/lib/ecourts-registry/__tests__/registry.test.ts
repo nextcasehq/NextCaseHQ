@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { COURT_SYSTEMS, getCourtSystem } from '../registry';
 import { districtCourtsConfig } from '../configs/district-courts';
-import type { SearchMethodStepConfig, SelectStepConfig } from '../types';
+import type { SearchMethodStepConfig, SelectOption, SelectStepConfig } from '../types';
 
 const SRC_ROOT = path.join(__dirname, '../../..');
 function readSource(relativePath: string): string {
@@ -57,29 +57,36 @@ describe('eCourts registry — District Courts config, verified against services
   test('State is a real, complete list of Indian states and union territories (36 total)', () => {
     const stateStep = districtCourtsConfig.steps[0] as SelectStepConfig;
     expect(Array.isArray(stateStep.options)).toBe(true);
-    const options = stateStep.options as string[];
-    expect(options).toContain('Kerala');
-    expect(options).toContain('Delhi (NCT)');
-    expect(options.length).toBeGreaterThanOrEqual(35);
+    const options = stateStep.options as SelectOption[];
+    const values = options.map((o) => o.value);
+    expect(values).toContain('Kerala');
+    expect(values).toContain('Delhi (NCT)');
+    expect(values.length).toBeGreaterThanOrEqual(35);
   });
 
   test('District options resolve dynamically from the selected state, and degrade to free-text for unmapped states', () => {
     const districtStep = districtCourtsConfig.steps[1] as SelectStepConfig;
     expect(typeof districtStep.options).toBe('function');
-    const resolver = districtStep.options as (s: Record<string, string>) => string[] | 'free-text';
-    const keralaDistricts = resolver({ state: 'Kerala' });
-    expect(keralaDistricts).toContain('Ernakulam');
-    expect(keralaDistricts).toContain('Thiruvananthapuram');
+    const resolver = districtStep.options as (s: Record<string, string>) => SelectOption[] | 'free-text';
+    const keralaDistricts = resolver({ state: 'Kerala' }) as SelectOption[];
+    const keralaValues = keralaDistricts.map((o) => o.value);
+    expect(keralaValues).toContain('Ernakulam');
+    expect(keralaValues).toContain('Thiruvananthapuram');
     // A state with no verified district list falls back to free-text, never a guessed list.
     const unmapped = resolver({ state: 'Some Future State' });
     expect(unmapped).toBe('free-text');
   });
 
-  test('Court Establishment resolves a real, sourced list only for Ernakulam; every other district is free-text', () => {
+  test('Court Establishment resolves a real, sourced list only for Ernakulam — each with a real official court type; every other district is free-text', () => {
     const establishmentStep = districtCourtsConfig.steps[2] as SelectStepConfig;
-    const resolver = establishmentStep.options as (s: Record<string, string>) => string[] | 'free-text';
-    const ernakulam = resolver({ district: 'Ernakulam' });
-    expect(ernakulam).toContain('Principal District Court, Ernakulam');
+    const resolver = establishmentStep.options as (s: Record<string, string>) => SelectOption[] | 'free-text';
+    const ernakulam = resolver({ district: 'Ernakulam' }) as SelectOption[];
+    const principal = ernakulam.find((o) => o.value === 'Principal District Court, Ernakulam');
+    expect(principal?.meta?.courtType).toBe('District & Sessions Court');
+    const familyCourt = ernakulam.find((o) => o.value === 'Family Court, Ernakulam');
+    expect(familyCourt?.meta?.courtType).toBe('Family Court');
+    // Every option carries a real court type — none are left unlabelled.
+    expect(ernakulam.every((o) => Boolean(o.meta?.courtType))).toBe(true);
     expect(resolver({ district: 'Thiruvananthapuram' })).toBe('free-text');
   });
 

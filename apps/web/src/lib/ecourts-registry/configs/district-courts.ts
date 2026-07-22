@@ -1,4 +1,9 @@
-import type { CourtSystemConfig } from '../types';
+import type { CourtSystemConfig, SelectOption } from '../types';
+
+/** Wraps a plain string list (State, District — no metadata) as SelectOptions. */
+function toOptions(values: string[]): SelectOption[] {
+  return values.map((v) => ({ value: v, label: v }));
+}
 
 /**
  * District Courts (eCourts) — verified against services.ecourts.gov.in's
@@ -262,44 +267,60 @@ const DISTRICTS_BY_STATE: Record<string, string[]> = {
   'Dadra and Nagar Haveli and Daman and Diu': ['Dadra and Nagar Haveli', 'Daman', 'Diu'],
 };
 
+interface CourtEstablishment {
+  name: string;
+  /** Real official court type — Civil Court, Magistrate Court, Sessions
+   * Court, Family Court, Motor Accident Claims Tribunal, etc. Captured as
+   * data (shown alongside the establishment once chosen), not used to
+   * filter the Search Method step — that step's options are the same
+   * universal set the real eCourts portal offers regardless of
+   * establishment type, and no verified evidence says otherwise. */
+  type: string;
+}
+
 /**
  * Court Establishment lists are the least standardized tier of this data
- * — real complex names, verified per district. Populated for Ernakulam
- * (Kerala) only, sourced from districts.ecourts.gov.in and
- * ernakulam.dcourts.gov.in, as the one fully verified end-to-end example.
- * Every other district falls back to free-text rather than a guessed
- * list — see OptionsResolver in ../types.ts.
+ * — real complex names and real court types, verified per district.
+ * Populated for Ernakulam (Kerala) only, sourced from
+ * districts.ecourts.gov.in and ernakulam.dcourts.gov.in, as the one fully
+ * verified end-to-end example. Every other district falls back to
+ * free-text rather than a guessed list — see OptionsResolver in
+ * ../types.ts. Adding a district: add one entry here with its real,
+ * sourced establishments; no other file changes.
  */
-const COURT_ESTABLISHMENTS_BY_DISTRICT: Record<string, string[]> = {
+const COURT_ESTABLISHMENTS_BY_DISTRICT: Record<string, CourtEstablishment[]> = {
   Ernakulam: [
-    'Principal District Court, Ernakulam',
-    'Munsiff Court, Ernakulam',
-    'Munsiff Court, Kochi',
-    'Munsiff Court, Aluva',
-    'Munsiff Court, North Paravur',
-    'Munsiff Court, Perumbavoor',
-    'Munsiff Court, Muvattupuzha',
-    'Munsiff Court, Kolenchery',
-    'Munsiff Court, Kothamangalam',
-    'Family Court, Ernakulam',
-    'Family Court, Muvattupuzha',
-    'Family Court, North Paravur',
-    'Family Court, Aluva',
-    'Motor Accident Claims Tribunal, Ernakulam',
-    'Chief Judicial Magistrate Court, Ernakulam',
+    { name: 'Principal District Court, Ernakulam', type: 'District & Sessions Court' },
+    { name: 'Munsiff Court, Ernakulam', type: 'Civil Court' },
+    { name: 'Munsiff Court, Kochi', type: 'Civil Court' },
+    { name: 'Munsiff Court, Aluva', type: 'Civil Court' },
+    { name: 'Munsiff Court, North Paravur', type: 'Civil Court' },
+    { name: 'Munsiff Court, Perumbavoor', type: 'Civil Court' },
+    { name: 'Munsiff Court, Muvattupuzha', type: 'Civil Court' },
+    { name: 'Munsiff Court, Kolenchery', type: 'Civil Court' },
+    { name: 'Munsiff Court, Kothamangalam', type: 'Civil Court' },
+    { name: 'Family Court, Ernakulam', type: 'Family Court' },
+    { name: 'Family Court, Muvattupuzha', type: 'Family Court' },
+    { name: 'Family Court, North Paravur', type: 'Family Court' },
+    { name: 'Family Court, Aluva', type: 'Family Court' },
+    { name: 'Motor Accident Claims Tribunal, Ernakulam', type: 'Motor Accident Claims Tribunal' },
+    { name: 'Chief Judicial Magistrate Court, Ernakulam', type: 'Magistrate Court' },
   ],
 };
 
-function districtsForState(selections: Record<string, string>): string[] | 'free-text' {
+function districtsForState(selections: Record<string, string>): SelectOption[] | 'free-text' {
   const state = selections.state;
   if (!state) return [];
-  return DISTRICTS_BY_STATE[state] ?? 'free-text';
+  const districts = DISTRICTS_BY_STATE[state];
+  return districts ? toOptions(districts) : 'free-text';
 }
 
-function establishmentsForDistrict(selections: Record<string, string>): string[] | 'free-text' {
+function establishmentsForDistrict(selections: Record<string, string>): SelectOption[] | 'free-text' {
   const district = selections.district;
   if (!district) return [];
-  return COURT_ESTABLISHMENTS_BY_DISTRICT[district] ?? 'free-text';
+  const establishments = COURT_ESTABLISHMENTS_BY_DISTRICT[district];
+  if (!establishments) return 'free-text';
+  return establishments.map((e) => ({ value: e.name, label: e.name, meta: { courtType: e.type } }));
 }
 
 export const districtCourtsConfig: CourtSystemConfig = {
@@ -312,7 +333,7 @@ export const districtCourtsConfig: CourtSystemConfig = {
       key: 'state',
       label: 'Select State',
       placeholder: 'Select State',
-      options: INDIAN_STATES_AND_UTS,
+      options: toOptions(INDIAN_STATES_AND_UTS),
     },
     {
       kind: 'select',

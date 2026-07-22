@@ -14,21 +14,22 @@ function readSource(relativePath: string): string {
   return fs.readFileSync(path.join(SRC_ROOT, relativePath), 'utf8');
 }
 
-describe('CourtStatusWizard — registry-driven, no per-court branching', () => {
+describe('CourtStatusWizard — geography-first, registry-driven, no per-court branching', () => {
   const wizard = readSource('components/ecourts/CourtStatusWizard.tsx');
 
-  test('reads from the shared registry rather than defining its own court list', () => {
-    expect(wizard).toContain("from '@/lib/ecourts-registry/registry'");
-    expect(wizard).toContain('COURT_SYSTEMS');
-    expect(wizard).toContain('getCourtSystem');
+  test('reads from the shared District Courts config rather than defining its own steps', () => {
+    expect(wizard).toContain("from '@/lib/ecourts-registry/configs/district-courts'");
+    expect(wizard).toContain('districtCourtsConfig');
   });
 
-  test('has no switch statement and no per-court-id branching — step rendering is driven by step.kind only', () => {
+  test('never asks the user to pick a Court System first — geography drives the workflow', () => {
+    expect(wizard).not.toContain('Court System');
+    expect(wizard).not.toContain('Select Court');
+    expect(wizard).not.toMatch(/COURT_SYSTEMS/);
+  });
+
+  test('has no switch statement — step rendering is driven by step.kind only', () => {
     expect(wizard).not.toMatch(/\bswitch\s*\(/);
-    // No hardcoded court ids anywhere in the render logic (only in the
-    // registry/config files, which this component never duplicates).
-    expect(wizard).not.toContain("'district-courts'");
-    expect(wizard).not.toContain('"district-courts"');
   });
 
   test('has no login form of any kind — search fields are not credentials', () => {
@@ -41,9 +42,11 @@ describe('CourtStatusWizard — registry-driven, no per-court branching', () => 
     expect(wizard).toContain('onReset');
   });
 
-  test('a coming-soon court system shows an honest notice, never fabricated fields', () => {
-    expect(wizard).toMatch(/coming-soon/);
-    expect(wizard).toMatch(/isn.{0,10}t available here yet/);
+  test('a Court Establishment chip can display its real court type without it affecting the Search Method step', () => {
+    expect(wizard).toContain('courtType');
+    // The metadata is display-only — Search Method still renders every
+    // registered method regardless of which establishment was chosen.
+    expect(wizard).not.toMatch(/courtType[^;]*(filter|includes)\(/);
   });
 
   test('the final step hands off into the real, existing Matter Register workflow', () => {

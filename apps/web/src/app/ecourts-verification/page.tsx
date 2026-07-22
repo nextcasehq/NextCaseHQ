@@ -115,8 +115,9 @@ export default function ECourtsVerificationPage() {
               Start a verification
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-[#5C5340]">
-              Select the court system, then follow the same steps you&rsquo;d
-              use on the official portal — one at a time.
+              Select your State, then District, then Court Establishment —
+              the same steps you&rsquo;d use on the official portal, one at a
+              time.
             </p>
             <div className="mt-8">
               <CourtStatusWizard />
