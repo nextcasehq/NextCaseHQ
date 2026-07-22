@@ -61,24 +61,33 @@ describe('Document Creator — dedicated mobile editing experience', () => {
     }
   });
 
-  test('the desktop ribbon compacts at tablet widths and restores full size only at lg (desktop)', () => {
-    // Desktop stays exactly as-is at lg+; only the un-prefixed (tablet)
-    // sizing changed, keeping the requirement "Desktop: keep the current
-    // desktop ribbon" true at the lg breakpoint and up.
-    expect(ribbon).toContain('lg:min-w-[2rem] lg:h-8 lg:px-2');
-    expect(ribbon).toContain('lg:min-h-[76px]');
+  test('the ribbon is uniformly compact at every breakpoint — no separate chunky desktop sizing', () => {
+    // A later screen-real-estate pass compacted the ribbon everywhere,
+    // including desktop: buttons are a single explicit 26px height at all
+    // breakpoints (not the old lg:-prefixed 64px-scale variant), and no
+    // group caption row ("CLIPBOARD", "FONT", ...) adds an extra text line.
+    expect(ribbon).toContain("h-[26px]");
+    expect(ribbon).not.toMatch(/lg:h-8|lg:min-h-\[76px\]/);
   });
 
-  test('Fit Width zoom auto-engages below desktop (lg) so the page is reachable without horizontal scrolling', () => {
-    // Regression: at the 100%-zoom desktop default, an A4 page (~794px)
-    // renders centered and far wider than a phone viewport, leaving the
+  test('Fit Width zoom auto-engages on mount at every viewport width, not just below desktop', () => {
+    // Originally: at the 100%-zoom desktop default, an A4 page (~794px)
+    // rendered centered and far wider than a phone viewport, leaving the
     // real contenteditable mostly off-screen — a Playwright click at a
     // plausible on-screen point landed on <body>, not the editor, and
     // typing was silently dropped (never reached the autosave content
-    // effect). Auto-engaging the existing Fit Width mechanism on mount
-    // fixes this without inventing a second zoom system.
-    expect(page).toContain("window.matchMedia('(max-width: 1023px)').matches");
-    expect(page).toContain('computeFitWidthZoom();');
+    // effect). Auto-engaging Fit Width on mount fixed that below desktop.
+    //
+    // A later screen-real-estate pass made this unconditional: a fixed
+    // 100% zoom also left a large empty grey margin on wide desktop
+    // windows — real drafting space sitting unused — so Fit Width is now
+    // the default everywhere, with the explicit 50–200% buttons still
+    // available for anyone who wants the page at its literal print size.
+    const mountEffectStart = page.indexOf('Fit Width now auto-engages on EVERY viewport');
+    expect(mountEffectStart).toBeGreaterThan(-1);
+    const mountEffectBody = page.slice(mountEffectStart, mountEffectStart + 700);
+    expect(mountEffectBody).toContain('React.useEffect(() => {\n    computeFitWidthZoom();');
+    expect(mountEffectBody).not.toContain("matchMedia('(max-width: 1023px)')");
   });
 
   test('Fit Width is recomputed when a template swap resets pageSetup, not just on window resize', () => {

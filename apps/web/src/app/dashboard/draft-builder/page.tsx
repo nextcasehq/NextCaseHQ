@@ -275,7 +275,14 @@ export default function DraftBuilderPage() {
     const { width } = pageDimensionsMm(pageSetup.paperSize, pageSetup.orientation);
     const widthPx = width * MM_TO_PX;
     const available = container.clientWidth - 64;
-    const nextZoom = clampZoom(Math.round((available / widthPx) * 100));
+    // Capped at 100: on a wide desktop window, letting this grow past the
+    // page's real print size would work against the "see nearly a whole
+    // page at once" goal Fit Width exists for in the first place — a
+    // bigger zoom shows more detail per screen-inch but proportionally
+    // LESS of the page's total height on screen, the opposite of what a
+    // wide monitor should buy the advocate. Below 100% (a narrow tablet or
+    // phone), it still shrinks exactly as before.
+    const nextZoom = Math.min(100, clampZoom(Math.round((available / widthPx) * 100)));
     setZoomMode('fit-width');
     setPageSetup((prev) => ({ ...prev, zoom: nextZoom }));
   }, [pageSetup.paperSize, pageSetup.orientation]);
@@ -287,22 +294,24 @@ export default function DraftBuilderPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, [zoomMode, computeFitWidthZoom]);
 
-  // Below desktop (lg), the sidebars/thumbnail rail leave too little room
-  // for a full-width A4/Letter page at the 100% zoom desktop default — the
-  // page renders far wider than the available viewport, mostly centered
-  // off-screen, making the editor practically untappable on a phone (see
-  // the mobile toolbar's own regression coverage for how this was found:
-  // typing appeared to work in a Playwright test because the click landed
-  // outside the real contenteditable entirely). Auto-engaging Fit Width on
-  // mount — the same mechanism the "Fit Width" zoom button already
-  // provides — keeps the whole page reachable without the advocate ever
-  // having to find that control themselves. Desktop (lg+) is untouched:
-  // it keeps its current 100%-zoom default.
+  // Below desktop (lg), the sidebars/thumbnail rail used to leave too
+  // little room for a full-width A4/Letter page at the 100% zoom
+  // default — the page rendered far wider than the available viewport,
+  // mostly centered off-screen, making the editor practically untappable
+  // on a phone (see the mobile toolbar's own regression coverage for how
+  // this was found: typing appeared to work in a Playwright test because
+  // the click landed outside the real contenteditable entirely).
+  //
+  // Fit Width now auto-engages on EVERY viewport, desktop included: a
+  // fixed 100% zoom leaves a large, empty grey margin on anything wider
+  // than a small laptop — real screen space the advocate is drafting on,
+  // sitting unused. Fitting the page to whatever room the canvas actually
+  // has (sidebars/thumbnail rail included) is the same "use the whole
+  // window" behavior Google Docs/Notion default to, and the explicit
+  // fixed-zoom buttons (50–200%) remain available for anyone who wants
+  // the page at its literal print size instead.
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.matchMedia('(max-width: 1023px)').matches) {
-      computeFitWidthZoom();
-    }
+    computeFitWidthZoom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -522,53 +531,60 @@ export default function DraftBuilderPage() {
   return (
     <div className={`h-screen flex flex-col overflow-hidden font-sans ${workspaceBg}`}>
       {!focusMode && (
-        <header className={`no-print shrink-0 border-b px-4 md:px-6 py-3 ${chromeBg}`}>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="min-w-0 flex items-center gap-3">
+        // A single compact row (~36px), not the old two-line stack (a big
+        // uppercase "DOCUMENT CREATOR" heading with the editable title on
+        // its own line beneath) — the shared dashboard header above this
+        // already establishes app context, so this page's own header only
+        // needs to carry the document's title plus a few small controls,
+        // the same weight Google Docs/Notion give their own title bar.
+        <header className={`no-print shrink-0 border-b px-3 py-[6px] ${chromeBg}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setMobileDrawer(mobileDrawer === 'left' ? 'none' : 'left')}
                 aria-label="Toggle templates and attachments"
-                className={`md:hidden shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                className={`md:hidden shrink-0 flex items-center gap-1 px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
                 <span aria-hidden="true">☰</span>
                 <span>Templates</span>
               </button>
-              <div>
-                <h1 className={`text-lg md:text-xl font-black uppercase tracking-widest ${chromeText}`}>Document Creator</h1>
-                <input
-                  aria-label="Document title"
-                  value={draftTitle}
-                  onChange={(e) => setDraftTitle(e.target.value)}
-                  className={`mt-0.5 text-xs font-serif italic bg-transparent border-none outline-none focus:underline w-full max-w-md ${chromeText} opacity-70`}
-                  placeholder="Untitled Draft"
-                />
-              </div>
+              <span className={`hidden sm:inline shrink-0 text-[9px] font-bold uppercase tracking-widest ${chromeText} opacity-50`}>
+                Document
+              </span>
+              <input
+                aria-label="Document title"
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                className={`text-sm font-semibold bg-transparent border-none outline-none focus:underline min-w-0 flex-1 max-w-[140px] sm:max-w-md ${chromeText}`}
+                placeholder="Untitled Draft"
+              />
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest ${chromeText} opacity-70`}>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`hidden sm:flex items-center gap-1.5 text-[9px] font-mono uppercase font-bold tracking-widest ${chromeText} opacity-70`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`}></span>
                 {AUTOSAVE_STATUS_LABEL[autosave.status]}
               </span>
               <button
                 type="button"
                 onClick={() => setDarkWorkspace((v) => !v)}
-                className={`px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                aria-label="Toggle dark workspace"
+                className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                {darkWorkspace ? '☀ Light' : '● Dark'}
+                {darkWorkspace ? '☀' : '●'}
               </button>
               <button
                 type="button"
                 onClick={() => setFocusMode(true)}
-                className={`px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                ⛶ Focus Mode
+                ⛶ Focus
               </button>
               <button
                 type="button"
                 onClick={() => setMobileDrawer(mobileDrawer === 'right' ? 'none' : 'right')}
                 aria-label="Toggle page setup and properties"
-                className={`md:hidden px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                className={`md:hidden px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
                 ⚙
               </button>
@@ -641,19 +657,20 @@ export default function DraftBuilderPage() {
       )}
       {!focusMode && <MobileToolbar editor={editor} onPrint={handlePrint} />}
 
-      {/* pb-8 reserves the StatusBar's own height (h-8, fixed bottom-0 —
-          see StatusBar.tsx) since a fixed-position element never takes up
-          space in normal flow. Without it, on a short viewport (e.g.
-          mobile landscape) the sidebar/editor's own scrollable content can
-          extend the full remaining height and end up rendered underneath
-          the status bar, both visually clipped and unclickable there. */}
-      <div className={`flex-1 flex overflow-hidden ${focusMode ? '' : 'pb-8'}`}>
+      {/* pb-[24px] reserves the StatusBar's own height (h-[24px], fixed
+          bottom-0 — see StatusBar.tsx) since a fixed-position element
+          never takes up space in normal flow. Without it, on a short
+          viewport (e.g. mobile landscape) the sidebar/editor's own
+          scrollable content can extend the full remaining height and end
+          up rendered underneath the status bar, both visually clipped and
+          unclickable there. */}
+      <div className={`flex-1 flex overflow-hidden ${focusMode ? '' : 'pb-[24px]'}`}>
         {!focusMode && (
           <aside
-            style={{ width: leftOpen ? '272px' : '0px' }}
+            style={{ width: leftOpen ? '240px' : '0px' }}
             className={`no-print hidden md:flex flex-col overflow-hidden ${leftOpen ? 'border-r' : 'border-r-0'} ${chromeBg}`}
           >
-            <div className="w-[272px] shrink-0 overflow-y-auto p-4 space-y-4">{leftSidebarContent}</div>
+            <div className="w-[240px] shrink-0 overflow-y-auto p-[12px] space-y-3">{leftSidebarContent}</div>
           </aside>
         )}
 
@@ -689,7 +706,7 @@ export default function DraftBuilderPage() {
         </main>
 
         {!focusMode && !activeInterview && (
-          <div className={`no-print hidden md:block w-16 shrink-0 overflow-y-auto border-l ${chromeBg}`}>
+          <div className={`no-print hidden md:block w-[60px] shrink-0 overflow-y-auto border-l ${chromeBg}`}>
             <PageThumbnails pageCount={pageCount} currentPage={currentPage} onNavigate={handleNavigateToPage} orientation={pageSetup.orientation} />
           </div>
         )}
@@ -707,10 +724,10 @@ export default function DraftBuilderPage() {
 
         {!focusMode && (
           <aside
-            style={{ width: rightOpen ? '288px' : '0px' }}
+            style={{ width: rightOpen ? '240px' : '0px' }}
             className={`no-print hidden md:flex flex-col overflow-hidden ${rightOpen ? 'border-l' : 'border-l-0'} ${chromeBg}`}
           >
-            <div className="w-[288px] shrink-0 overflow-y-auto p-4 space-y-4">{rightSidebarContent}</div>
+            <div className="w-[240px] shrink-0 overflow-y-auto p-[12px] space-y-3">{rightSidebarContent}</div>
           </aside>
         )}
 

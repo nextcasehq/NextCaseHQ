@@ -17,18 +17,24 @@ interface RibbonProps {
 const TEXT_COLORS = ['#111111', '#8A6D2F', '#B91C1C', '#1D4ED8', '#047857'];
 const HIGHLIGHT_COLORS = ['#FEF08A', '#BBF7D0', '#BFDBFE', '#FBCFE8', '#FED7AA'];
 
-type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'ai' | 'export';
+// References/Review/AI were placeholder-only tabs (a single italic "planned
+// for a future milestone" line, no controls at all) — pure clutter with no
+// function to preserve, so they're gone rather than shrunk. Home/Insert/
+// Layout/Export are the only tabs anything actually happens in.
+type RibbonTab = 'home' | 'insert' | 'layout' | 'export';
 
 const RIBBON_TABS: { id: RibbonTab; label: string }[] = [
   { id: 'home', label: 'Home' },
   { id: 'insert', label: 'Insert' },
   { id: 'layout', label: 'Layout' },
-  { id: 'references', label: 'References' },
-  { id: 'review', label: 'Review' },
-  { id: 'ai', label: 'AI' },
   { id: 'export', label: 'Export' },
 ];
 
+// Explicit pixel values throughout this file, not Tailwind's numbered
+// spacing scale: this repo's tailwind.config.ts overrides spacing['8'] to
+// 64px (2x the default) for what was the ribbon's old, much chunkier
+// sizing — arbitrary values sidestep that scale entirely so a button
+// genuinely renders at the size written here.
 function RibbonButton({
   onClick,
   active,
@@ -50,7 +56,7 @@ function RibbonButton({
       aria-label={label}
       aria-pressed={active}
       title={disabled ? `${label} — coming soon` : label}
-      className={`shrink-0 min-w-[1.75rem] h-7 px-1.5 lg:min-w-[2rem] lg:h-8 lg:px-2 rounded-md text-xs font-bold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] ${
+      className={`shrink-0 min-w-[26px] h-[26px] px-1 rounded text-[11px] font-bold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] ${
         active ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#3A3222] border-[#E7DFC9] hover:bg-[#FBF8F1]'
       } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
@@ -60,57 +66,113 @@ function RibbonButton({
 }
 
 function Divider() {
-  return <span className="shrink-0 w-px h-7 lg:h-8 bg-[#E7DFC9] mx-1 lg:mx-1.5" aria-hidden="true" />;
+  return <span className="shrink-0 w-px h-[20px] bg-[#E7DFC9] mx-[6px] self-center" aria-hidden="true" />;
 }
 
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
+// No group caption ("CLIPBOARD", "FONT", ...) beneath each cluster — Notion,
+// Google Docs, and Figma's own property panels rely on icon tooltips, not a
+// permanent label row under every group, and dropping it removes an entire
+// text line's worth of height from every group.
+function Group({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center gap-[3px] px-[6px] shrink-0">{children}</div>;
+}
+
+const selectClass =
+  'h-[26px] px-1 bg-white border border-[#E7DFC9] rounded text-[11px] font-semibold text-[#3A3222] outline-none focus:border-[#8A6D2F]';
+
+function useOutsideClose(open: boolean, close: () => void) {
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = () => close();
+    const id = window.setTimeout(() => window.addEventListener('click', handler), 0);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('click', handler);
+    };
+  }, [open, close]);
+}
+
+/**
+ * A single compact trigger button that opens a small fixed-positioned
+ * flyout panel anchored to itself. Used to collapse what used to be many
+ * always-visible inline controls (color swatches, spacing selects, the
+ * style gallery, margin inputs) behind one button each — the same
+ * treatment Google Docs/Notion/Figma give secondary formatting controls,
+ * so the always-visible toolbar only carries the highest-frequency
+ * actions.
+ */
+function DropdownButton({
+  label,
+  buttonContent,
+  children,
+}: {
+  label: string;
+  buttonContent: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const close = React.useCallback(() => setOpen(false), []);
+  useOutsideClose(open, close);
+
+  React.useEffect(() => {
+    if (!open) {
+      setPosition(null);
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) setPosition({ top: rect.bottom + 4, left: rect.left });
+  }, [open]);
+
   return (
-    <div className="flex flex-col items-stretch gap-1 px-1.5 lg:px-2 shrink-0">
-      <div className="flex items-center gap-0.5 lg:gap-1 flex-wrap">{children}</div>
-      <span className="text-center text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">{label}</span>
+    <div>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        aria-expanded={open}
+        aria-label={label}
+        title={label}
+        className="shrink-0 h-[26px] px-1.5 flex items-center gap-1 rounded text-[11px] font-bold text-[#3A3222] bg-white border border-[#E7DFC9] hover:bg-[#FBF8F1]"
+      >
+        {buttonContent}
+        <span className="text-[8px] text-[#B0A588]">▾</span>
+      </button>
+      {open && position && (
+        // Fixed (not absolute) positioning, anchored to the trigger
+        // button's real on-screen coordinates: the ribbon's own scroll/
+        // overflow containers would clip an absolutely-positioned dropdown
+        // before it could extend below the ribbon's now much shorter height.
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ top: position.top, left: position.left }}
+          className="fixed z-30 bg-white border border-[#E7DFC9] rounded-lg shadow-lg p-2"
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }
 
-const selectClass =
-  'h-7 lg:h-8 px-1.5 lg:px-2 bg-white border border-[#E7DFC9] rounded-md text-xs font-semibold text-[#3A3222] outline-none focus:border-[#8A6D2F]';
-
 export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: RibbonProps) {
   const [activeTab, setActiveTab] = React.useState<RibbonTab>('home');
   const [textColor, setTextColor] = React.useState('#111111');
-  const [styleGalleryOpen, setStyleGalleryOpen] = React.useState(false);
-  const [styleGalleryPosition, setStyleGalleryPosition] = React.useState<{ top: number; left: number } | null>(null);
-  const styleGalleryButtonRef = React.useRef<HTMLButtonElement>(null);
-
-  React.useEffect(() => {
-    if (!styleGalleryOpen) {
-      setStyleGalleryPosition(null);
-      return;
-    }
-    const button = styleGalleryButtonRef.current;
-    if (button) {
-      const rect = button.getBoundingClientRect();
-      setStyleGalleryPosition({ top: rect.bottom + 4, left: rect.left });
-    }
-    const close = () => setStyleGalleryOpen(false);
-    // Deferred so the click that opened the gallery doesn't immediately close it.
-    const id = window.setTimeout(() => window.addEventListener('click', close), 0);
-    return () => {
-      window.clearTimeout(id);
-      window.removeEventListener('click', close);
-    };
-  }, [styleGalleryOpen]);
 
   if (!editor) return null;
 
   const updatePageSetup = (patch: Partial<PageSetup>) => onPageSetupChange({ ...pageSetup, ...patch });
 
   return (
-    <div role="toolbar" aria-label="Document formatting ribbon" className="bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm">
-      {/* No overflow-hidden here: the Styles gallery dropdown below is an
-          absolutely-positioned child that must be able to extend past
-          this container's bottom edge without being clipped. */}
-      <div className="flex items-center justify-between border-b border-[#F4EEE0] px-2">
+    <div role="toolbar" aria-label="Document formatting ribbon" className="bg-white border border-[#E7DFC9]/80 rounded-lg shadow-sm">
+      {/* No overflow-hidden here: the dropdown panels above are
+          fixed-positioned children that must be able to extend past this
+          container's bottom edge without being clipped. */}
+      <div className="flex items-center justify-between border-b border-[#F4EEE0] px-1.5">
         <div className="flex items-center overflow-x-auto">
           {RIBBON_TABS.map((tab) => (
             <button
@@ -118,7 +180,7 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               type="button"
               onClick={() => setActiveTab(tab.id)}
               aria-pressed={activeTab === tab.id}
-              className={`shrink-0 px-2.5 py-1.5 lg:px-3.5 lg:py-2 text-[10px] lg:text-[11px] font-bold uppercase tracking-wider border-b-2 transition-colors ${
+              className={`shrink-0 px-2 py-[5px] text-[10px] font-bold uppercase tracking-wide border-b-2 transition-colors ${
                 activeTab === tab.id ? 'border-[#8A6D2F] text-[#111111]' : 'border-transparent text-[#B0A588] hover:text-[#8A6D2F]'
               }`}
             >
@@ -126,7 +188,7 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 pl-2 shrink-0" aria-label="Quick access">
+        <div className="flex items-center gap-[3px] pl-2 shrink-0" aria-label="Quick access">
           <RibbonButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} label="Undo">
             ↺
           </RibbonButton>
@@ -136,10 +198,10 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
         </div>
       </div>
 
-      <div className="flex items-stretch overflow-x-auto px-1.5 lg:px-2 py-1.5 lg:py-2 min-h-[60px] lg:min-h-[76px]">
+      <div className="flex items-center overflow-x-auto px-1.5 py-1 min-h-[34px]">
         {activeTab === 'home' && (
           <>
-            <Group label="Clipboard">
+            <Group>
               <RibbonButton onClick={() => void cutSelection(editor)} label="Cut">
                 ✂
               </RibbonButton>
@@ -151,10 +213,10 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               </RibbonButton>
             </Group>
             <Divider />
-            <Group label="Font">
+            <Group>
               <select
                 aria-label="Font family"
-                className={selectClass}
+                className={`${selectClass} w-24`}
                 value={editor.getAttributes('textStyle').fontFamily || ''}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -171,7 +233,7 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               </select>
               <select
                 aria-label="Font size"
-                className={selectClass}
+                className={`${selectClass} w-14`}
                 value={editor.getAttributes('textStyle').fontSize || ''}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -199,39 +261,69 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               >
                 U
               </RibbonButton>
-              <input
-                aria-label="Text color"
-                type="color"
-                value={textColor}
-                onChange={(e) => {
-                  setTextColor(e.target.value);
-                  editor.chain().focus().setColor(e.target.value).run();
-                }}
-                className="w-8 h-8 rounded-md border border-[#E7DFC9] cursor-pointer"
-              />
-              {TEXT_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  aria-label={`Text color ${color}`}
-                  onClick={() => editor.chain().focus().setColor(color).run()}
-                  style={{ backgroundColor: color }}
-                  className="w-5 h-5 rounded-full border border-[#E7DFC9] shrink-0"
-                />
-              ))}
-              {HIGHLIGHT_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  aria-label={`Highlight ${color}`}
-                  onClick={() => editor.chain().focus().toggleHighlight({ color }).run()}
-                  style={{ backgroundColor: color }}
-                  className="w-5 h-5 rounded-full border border-[#E7DFC9] shrink-0"
-                />
-              ))}
-              <RibbonButton onClick={() => editor.chain().focus().unsetHighlight().run()} label="Remove highlight">
-                ⌫H
-              </RibbonButton>
+              {/* Text color, highlight, and clear-formatting used to be 12
+                  separate always-visible controls (a color input, 5 text
+                  swatches, 5 highlight swatches, remove-highlight) —
+                  collapsed into one dropdown, the same way Google Docs
+                  keeps its color picker behind a single button rather than
+                  spreading swatches across the toolbar. */}
+              <DropdownButton
+                label="Text color and highlight"
+                buttonContent={
+                  <span className="w-3 h-3 rounded-full border border-[#E7DFC9]" style={{ backgroundColor: textColor }} aria-hidden="true" />
+                }
+              >
+                <div className="w-44 space-y-2">
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588] mb-1">Text color</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <input
+                        aria-label="Text color"
+                        type="color"
+                        value={textColor}
+                        onChange={(e) => {
+                          setTextColor(e.target.value);
+                          editor.chain().focus().setColor(e.target.value).run();
+                        }}
+                        className="w-6 h-6 rounded border border-[#E7DFC9] cursor-pointer"
+                      />
+                      {TEXT_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          aria-label={`Text color ${color}`}
+                          onClick={() => editor.chain().focus().setColor(color).run()}
+                          style={{ backgroundColor: color }}
+                          className="w-5 h-5 rounded-full border border-[#E7DFC9] shrink-0"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588] mb-1">Highlight</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {HIGHLIGHT_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          aria-label={`Highlight ${color}`}
+                          onClick={() => editor.chain().focus().toggleHighlight({ color }).run()}
+                          style={{ backgroundColor: color }}
+                          className="w-5 h-5 rounded-full border border-[#E7DFC9] shrink-0"
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => editor.chain().focus().unsetHighlight().run()}
+                        aria-label="Remove highlight"
+                        className="h-5 px-1.5 rounded border border-[#E7DFC9] text-[10px] font-bold text-[#3A3222] hover:bg-[#FBF8F1]"
+                      >
+                        ⌫H
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </DropdownButton>
               <RibbonButton
                 onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
                 label="Clear formatting"
@@ -240,7 +332,7 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               </RibbonButton>
             </Group>
             <Divider />
-            <Group label="Paragraph">
+            <Group>
               <RibbonButton onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} label="Align left">
                 ⯇
               </RibbonButton>
@@ -265,130 +357,109 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               <RibbonButton onClick={() => editor.chain().focus().indent().run()} label="Increase indent">
                 ⇥
               </RibbonButton>
-              <select
-                aria-label="Line spacing"
-                className={selectClass}
-                value={editor.getAttributes('paragraph').lineHeight || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value) editor.chain().focus().setLineHeight(value).run();
-                  else editor.chain().focus().unsetLineHeight().run();
-                }}
-              >
-                <option value="">Line spacing</option>
-                {LINE_HEIGHTS.map((lh) => (
-                  <option key={lh} value={lh}>
-                    {lh}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Spacing before paragraph"
-                className={selectClass}
-                value={editor.getAttributes('paragraph').paragraphSpacingBefore || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value) editor.chain().focus().setParagraphSpacingBefore(value).run();
-                  else editor.chain().focus().unsetParagraphSpacingBefore().run();
-                }}
-              >
-                <option value="">Space before</option>
-                {PARAGRAPH_SPACINGS.map((sp) => (
-                  <option key={sp} value={sp}>
-                    {sp}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Spacing after paragraph"
-                className={selectClass}
-                value={editor.getAttributes('paragraph').paragraphSpacing || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value) editor.chain().focus().setParagraphSpacing(value).run();
-                  else editor.chain().focus().unsetParagraphSpacing().run();
-                }}
-              >
-                <option value="">Space after</option>
-                {PARAGRAPH_SPACINGS.map((sp) => (
-                  <option key={sp} value={sp}>
-                    {sp}
-                  </option>
-                ))}
-              </select>
+              {/* Line spacing + space-before + space-after were 3 always-
+                  visible selects — collapsed into one "Spacing" dropdown,
+                  the same treatment as color above. */}
+              <DropdownButton label="Paragraph spacing" buttonContent="Spacing">
+                <div className="w-40 space-y-2">
+                  <label className="block">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">Line spacing</span>
+                    <select
+                      aria-label="Line spacing"
+                      className={`${selectClass} w-full mt-0.5`}
+                      value={editor.getAttributes('paragraph').lineHeight || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value) editor.chain().focus().setLineHeight(value).run();
+                        else editor.chain().focus().unsetLineHeight().run();
+                      }}
+                    >
+                      <option value="">Default</option>
+                      {LINE_HEIGHTS.map((lh) => (
+                        <option key={lh} value={lh}>
+                          {lh}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">Space before</span>
+                    <select
+                      aria-label="Spacing before paragraph"
+                      className={`${selectClass} w-full mt-0.5`}
+                      value={editor.getAttributes('paragraph').paragraphSpacingBefore || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value) editor.chain().focus().setParagraphSpacingBefore(value).run();
+                        else editor.chain().focus().unsetParagraphSpacingBefore().run();
+                      }}
+                    >
+                      <option value="">Default</option>
+                      {PARAGRAPH_SPACINGS.map((sp) => (
+                        <option key={sp} value={sp}>
+                          {sp}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">Space after</span>
+                    <select
+                      aria-label="Spacing after paragraph"
+                      className={`${selectClass} w-full mt-0.5`}
+                      value={editor.getAttributes('paragraph').paragraphSpacing || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value) editor.chain().focus().setParagraphSpacing(value).run();
+                        else editor.chain().focus().unsetParagraphSpacing().run();
+                      }}
+                    >
+                      <option value="">Default</option>
+                      {PARAGRAPH_SPACINGS.map((sp) => (
+                        <option key={sp} value={sp}>
+                          {sp}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </DropdownButton>
             </Group>
             <Divider />
-            <Group label="Styles">
-              <div>
-                <button
-                  ref={styleGalleryButtonRef}
-                  type="button"
-                  onClick={() => setStyleGalleryOpen((v) => !v)}
-                  aria-expanded={styleGalleryOpen}
-                  aria-label="Style gallery"
-                  className="h-8 px-3 bg-white border border-[#E7DFC9] rounded-md text-xs font-bold text-[#3A3222] hover:bg-[#FBF8F1]"
-                >
-                  Styles ▾
-                </button>
-                {styleGalleryOpen && styleGalleryPosition && (
-                  // Fixed (not absolute) positioning, anchored to the
-                  // trigger button's real on-screen coordinates: the
-                  // ribbon's own scroll/overflow containers would clip an
-                  // absolutely-positioned dropdown before it could extend
-                  // below the ribbon's fixed height.
-                  <div
-                    style={{ top: styleGalleryPosition.top, left: styleGalleryPosition.left }}
-                    className="fixed z-30 w-56 bg-white border border-[#E7DFC9] rounded-lg shadow-lg p-1.5 grid grid-cols-1 gap-0.5"
-                  >
-                    {LEGAL_STYLES.map((style) => (
-                      <button
-                        key={style.id}
-                        type="button"
-                        onClick={() => {
-                          style.apply(editor);
-                          setStyleGalleryOpen(false);
-                        }}
-                        aria-pressed={style.isActive(editor)}
-                        className={`text-left px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                          style.isActive(editor) ? 'bg-[#111111] text-white' : 'text-[#3A3222] hover:bg-[#FBF8F1]'
-                        }`}
-                        title={style.description}
-                      >
-                        {style.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <Group>
+              <DropdownButton label="Style gallery" buttonContent="Styles">
+                <div className="w-56 grid grid-cols-1 gap-0.5">
+                  {LEGAL_STYLES.map((style) => (
+                    <button
+                      key={style.id}
+                      type="button"
+                      onClick={() => editor && style.apply(editor)}
+                      aria-pressed={style.isActive(editor)}
+                      className={`text-left px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                        style.isActive(editor) ? 'bg-[#111111] text-white' : 'text-[#3A3222] hover:bg-[#FBF8F1]'
+                      }`}
+                      title={style.description}
+                    >
+                      {style.name}
+                    </button>
+                  ))}
+                </div>
+              </DropdownButton>
             </Group>
           </>
         )}
 
         {activeTab === 'insert' && (
-          <>
-            <Group label="Pages">
-              <RibbonButton onClick={() => editor.chain().focus().setPageBreak().run()} label="Insert page break">
-                ⤓ Page Break
-              </RibbonButton>
-            </Group>
-            <Divider />
-            <Group label="Coming soon">
-              <RibbonButton onClick={() => {}} disabled label="Table">
-                ⊞ Table
-              </RibbonButton>
-              <RibbonButton onClick={() => {}} disabled label="Image">
-                🖼 Image
-              </RibbonButton>
-              <RibbonButton onClick={() => {}} disabled label="Link">
-                🔗 Link
-              </RibbonButton>
-            </Group>
-          </>
+          <Group>
+            <RibbonButton onClick={() => editor.chain().focus().setPageBreak().run()} label="Insert page break">
+              ⤓ Page Break
+            </RibbonButton>
+          </Group>
         )}
 
         {activeTab === 'layout' && (
           <>
-            <Group label="Paper">
+            <Group>
               <select
                 aria-label="Paper size"
                 className={selectClass}
@@ -412,82 +483,69 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               </select>
             </Group>
             <Divider />
-            <Group label="Margins (mm)">
-              <input
-                aria-label="Top margin"
-                type="number"
-                min={0}
-                max={100}
-                value={pageSetup.margins.top}
-                onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, top: Number(e.target.value) } })}
-                className={`${selectClass} w-16`}
-              />
-              <input
-                aria-label="Bottom margin"
-                type="number"
-                min={0}
-                max={100}
-                value={pageSetup.margins.bottom}
-                onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, bottom: Number(e.target.value) } })}
-                className={`${selectClass} w-16`}
-              />
-              <input
-                aria-label="Left margin"
-                type="number"
-                min={0}
-                max={100}
-                value={pageSetup.margins.left}
-                onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, left: Number(e.target.value) } })}
-                className={`${selectClass} w-16`}
-              />
-              <input
-                aria-label="Right margin"
-                type="number"
-                min={0}
-                max={100}
-                value={pageSetup.margins.right}
-                onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, right: Number(e.target.value) } })}
-                className={`${selectClass} w-16`}
-              />
+            <Group>
+              <DropdownButton label="Margins" buttonContent="Margins">
+                <div className="w-40 grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">Top</span>
+                    <input
+                      aria-label="Top margin"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={pageSetup.margins.top}
+                      onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, top: Number(e.target.value) } })}
+                      className={`${selectClass} w-full mt-0.5`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">Bottom</span>
+                    <input
+                      aria-label="Bottom margin"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={pageSetup.margins.bottom}
+                      onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, bottom: Number(e.target.value) } })}
+                      className={`${selectClass} w-full mt-0.5`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">Left</span>
+                    <input
+                      aria-label="Left margin"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={pageSetup.margins.left}
+                      onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, left: Number(e.target.value) } })}
+                      className={`${selectClass} w-full mt-0.5`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">Right</span>
+                    <input
+                      aria-label="Right margin"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={pageSetup.margins.right}
+                      onChange={(e) => updatePageSetup({ margins: { ...pageSetup.margins, right: Number(e.target.value) } })}
+                      className={`${selectClass} w-full mt-0.5`}
+                    />
+                  </label>
+                </div>
+              </DropdownButton>
             </Group>
           </>
-        )}
-
-        {activeTab === 'references' && (
-          <p className="text-xs text-[#8A7A56] italic px-2 self-center">
-            Citation and cross-reference tools are planned for a future milestone.
-          </p>
-        )}
-
-        {activeTab === 'review' && (
-          <p className="text-xs text-[#8A7A56] italic px-2 self-center">
-            Track changes and comments are planned for a future milestone.
-          </p>
-        )}
-
-        {activeTab === 'ai' && (
-          <p className="text-xs text-[#8A7A56] italic px-2 self-center">
-            AI drafting assistance is planned for a future milestone.
-          </p>
         )}
 
         {activeTab === 'export' && (
-          <>
-            <Group label="Print">
-              <RibbonButton onClick={onPrint} label="Print / Preview">
-                🖨 Print / Preview
-              </RibbonButton>
-            </Group>
-            <Divider />
-            <Group label="Coming soon">
-              <RibbonButton onClick={() => {}} disabled label="Export PDF">
-                Export PDF
-              </RibbonButton>
-              <RibbonButton onClick={() => {}} disabled label="Export DOCX">
-                Export DOCX
-              </RibbonButton>
-            </Group>
-          </>
+          <Group>
+            <RibbonButton onClick={onPrint} label="Print / Preview">
+              🖨 Print / Preview
+            </RibbonButton>
+          </Group>
         )}
       </div>
     </div>

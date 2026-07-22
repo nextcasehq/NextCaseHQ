@@ -195,20 +195,25 @@ describe('Document Creator rebuild — ribbon exposes every required control', (
     expect(combined).toContain(command);
   });
 
-  test.each(['Home', 'Insert', 'Layout', 'References', 'Review', 'AI', 'Export'])(
-    'the ribbon defines a %s tab',
-    (tab) => {
-      expect(ribbon).toMatch(new RegExp(`label:\\s*'${tab}'`));
-    }
-  );
+  test.each(['Home', 'Insert', 'Layout', 'Export'])('the ribbon defines a %s tab', (tab) => {
+    expect(ribbon).toMatch(new RegExp(`label:\\s*'${tab}'`));
+  });
 
   test('clipboard actions use the real browser Clipboard API, not document.execCommand', () => {
     expect(ribbon).not.toContain('document.execCommand');
     expect(ribbon).toMatch(/cutSelection|copySelection|pasteClipboard/);
   });
 
-  test('reserved future tabs (References, Review, AI) are honestly labeled, not fake-functional', () => {
-    expect(ribbon).toMatch(/planned for a future milestone/i);
+  test('References/Review/AI are gone rather than kept as fake-functional placeholders', () => {
+    // A later screen-real-estate pass removed these three tabs entirely:
+    // each rendered nothing but a single italic "planned for a future
+    // milestone" sentence, so they were pure clutter (extra tab-bar width,
+    // extra taps to discover there was nothing there) with zero function
+    // to preserve by keeping them around.
+    expect(ribbon).not.toMatch(/label:\s*'References'/);
+    expect(ribbon).not.toMatch(/label:\s*'Review'/);
+    expect(ribbon).not.toMatch(/label:\s*'AI'/);
+    expect(ribbon).not.toMatch(/planned for a future milestone/i);
   });
 
   test('toolbar controls have accessible names', () => {
