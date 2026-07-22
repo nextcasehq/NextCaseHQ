@@ -1,7 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Footer } from "@/components/Footer";
+import CourtStatusWizard from "@/components/ecourts/CourtStatusWizard";
 
 const title = "eCourts Verification | NextCaseHQ";
 const description =
@@ -106,17 +106,20 @@ export default function ECourtsVerificationPage() {
               username or password — only the case details above, so it can
               open the right search on the official portal.
             </p>
+          </div>
+        </section>
 
-            <div className="mt-10 flex flex-col items-start gap-3">
-              <Link
-                href="/dashboard/matters"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#8A6D2F]/50 bg-white px-6 py-3 text-sm font-bold text-[#6F5624] transition-all duration-200 hover:bg-[#8A6D2F]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A253] focus-visible:ring-offset-2"
-              >
-                Start Verification
-              </Link>
-              <p className="text-xs text-[#8A7A56]">
-                Opens your Matter Register, where you can search and confirm.
-              </p>
+        <section className="bg-[#FBF8F1]">
+          <div className="mx-auto w-full max-w-xl px-6 py-16 md:px-12 lg:py-20">
+            <h2 className="font-serif text-2xl font-black tracking-tight text-[#241E17] md:text-3xl">
+              Start a verification
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#5C5340]">
+              Select the court system, then follow the same steps you&rsquo;d
+              use on the official portal — one at a time.
+            </p>
+            <div className="mt-8">
+              <CourtStatusWizard />
             </div>
           </div>
         </section>

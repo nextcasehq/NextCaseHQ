@@ -45,10 +45,11 @@ describe('/ecourts-verification explainer page', () => {
     expect(page).toMatch(/never asks for[^.]*(username|password)/i);
   });
 
-  test('has exactly one call-to-action, which hands off into the real Matter Register workflow', () => {
-    const ctaMatches = page.match(/Start Verification/g) ?? [];
-    expect(ctaMatches.length).toBe(1);
-    expect(page).toMatch(/href="\/dashboard\/matters"/);
+  test('the guided Court Status wizard is embedded, and hands off into the real Matter Register workflow', () => {
+    expect(page).toContain('<CourtStatusWizard');
+    const wizard = readSource('components/ecourts/CourtStatusWizard.tsx');
+    expect(wizard).toContain('Continue to Matter Register');
+    expect(wizard).toMatch(/href="\/dashboard\/matters"/);
     const dashboardMattersUsesECourtsFlow = readSource('app/dashboard/matters/page.tsx');
     expect(dashboardMattersUsesECourtsFlow).toContain('CheckECourtsCaseUpdateModal');
   });
