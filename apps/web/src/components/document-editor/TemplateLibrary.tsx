@@ -9,6 +9,11 @@ interface TemplateLibraryProps {
   onSelectTemplate: (template: LegalTemplate) => void;
   onStartBlank: () => void;
   isBlankSelected: boolean;
+  /** 'stack' (default) is the compact single-column list used inside the
+      editing sidebar. 'grid' is the larger, multi-column layout used by
+      the initial document-choosing screen, where there's room to show
+      every option at a glance without scrolling. */
+  layout?: 'stack' | 'grid';
 }
 
 function DocumentCard({
@@ -80,9 +85,10 @@ function Badge({
  * there are enough templates that a flat list stops being the fastest way
  * to scan them.
  */
-export function TemplateLibrary({ selectedTemplateId, onSelectTemplate, onStartBlank, isBlankSelected }: TemplateLibraryProps) {
+export function TemplateLibrary({ selectedTemplateId, onSelectTemplate, onStartBlank, isBlankSelected, layout = 'stack' }: TemplateLibraryProps) {
+  const containerClass = layout === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-2';
   return (
-    <div className="space-y-2" aria-label="Create a document">
+    <div className={containerClass} aria-label="Create a document">
       <DocumentCard selected={isBlankSelected} onSelect={onStartBlank} title="Blank Document" subtitle="Start with an empty page" />
       {LEGAL_TEMPLATES.map((template) => {
         const hasInterview = !!getInterviewConfigForTemplate(template.id);

@@ -85,8 +85,12 @@ describe('Document Creator — dedicated mobile editing experience', () => {
     // available for anyone who wants the page at its literal print size.
     const mountEffectStart = page.indexOf('Fit Width now auto-engages on EVERY viewport');
     expect(mountEffectStart).toBeGreaterThan(-1);
-    const mountEffectBody = page.slice(mountEffectStart, mountEffectStart + 700);
+    // 1100 (not 700): a later pass added a comment explaining why this
+    // effect is keyed on `phase` rather than running once on mount — the
+    // canvas it measures doesn't exist until the 'editing' phase mounts it.
+    const mountEffectBody = page.slice(mountEffectStart, mountEffectStart + 1100);
     expect(mountEffectBody).toContain('React.useEffect(() => {\n    computeFitWidthZoom();');
+    expect(mountEffectBody).toContain('}, [phase]);');
     expect(mountEffectBody).not.toContain("matchMedia('(max-width: 1023px)')");
   });
 

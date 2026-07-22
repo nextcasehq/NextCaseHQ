@@ -12,6 +12,7 @@ import { Ribbon } from '@/components/document-editor/Ribbon';
 import { MobileToolbar } from '@/components/document-editor/MobileToolbar';
 import { PageSetupPanel } from '@/components/document-editor/PageSetupPanel';
 import { TemplateLibrary } from '@/components/document-editor/TemplateLibrary';
+import { DocumentChooser } from '@/components/document-editor/DocumentChooser';
 import { AttachmentsPanel } from '@/components/document-editor/AttachmentsPanel';
 import { DocumentCanvas, MM_TO_PX } from '@/components/document-editor/DocumentCanvas';
 import { StatusBar } from '@/components/document-editor/StatusBar';
@@ -59,6 +60,12 @@ type MobileDrawer = 'none' | 'left';
  * setup, and template identity are packed into the one opaque `content`
  * string the DocumentDraft API already knows how to store — that server
  * contract has not moved.
+ *
+ * Two phases, tracked by `phase`: 'choosing' (DocumentChooser — deciding
+ * what to prepare is a different task from editing it, and gets its own
+ * chrome-free screen) and 'editing' (everything below, unchanged). A
+ * fresh session starts in 'choosing'; resuming an existing draft or
+ * picking anything in 'choosing' moves to 'editing' and stays there.
  */
 export default function DraftBuilderPage() {
   const [draftTitle, setDraftTitle] = React.useState(BLANK_DRAFT_TITLE);
@@ -87,25 +94,25 @@ export default function DraftBuilderPage() {
     setSessionStartedAt(new Date());
   }, []);
 
-  const [mobileDrawer, setMobileDrawer] = React.useState<MobileDrawer>('none');
-  // A brand-new visitor (no resumable draft pointer yet — see
-  // useDurableAutosave's own localStorage key) otherwise lands silently on
-  // a blank editor with the Template Library tucked behind an icon-only
-  // hamburger, easy to miss entirely on a small screen. Surfacing it once,
-  // automatically, up front — exactly like Google Docs/Word's own "choose
-  // a template" gallery on a new document — costs nothing for anyone
-  // resuming an existing draft (the pointer already exists by then) and
-  // costs one dismissible tap for anyone who genuinely wants to start
-  // blank. Desktop already shows the same Template Library permanently in
-  // its sidebar, so this only needs to run below the md breakpoint.
+  // Two-phase workspace: an advocate's first task is deciding what to
+  // prepare, not editing, so the page starts in 'choosing' — a dedicated
+  // full-width gallery, no ribbon/canvas/sidebars at all — and only
+  // switches to 'editing' (today's full editor) once a document is
+  // actually chosen. A returning visitor with a draft already in progress
+  // (the localStorage pointer below) skips 'choosing' entirely and resumes
+  // straight into 'editing', the same way reopening an existing Google
+  // Docs file skips its "new document" gallery. Starts 'choosing' on the
+  // server render (no localStorage there) and corrects client-side in the
+  // effect below, same pattern as sessionStartedAt/leftOpen elsewhere in
+  // this file.
+  const [phase, setPhase] = React.useState<'choosing' | 'editing'>('choosing');
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     const hasExistingDraft = window.localStorage.getItem(pointerKey('draft-builder-session')) !== null;
-    if (!hasExistingDraft && window.matchMedia('(max-width: 767px)').matches) {
-      setMobileDrawer('left');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (hasExistingDraft) setPhase('editing');
   }, []);
+
+  const [mobileDrawer, setMobileDrawer] = React.useState<MobileDrawer>('none');
   const [leftOpen, setLeftOpen] = React.useState(true);
   // Page Setup & Properties is a slide-over drawer at every breakpoint —
   // never a persistent sidebar the way it used to be. It's touched once
@@ -233,6 +240,13 @@ export default function DraftBuilderPage() {
   );
 
   const handleSelectTemplate = (template: LegalTemplate) => {
+    // A Guided Interview is already open — selecting anything else here
+    // (from the sidebar's gallery, which stays reachable during editing)
+    // used to silently start and autosave a brand-new draft underneath
+    // the still-visible interview, with no warning: the interview's own
+    // Cancel button is the only way out of it, so a selection made while
+    // one is open must never reach applyTemplate.
+    if (activeInterview) return;
     // On mobile the library lives in a slide-out drawer over the canvas —
     // dismiss it as soon as a choice is made so the wizard/editor
     // underneath is actually visible, instead of staying hidden behind it.
@@ -241,7 +255,11 @@ export default function DraftBuilderPage() {
     if (interviewConfig) {
       // Opening the interview never touches the current draft — it's a
       // wizard rendered in place of the canvas, on this same page, until
-      // "Generate Draft" is clicked.
+      // "Generate Draft" is clicked. Choosing it is still choosing a
+      // document, though, so the workspace moves into 'editing' now —
+      // the interview itself stays chrome-free (see the ribbon/toolbar/
+      // status bar conditions below), only the canvas underneath it is.
+      setPhase('editing');
       setActiveInterview({ template, config: interviewConfig });
       return;
     }
@@ -250,6 +268,7 @@ export default function DraftBuilderPage() {
       setPendingTemplate(template);
       return;
     }
+    setPhase('editing');
     void applyTemplate(template);
   };
 
@@ -264,12 +283,14 @@ export default function DraftBuilderPage() {
   };
 
   const handleStartBlank = () => {
+    if (activeInterview) return;
     setMobileDrawer('none');
     const hasSubstantialContent = currentHtml.replace(/<[^>]+>/g, '').trim().length > 40;
     if (hasSubstantialContent && selectedTemplateId !== null) {
       setPendingTemplate('blank');
       return;
     }
+    setPhase('editing');
     void applyTemplate(null);
   };
 
@@ -333,10 +354,15 @@ export default function DraftBuilderPage() {
   // window" behavior Google Docs/Notion default to, and the explicit
   // fixed-zoom buttons (50–200%) remain available for anyone who wants
   // the page at its literal print size instead.
+  // Keyed on `phase`, not just mount: the canvas this measures doesn't
+  // exist yet while phase is 'choosing' (computeFitWidthZoom no-ops
+  // safely against a null ref then), so the real first computation has to
+  // happen when 'editing' actually mounts the canvas, not just once at
+  // the page's own initial render.
   React.useEffect(() => {
     computeFitWidthZoom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [phase]);
 
   // Selecting a template (or blank) replaces pageSetup wholesale with the
   // template's own — always zoom: 100 — undoing Fit Width the same way a
@@ -512,6 +538,17 @@ export default function DraftBuilderPage() {
     </>
   );
 
+  // The chooser is the entire page until a document is picked — no
+  // header, ribbon, canvas, or sidebars render alongside it. See
+  // DocumentChooser's own doc comment for why.
+  if (phase === 'choosing') {
+    return (
+      <div className={`h-screen flex flex-col overflow-hidden font-sans ${workspaceBg}`}>
+        <DocumentChooser onSelectTemplate={handleSelectTemplate} onStartBlank={handleStartBlank} />
+      </div>
+    );
+  }
+
   return (
     <div className={`h-screen flex flex-col overflow-hidden font-sans ${workspaceBg}`}>
       {!focusMode && (
@@ -657,12 +694,16 @@ export default function DraftBuilderPage() {
         </div>
       )}
 
-      {!focusMode && (
+      {/* Also hidden during an active Guided Interview: there's no rich
+          text to format while filling in a questionnaire, so the ribbon
+          was pure visual noise sitting above it — the same "only appear
+          while editing" rule the chooser itself follows. */}
+      {!focusMode && !activeInterview && (
         <div className="no-print shrink-0 px-4 md:px-6 pt-3 hidden md:block">
           <Ribbon editor={editor} pageSetup={pageSetup} onPageSetupChange={handlePageSetupChange} onPrint={handlePrint} />
         </div>
       )}
-      {!focusMode && <MobileToolbar editor={editor} onPrint={handlePrint} />}
+      {!focusMode && !activeInterview && <MobileToolbar editor={editor} onPrint={handlePrint} />}
 
       {/* pb-[24px] reserves the StatusBar's own height (h-[24px], fixed
           bottom-0 — see StatusBar.tsx) since a fixed-position element
@@ -670,8 +711,10 @@ export default function DraftBuilderPage() {
           viewport (e.g. mobile landscape) the sidebar/editor's own
           scrollable content can extend the full remaining height and end
           up rendered underneath the status bar, both visually clipped and
-          unclickable there. */}
-      <div className={`flex-1 flex overflow-hidden ${focusMode ? '' : 'pb-[24px]'}`}>
+          unclickable there. Also skipped during an active interview,
+          since the status bar itself doesn't render then either (page/
+          word counts describe the canvas, not the questionnaire). */}
+      <div className={`flex-1 flex overflow-hidden ${focusMode || activeInterview ? '' : 'pb-[24px]'}`}>
         {!focusMode && (
           <aside
             style={{ width: leftOpen ? '240px' : '0px' }}
@@ -772,7 +815,7 @@ export default function DraftBuilderPage() {
         )}
       </div>
 
-      {!focusMode && (
+      {!focusMode && !activeInterview && (
         <StatusBar
           currentPage={currentPage}
           pageCount={pageCount}
