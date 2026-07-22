@@ -4,6 +4,7 @@ import HeroSection from "@/components/landing/sections/HeroSection";
 import ProductPreview from "@/components/landing/sections/ProductPreview";
 import TrustBar from "@/components/landing/sections/TrustBar";
 import Features from "@/components/landing/sections/Features";
+import ECourtsConnection from "@/components/landing/sections/ECourtsConnection";
 import Security from "@/components/landing/sections/Security";
 import Workflow from "@/components/landing/sections/Workflow";
 import CtaBand from "@/components/landing/sections/CtaBand";
@@ -21,6 +22,7 @@ export default function LandingPageContent() {
       <ProductPreview />
       <TrustBar />
       <Features />
+      <ECourtsConnection />
       <Security />
       <Workflow />
       <CtaBand />
