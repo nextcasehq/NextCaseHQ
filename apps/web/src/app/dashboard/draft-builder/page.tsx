@@ -9,6 +9,7 @@ import { getInterviewConfigForTemplate } from '@/lib/documents/survey/registry';
 import type { InterviewConfig } from '@/lib/documents/survey/types';
 import { useDocumentEditor } from '@/components/document-editor/useDocumentEditor';
 import { Ribbon } from '@/components/document-editor/Ribbon';
+import { MobileToolbar } from '@/components/document-editor/MobileToolbar';
 import { PageSetupPanel } from '@/components/document-editor/PageSetupPanel';
 import { TemplateLibrary } from '@/components/document-editor/TemplateLibrary';
 import { AttachmentsPanel } from '@/components/document-editor/AttachmentsPanel';
@@ -267,6 +268,36 @@ export default function DraftBuilderPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [zoomMode, computeFitWidthZoom]);
+
+  // Below desktop (lg), the sidebars/thumbnail rail leave too little room
+  // for a full-width A4/Letter page at the 100% zoom desktop default — the
+  // page renders far wider than the available viewport, mostly centered
+  // off-screen, making the editor practically untappable on a phone (see
+  // the mobile toolbar's own regression coverage for how this was found:
+  // typing appeared to work in a Playwright test because the click landed
+  // outside the real contenteditable entirely). Auto-engaging Fit Width on
+  // mount — the same mechanism the "Fit Width" zoom button already
+  // provides — keeps the whole page reachable without the advocate ever
+  // having to find that control themselves. Desktop (lg+) is untouched:
+  // it keeps its current 100%-zoom default.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      computeFitWidthZoom();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Selecting a template (or blank) replaces pageSetup wholesale with the
+  // template's own — always zoom: 100 — undoing Fit Width the same way a
+  // fresh paper size/orientation would. Recomputing whenever
+  // selectedTemplateId changes (not just paperSize/orientation) catches
+  // the common case of two templates sharing the same A4/portrait
+  // dimensions, where paperSize/orientation alone wouldn't change.
+  React.useEffect(() => {
+    if (zoomMode === 'fit-width') computeFitWidthZoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSetup.paperSize, pageSetup.orientation, selectedTemplateId]);
 
   const handlePageSetupChange = (next: PageSetup) => {
     setZoomMode('fixed');
@@ -581,12 +612,19 @@ export default function DraftBuilderPage() {
       )}
 
       {!focusMode && (
-        <div className="no-print shrink-0 px-4 md:px-6 pt-3">
+        <div className="no-print shrink-0 px-4 md:px-6 pt-3 hidden md:block">
           <Ribbon editor={editor} pageSetup={pageSetup} onPageSetupChange={handlePageSetupChange} onPrint={handlePrint} />
         </div>
       )}
+      {!focusMode && <MobileToolbar editor={editor} onPrint={handlePrint} />}
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* pb-8 reserves the StatusBar's own height (h-8, fixed bottom-0 —
+          see StatusBar.tsx) since a fixed-position element never takes up
+          space in normal flow. Without it, on a short viewport (e.g.
+          mobile landscape) the sidebar/editor's own scrollable content can
+          extend the full remaining height and end up rendered underneath
+          the status bar, both visually clipped and unclickable there. */}
+      <div className={`flex-1 flex overflow-hidden ${focusMode ? '' : 'pb-8'}`}>
         {!focusMode && (
           <aside
             style={{ width: leftOpen ? '272px' : '0px' }}

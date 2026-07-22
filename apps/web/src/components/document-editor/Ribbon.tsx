@@ -50,7 +50,7 @@ function RibbonButton({
       aria-label={label}
       aria-pressed={active}
       title={disabled ? `${label} — coming soon` : label}
-      className={`shrink-0 min-w-[2rem] h-8 px-2 rounded-md text-xs font-bold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] ${
+      className={`shrink-0 min-w-[1.75rem] h-7 px-1.5 lg:min-w-[2rem] lg:h-8 lg:px-2 rounded-md text-xs font-bold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] ${
         active ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#3A3222] border-[#E7DFC9] hover:bg-[#FBF8F1]'
       } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
@@ -60,20 +60,20 @@ function RibbonButton({
 }
 
 function Divider() {
-  return <span className="shrink-0 w-px h-8 bg-[#E7DFC9] mx-1.5" aria-hidden="true" />;
+  return <span className="shrink-0 w-px h-7 lg:h-8 bg-[#E7DFC9] mx-1 lg:mx-1.5" aria-hidden="true" />;
 }
 
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-stretch gap-1 px-2 shrink-0">
-      <div className="flex items-center gap-1 flex-wrap">{children}</div>
+    <div className="flex flex-col items-stretch gap-1 px-1.5 lg:px-2 shrink-0">
+      <div className="flex items-center gap-0.5 lg:gap-1 flex-wrap">{children}</div>
       <span className="text-center text-[9px] font-bold uppercase tracking-widest text-[#B0A588]">{label}</span>
     </div>
   );
 }
 
 const selectClass =
-  'h-8 px-2 bg-white border border-[#E7DFC9] rounded-md text-xs font-semibold text-[#3A3222] outline-none focus:border-[#8A6D2F]';
+  'h-7 lg:h-8 px-1.5 lg:px-2 bg-white border border-[#E7DFC9] rounded-md text-xs font-semibold text-[#3A3222] outline-none focus:border-[#8A6D2F]';
 
 export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: RibbonProps) {
   const [activeTab, setActiveTab] = React.useState<RibbonTab>('home');
@@ -118,7 +118,7 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
               type="button"
               onClick={() => setActiveTab(tab.id)}
               aria-pressed={activeTab === tab.id}
-              className={`shrink-0 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider border-b-2 transition-colors ${
+              className={`shrink-0 px-2.5 py-1.5 lg:px-3.5 lg:py-2 text-[10px] lg:text-[11px] font-bold uppercase tracking-wider border-b-2 transition-colors ${
                 activeTab === tab.id ? 'border-[#8A6D2F] text-[#111111]' : 'border-transparent text-[#B0A588] hover:text-[#8A6D2F]'
               }`}
             >
@@ -136,7 +136,7 @@ export function Ribbon({ editor, pageSetup, onPageSetupChange, onPrint }: Ribbon
         </div>
       </div>
 
-      <div className="flex items-stretch overflow-x-auto px-2 py-2 min-h-[76px]">
+      <div className="flex items-stretch overflow-x-auto px-1.5 lg:px-2 py-1.5 lg:py-2 min-h-[60px] lg:min-h-[76px]">
         {activeTab === 'home' && (
           <>
             <Group label="Clipboard">
