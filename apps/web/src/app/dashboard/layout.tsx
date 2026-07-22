@@ -49,12 +49,15 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  // The Document Creator is a drafting workspace, not a document library —
-  // searching for another document mid-draft isn't part of that workflow,
-  // so the top bar's search (a matter/document lookup that navigates away
-  // to /search) doesn't belong here. Search still stays exactly as-is on
-  // every other page this shared layout serves.
-  const hideSearch = (pathname ?? '').startsWith('/dashboard/draft-builder');
+  // The Document Creator is a dedicated drafting workspace, not a standard
+  // dashboard page — this drives two things below: the top bar's search
+  // (a matter/document lookup that navigates away to /search) doesn't
+  // belong in a drafting workflow, and the bar itself renders shorter and
+  // quieter so the editor gets the vertical space instead. Every other
+  // page this shared layout serves keeps the search bar and the standard
+  // header height exactly as-is.
+  const isDocumentCreatorRoute = (pathname ?? '').startsWith('/dashboard/draft-builder');
+  const hideSearch = isDocumentCreatorRoute;
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
@@ -137,12 +140,27 @@ export default function DashboardLayout({
     }
   };
 
+  // Compact header sizing for the Document Creator only — a dedicated
+  // drafting workspace should read closer to Google Docs/Notion/Word Web's
+  // own quiet top bar than a standard dashboard page's. Explicit pixel
+  // values throughout, not the numbered Tailwind spacing scale: this
+  // repo's tailwind.config.ts doubles keys 1–16 (h-16 here is actually
+  // 128px, w-8/h-8 is 64px, not their normal Tailwind sizes), so arbitrary
+  // values are the only way to land on a genuinely small, exact height —
+  // the standard header (h-16, w-8/h-8, etc.) is untouched below for
+  // every other page.
+  const headerHeightClass = isDocumentCreatorRoute ? 'h-[44px]' : 'h-16';
+  const headerPaddingClass = isDocumentCreatorRoute ? 'px-3 md:px-4' : 'px-4 md:px-8';
+  const logoTextClass = isDocumentCreatorRoute ? 'text-sm' : 'text-lg';
+  const bellEmojiClass = isDocumentCreatorRoute ? 'text-sm' : 'text-lg';
+  const avatarSizeClass = isDocumentCreatorRoute ? 'w-[28px] h-[28px] text-[9px]' : 'w-8 h-8 text-xs';
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white text-[#241E17] font-sans selection:bg-[#8A6D2F] selection:text-white">
       {/* Top Header Row — brand, Search, Notifications, AI Credits, Profile */}
-      <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between gap-3 z-10 flex-none relative">
+      <header className={`${headerHeightClass} border-b border-[#F4EEE0] bg-white ${headerPaddingClass} flex items-center justify-between gap-3 z-10 flex-none relative`}>
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <Link href="/dashboard" className="flex-none text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1">
+          <Link href="/dashboard" className={`flex-none ${logoTextClass} font-black tracking-tight text-[#241E17] flex items-center gap-1`}>
             <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </Link>
 
@@ -195,7 +213,7 @@ export default function DashboardLayout({
             className="relative p-1.5 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
             aria-label="View notifications"
           >
-            <span className="text-lg">🔔</span>
+            <span className={bellEmojiClass}>🔔</span>
             {unreadCount > 0 && (
               <span className="absolute top-0 right-0 w-2 h-2 bg-[#8A6D2F] rounded-full"></span>
             )}
@@ -207,7 +225,7 @@ export default function DashboardLayout({
               onClick={() => setIsProfileOpen((v) => !v)}
               aria-label="Profile menu"
               aria-expanded={isProfileOpen}
-              className="w-8 h-8 rounded-full bg-[#8A6D2F] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm cursor-pointer border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] focus-visible:ring-offset-2"
+              className={`${avatarSizeClass} rounded-full bg-[#8A6D2F] text-white flex items-center justify-center font-bold uppercase shadow-sm cursor-pointer border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] focus-visible:ring-offset-2`}
             >
               NC
             </button>

@@ -723,19 +723,24 @@ export default function DraftBuilderPage() {
 
         {mobileDrawer !== 'none' && (
           <>
-            {/* top-16 (not inset-0/inset-y-0): the shared dashboard shell's
-                top bar (app/dashboard/layout.tsx) sits in its own stacking
-                context (its <main isolate> wrapper always paints above
-                whatever's inside it, regardless of z-index), so a fixed
-                overlay that starts at the true viewport top would be
+            {/* top-[44px] (not inset-0/inset-y-0): the shared dashboard
+                shell's top bar (app/dashboard/layout.tsx) sits in its own
+                stacking context (its <main isolate> wrapper always paints
+                above whatever's inside it, regardless of z-index), so a
+                fixed overlay that starts at the true viewport top would be
                 visually covered by — and have its own top strip's clicks
-                intercepted by — that shared bar. Anchoring below its fixed
-                4rem (h-16) height keeps the drawer entirely clickable. */}
+                intercepted by — that shared bar. Anchoring below its
+                height keeps the drawer entirely clickable. That height is
+                44px here (not the shared header's usual 128px, itself
+                h-16 doubled by this repo's tailwind.config.ts spacing
+                scale) — layout.tsx renders a shorter, quieter bar
+                specifically on this route, so the offset below has to
+                match it exactly rather than reuse the h-16 utility. */}
             <div
-              className="no-print fixed top-16 inset-x-0 bottom-0 bg-black/40 z-40 md:hidden"
+              className="no-print fixed top-[44px] inset-x-0 bottom-0 bg-black/40 z-40 md:hidden"
               onClick={() => setMobileDrawer('none')}
             />
-            <div className="no-print fixed top-16 bottom-0 left-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4">
+            <div className="no-print fixed top-[44px] bottom-0 left-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4">
               <button
                 type="button"
                 onClick={() => setMobileDrawer('none')}
@@ -754,13 +759,13 @@ export default function DraftBuilderPage() {
             margins are already one click away via the ribbon's Layout
             menu, and Document Properties is read-only, derived metadata
             nobody edits. Neither earns 240px of permanent width. Same
-            top-16 reasoning as the left drawer above, but not md:hidden:
-            this one replaces what used to be a desktop-only aside, so it
-            has to work at every width, not just mobile. */}
+            top-[44px] reasoning as the left drawer above, but not
+            md:hidden: this one replaces what used to be a desktop-only
+            aside, so it has to work at every width, not just mobile. */}
         {pageSetupOpen && (
           <>
-            <div className="no-print fixed top-16 inset-x-0 bottom-0 bg-black/40 z-40" onClick={() => setPageSetupOpen(false)} />
-            <div className={`no-print fixed top-16 bottom-0 right-0 z-50 w-72 sm:w-80 shadow-2xl overflow-y-auto p-4 space-y-4 ${chromeBg}`}>
+            <div className="no-print fixed top-[44px] inset-x-0 bottom-0 bg-black/40 z-40" onClick={() => setPageSetupOpen(false)} />
+            <div className={`no-print fixed top-[44px] bottom-0 right-0 z-50 w-72 sm:w-80 shadow-2xl overflow-y-auto p-4 space-y-4 ${chromeBg}`}>
               {rightSidebarContent}
             </div>
           </>
