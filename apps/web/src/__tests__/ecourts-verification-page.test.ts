@@ -3,9 +3,9 @@ import path from 'path';
 
 /**
  * Regression coverage for the /ecourts-verification explainer page — the
- * intermediate stop between the landing page's eCourts Connection panel
- * and the real Matter Register verification workflow. Source-level
- * assertions, per this repo's established convention (no
+ * intermediate stop between the landing page's "eCourts Case Status"
+ * secondary action and the real Matter Register verification workflow.
+ * Source-level assertions, per this repo's established convention (no
  * @testing-library/react).
  */
 
@@ -65,11 +65,11 @@ describe('/ecourts-verification explainer page', () => {
   });
 });
 
-describe('Landing page CTA hands off into the explainer page, not straight into the dashboard', () => {
-  const panel = readSource('components/landing/sections/ECourtsConnection.tsx');
+describe('Landing page secondary action hands off into the explainer page, not straight into the dashboard', () => {
+  const landing = readSource('components/landing/LandingPageContent.tsx');
 
-  test('the eCourts Connection panel links to /ecourts-verification', () => {
-    expect(panel).toMatch(/href="\/ecourts-verification"/);
-    expect(panel).not.toMatch(/href="\/dashboard\/matters"/);
+  test('the "eCourts Case Status" secondary action links to /ecourts-verification', () => {
+    expect(landing).toMatch(/href="\/ecourts-verification"/);
+    expect(landing).toContain('eCourts Case Status');
   });
 });

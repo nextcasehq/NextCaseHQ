@@ -37,7 +37,7 @@ function relativeTime(isoTimestamp: string): string {
  * menu; AI Chamber and Draft Builder remain real routes (they're
  * production Action Card destinations linked from the Matter Workspace
  * and the landing page — see matters/[id]/page.tsx and
- * components/landing/sections/HeroSection.tsx) but are no longer
+ * components/landing/LandingPageContent.tsx) but are no longer
  * shortcut-linked from this dashboard, since the new Quick Actions
  * (Draft a Document / Upload-Link a Document / Next Hearing & Stage)
  * are the dashboard's own entry points into that work now.
