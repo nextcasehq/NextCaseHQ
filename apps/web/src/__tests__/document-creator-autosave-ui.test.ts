@@ -129,4 +129,35 @@ describe('Document Creator Phase 2 — Durable Draft and Continuous Autosave', (
     expect(page).not.toMatch(/<textarea/);
     expect(page).not.toContain('document.execCommand');
   });
+
+  test('resuming an existing draft guards the content-effect until recovery has actually landed', () => {
+    // Regression: both resume branches (401 and 200-OK) call setDraftId
+    // before their own async loadLocalDraft/onRecovered work finishes.
+    // Without recoveringRef, the content-effect's "has anything changed"
+    // check runs against this render's fresh-mount defaults (title is
+    // never actually null, only content is '' at that point) and
+    // schedules a save of that empty content at the real, already-current
+    // revision — silently overwriting a previously-saved draft on reopen.
+    // See useDurableAutosave.ts's own comments on recoveringRef and
+    // recoveryTargetRef for the full mechanism.
+    expect(hook).toContain('const recoveringRef = useRef(false)');
+    expect(hook).toContain('const recoveryTargetRef = useRef<');
+
+    const contentEffectStart = hook.indexOf('// Instant local mirror');
+    const contentEffectBody = hook.slice(contentEffectStart, contentEffectStart + 1200);
+    expect(contentEffectBody).toContain('if (recoveringRef.current)');
+
+    // Both resume branches must set recoveringRef before setDraftId, and
+    // must eventually clear it (directly when nothing needs restoring,
+    // or via the content-effect once the restored content lands).
+    const unauthResumeStart = hook.indexOf('the pointer may reference a real server draft');
+    const unauthResumeBody = hook.slice(unauthResumeStart, unauthResumeStart + 700);
+    expect(unauthResumeBody.indexOf('recoveringRef.current = true')).toBeGreaterThan(-1);
+    expect(unauthResumeBody.indexOf('recoveringRef.current = true')).toBeLessThan(unauthResumeBody.indexOf('setDraftId(existingId)'));
+
+    const authResumeStart = hook.indexOf('const data = await res.json();\n            if (cancelledFlag.current) return;\n            draftIdRef.current = data.draft.id;');
+    const authResumeBody = hook.slice(authResumeStart, authResumeStart + 500);
+    expect(authResumeBody.indexOf('recoveringRef.current = true')).toBeGreaterThan(-1);
+    expect(authResumeBody.indexOf('recoveringRef.current = true')).toBeLessThan(authResumeBody.indexOf('setDraftId(data.draft.id)'));
+  });
 });
