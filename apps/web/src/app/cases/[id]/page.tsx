@@ -99,6 +99,19 @@ export default function CaseWorkspaceDetailsPage() {
   const [orderFile, setOrderFile] = useState<File | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  // A non-blocking, order-specific notice ("saved, attachment failed") —
+  // separate from orderError, which is reserved for the order itself
+  // failing to save. Keyed by nothing (only one order can be mid-attach at
+  // a time from the create form) but kept distinct so a later attachment
+  // failure never looks like the order was lost.
+  const [orderAttachmentNotice, setOrderAttachmentNotice] = useState<string | null>(null);
+
+  // Attach-a-copy-later — for an order that saved successfully but has no
+  // document_id yet, either because no file was chosen at creation time or
+  // because the upload attempt at creation time failed. Keyed by order id
+  // so multiple orders can each be mid-retry independently.
+  const [attachingOrderId, setAttachingOrderId] = useState<string | null>(null);
+  const [attachErrorByOrder, setAttachErrorByOrder] = useState<Record<string, string>>({});
 
   // Parent Matter linkage — a Proceeding may belong to a Matter (the usual
   // case) or stand alone. Either state is honest and shown plainly; there
@@ -182,34 +195,52 @@ export default function CaseWorkspaceDetailsPage() {
     fetchOrders();
   }, [fetchOrders]);
 
+  // Uploads a file and attaches it to an already-saved order via PATCH.
+  // Used both right after creating an order (if a file was chosen) and for
+  // attaching a copy later to an order that has none yet. Never touches the
+  // order's date/summary/certified-copy fields — those are already saved by
+  // the time this ever runs.
+  const uploadAndAttach = async (orderId: string, file: File): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const headers: Record<string, string> = {
+      'x-tenant-key-version': 'v1',
+      'x-file-name': file.name,
+      'x-case-id': id,
+    };
+    if (parentMatter) headers['x-matter-id'] = parentMatter.id;
+    let uploadRes: Response;
+    try {
+      uploadRes = await fetch('/api/documents/upload', { method: 'POST', headers, body: await file.arrayBuffer() });
+    } catch {
+      return { ok: false, message: 'Network error — the attachment was not uploaded.' };
+    }
+    if (!uploadRes.ok) {
+      const body = await uploadRes.json().catch(() => null);
+      return { ok: false, message: body?.message || 'Could not upload the order copy.' };
+    }
+    const uploadBody = await uploadRes.json();
+    const patchRes = await fetch(`/api/cases/${id}/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_id: uploadBody.id }),
+    }).catch(() => null);
+    if (!patchRes || !patchRes.ok) {
+      return { ok: false, message: 'The copy uploaded, but could not be attached to the order.' };
+    }
+    return { ok: true };
+  };
+
+  // The order itself (date, summary, hearing link, certified-copy flag) and
+  // its optional attachment are two independent operations — the order is
+  // always saved first and is never lost if the attachment fails. This
+  // reverses the previous behaviour, which uploaded the file first and
+  // silently discarded the entire order if that upload failed.
   const handleRecordOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orderDate || !orderSummary.trim() || isSavingOrder) return;
     setIsSavingOrder(true);
     setOrderError(null);
+    setOrderAttachmentNotice(null);
     try {
-      let documentId: string | null = null;
-      if (orderFile) {
-        const headers: Record<string, string> = {
-          'x-tenant-key-version': 'v1',
-          'x-file-name': orderFile.name,
-          'x-case-id': id,
-        };
-        if (parentMatter) headers['x-matter-id'] = parentMatter.id;
-        const uploadRes = await fetch('/api/documents/upload', {
-          method: 'POST',
-          headers,
-          body: await orderFile.arrayBuffer(),
-        });
-        if (!uploadRes.ok) {
-          const body = await uploadRes.json().catch(() => null);
-          setOrderError(body?.message || 'Could not upload the order copy. Please try again.');
-          return;
-        }
-        const uploadBody = await uploadRes.json();
-        documentId = uploadBody.id;
-      }
-
       const res = await fetch(`/api/cases/${id}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -218,7 +249,7 @@ export default function CaseWorkspaceDetailsPage() {
           summary: orderSummary.trim(),
           court_note_id: orderCourtNoteId || null,
           certified_copy_required: orderCertifiedRequired,
-          document_id: documentId,
+          document_id: null,
         }),
       });
       if (!res.ok) {
@@ -226,17 +257,49 @@ export default function CaseWorkspaceDetailsPage() {
         setOrderError(body?.message || 'Could not record the order. Please try again.');
         return;
       }
+      const { order: savedOrder } = await res.json();
+
+      // The order is saved from this point on regardless of what happens
+      // next — reset the form and close it now, not after the attachment.
       setShowRecordOrder(false);
       setOrderSummary('');
       setOrderCourtNoteId('');
       setOrderCertifiedRequired(false);
-      setOrderFile(null);
       fetchOrders();
+
+      const pendingFile = orderFile;
+      setOrderFile(null);
+      if (pendingFile) {
+        const result = await uploadAndAttach(savedOrder.id, pendingFile);
+        if (!result.ok) {
+          setOrderAttachmentNotice(
+            `Order saved. Only the attachment failed: ${result.message} You can attach the copy later from the order below.`
+          );
+        } else {
+          fetchOrders();
+        }
+      }
     } catch {
       setOrderError('Network error — the order was not recorded.');
     } finally {
       setIsSavingOrder(false);
     }
+  };
+
+  const handleAttachCopyLater = async (orderId: string, file: File) => {
+    setAttachingOrderId(orderId);
+    setAttachErrorByOrder((prev) => {
+      const next = { ...prev };
+      delete next[orderId];
+      return next;
+    });
+    const result = await uploadAndAttach(orderId, file);
+    if (!result.ok) {
+      setAttachErrorByOrder((prev) => ({ ...prev, [orderId]: result.message }));
+    } else {
+      fetchOrders();
+    }
+    setAttachingOrderId(null);
   };
 
   const handleAdvanceCertifiedCopy = async (orderId: string, status: CertifiedCopyStatus) => {
@@ -349,8 +412,8 @@ export default function CaseWorkspaceDetailsPage() {
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <div className="flex-1 flex flex-col justify-center items-center py-20">
           <span className="text-3xl">⚠️</span>
-          <h2 className="text-lg font-bold mt-2">Case Workspace Not Found</h2>
-          <p className="text-xs text-[#726B58] mt-1">This Case ID does not exist or you lack multi-tenant RLS clearance.</p>
+          <h2 className="text-lg font-bold mt-2">Proceeding Not Found</h2>
+          <p className="text-xs text-[#726B58] mt-1">This Proceeding ID does not exist or you lack multi-tenant RLS clearance.</p>
           <Link href="/cases" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
             Back to Case Diary
           </Link>
@@ -457,7 +520,7 @@ export default function CaseWorkspaceDetailsPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Case Workspaces (Details, Notes, History) */}
+          {/* Main Proceeding panels (Details, Notes, History) */}
           <div className="lg:col-span-2 space-y-6">
 
             {/* Core Field Details Panel */}
@@ -538,6 +601,20 @@ export default function CaseWorkspaceDetailsPage() {
                   {showRecordOrder ? 'Close' : '+ Record Order'}
                 </button>
               </div>
+
+              {orderAttachmentNotice && (
+                <div className="mb-4 p-3 bg-[#FBF6EA] border border-[#E7DFC9] rounded-lg flex items-start justify-between gap-3">
+                  <p className="text-[11px] font-semibold text-[#6F5624]">{orderAttachmentNotice}</p>
+                  <button
+                    type="button"
+                    onClick={() => setOrderAttachmentNotice(null)}
+                    aria-label="Dismiss"
+                    className="text-[10px] font-bold text-[#B0A588] hover:text-[#3A3222] bg-transparent border-none outline-none shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {showRecordOrder && (
                 <form onSubmit={handleRecordOrder} className="mb-5 p-4 bg-[#FBF8F1]/50 border border-[#F4EEE0] rounded-xl space-y-3">
@@ -648,6 +725,32 @@ export default function CaseWorkspaceDetailsPage() {
                         )}
                       </div>
                       <p className="text-xs text-[#3A3222] mt-1">{order.summary}</p>
+                      {!order.document_id && (
+                        <div className="mt-1.5">
+                          <label
+                            htmlFor={`attach-copy-${order.id}`}
+                            className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[#8A6D2F] cursor-pointer"
+                          >
+                            📎 {attachingOrderId === order.id ? 'Uploading…' : 'Attach copy'}
+                          </label>
+                          <input
+                            id={`attach-copy-${order.id}`}
+                            type="file"
+                            className="hidden"
+                            disabled={attachingOrderId === order.id}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              e.target.value = '';
+                              if (file) handleAttachCopyLater(order.id, file);
+                            }}
+                          />
+                          {attachErrorByOrder[order.id] && (
+                            <p role="alert" className="text-[10px] font-bold text-red-600 mt-1">
+                              {attachErrorByOrder[order.id]}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {order.certified_copy_required && order.certified_copy_status !== 'RECEIVED' && (
                         <label className="mt-1.5 flex items-center gap-2">
                           <span className="text-[9px] font-bold text-[#726B58] uppercase tracking-widest">Update status:</span>

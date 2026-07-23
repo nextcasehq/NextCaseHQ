@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { AiCreditsTopBarControl } from '@/components/ai-credits/credits-popover';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
+import { PrimaryAppNavMobile } from '@/components/PrimaryAppNavMobile';
 
 interface NotificationItem {
   id: string;
@@ -161,6 +162,7 @@ export default function DashboardLayout({
       {/* Top Header Row — brand, Search, Notifications, AI Credits, Profile */}
       <header className={`${headerHeightClass} border-b border-[#F4EEE0] bg-white ${headerPaddingClass} flex items-center justify-between gap-3 z-10 flex-none relative`}>
         <div className="flex items-center gap-4 min-w-0 flex-1">
+          <PrimaryAppNavMobile active={isDocumentCreatorRoute ? 'draft-builder' : undefined} />
           <Link href="/dashboard" className={`flex-none ${logoTextClass} font-black tracking-tight text-[#241E17] flex items-center gap-1`}>
             <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </Link>
@@ -207,6 +209,8 @@ export default function DashboardLayout({
               editable from Admin → Commercialization, not yet a production
               billing system. */}
           <AiCreditsTopBarControl />
+
+          <FeedbackWidget />
 
           {/* Interactive Notification Bell */}
           <button
@@ -336,7 +340,6 @@ export default function DashboardLayout({
           </div>
         )}
       </div>
-      <FeedbackWidget />
     </div>
   );
 }

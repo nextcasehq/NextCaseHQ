@@ -13,18 +13,18 @@ import Link from 'next/link';
  * marketing navbar (see NavbarWrapper.tsx's hide-list) or feels like
  * leaving the application.
  */
-const SECTIONS = [
+export const PRIMARY_APP_NAV_SECTIONS = [
   { key: 'cases', label: 'Case Diary', href: '/cases' },
   { key: 'matters', label: 'Matter Register', href: '/matters' },
   { key: 'draft-builder', label: 'Draft Builder', href: '/dashboard/draft-builder' },
 ] as const;
 
-export type PrimaryAppNavSection = (typeof SECTIONS)[number]['key'];
+export type PrimaryAppNavSection = (typeof PRIMARY_APP_NAV_SECTIONS)[number]['key'];
 
-export function PrimaryAppNav({ active }: { active: PrimaryAppNavSection }) {
+export function PrimaryAppNav({ active }: { active?: PrimaryAppNavSection }) {
   return (
     <nav aria-label="Primary" className="hidden md:flex items-center gap-1 ml-2">
-      {SECTIONS.map((section) => (
+      {PRIMARY_APP_NAV_SECTIONS.map((section) => (
         <Link
           key={section.key}
           href={section.href}

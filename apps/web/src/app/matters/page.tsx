@@ -585,7 +585,7 @@ function MattersChamberContent() {
                       href={`/matters/${matter.id}`}
                       className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624] flex items-center gap-1 whitespace-nowrap"
                     >
-                      Open Workspace →
+                      Open Matter →
                     </Link>
                   </div>
                 </div>

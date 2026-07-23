@@ -15,11 +15,22 @@ const CATEGORIES = [
 type Category = (typeof CATEGORIES)[number]['value'];
 
 /**
- * A single, reusable feedback entry point mounted in both authenticated
- * shells (dashboard/layout.tsx, matters/layout.tsx) — one component, one
- * POST /api/feedback contract, rather than a bespoke form built twice.
- * page_url is captured automatically from the current route; the user
- * never has to type it.
+ * A single, reusable feedback entry point mounted in every authenticated
+ * shell (cases/layout.tsx, matters/layout.tsx, dashboard/layout.tsx) — one
+ * component, one POST /api/feedback contract, rather than a bespoke form
+ * built three times. page_url is captured automatically from the current
+ * route; the user never has to type it.
+ *
+ * The trigger renders as a normal in-flow header control (matching the
+ * notifications bell/Log Out styling), not a `fixed` floating button. It
+ * used to be `fixed bottom-5 right-5`, which on mobile permanently sat on
+ * top of whatever a page had at that exact spot — filter tabs on the Case
+ * Diary, the Litigation Journey heading on the Matter Workspace, and worst
+ * of all the Record Court Note screen's own sticky "Save Court Note" bar.
+ * A header control can never collide with page content or another fixed
+ * action, so this is the fix rather than merely relocating the same bug.
+ * Only the confirmation modal below is still `fixed inset-0` — an intentional
+ * full-screen overlay, shown only while open.
  */
 export function FeedbackWidget() {
   const pathname = usePathname();
@@ -70,10 +81,15 @@ export function FeedbackWidget() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-5 right-5 z-40 px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg transition-all"
+        className="flex-none p-1.5 sm:p-0 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none whitespace-nowrap"
         aria-label="Send feedback"
       >
-        Feedback
+        {/* Icon-only below sm — a narrow phone header has only so much room
+            for hamburger + logo + Feedback + bell + Log Out, and Feedback
+            is the one non-essential item here. Full text label from sm up,
+            where there's room. */}
+        <span className="sm:hidden text-base" aria-hidden="true">💬</span>
+        <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Feedback</span>
       </button>
 
       {isOpen && (

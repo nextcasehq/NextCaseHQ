@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { PrimaryAppNav } from '@/components/PrimaryAppNav';
+import { PrimaryAppNavMobile } from '@/components/PrimaryAppNavMobile';
 
 interface NotificationItem {
   id: string;
@@ -76,6 +77,7 @@ export default function CasesLayout({
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white text-[#241E17] font-sans selection:bg-[#8A6D2F] selection:text-white relative">
       <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between z-10 flex-none">
         <div className="flex items-center gap-3 min-w-0">
+          <PrimaryAppNavMobile active="cases" />
           <Link href="/dashboard" className="text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1 flex-none">
             <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </Link>
@@ -83,6 +85,8 @@ export default function CasesLayout({
         </div>
 
         <div className="flex items-center gap-4 md:gap-6">
+          <FeedbackWidget />
+
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             className="relative p-1.5 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
@@ -159,7 +163,6 @@ export default function CasesLayout({
           </div>
         </div>
       )}
-      <FeedbackWidget />
     </div>
   );
 }

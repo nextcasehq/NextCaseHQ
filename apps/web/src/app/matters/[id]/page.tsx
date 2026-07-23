@@ -1024,7 +1024,7 @@ export default function MatterDetailsChamberPage() {
                         href={`/cases/${c.id}`}
                         className="px-3.5 py-1.5 border border-[#F1E9D3] text-[#8A6D2F] hover:bg-[#FBF6EA] font-bold text-xs rounded-lg uppercase tracking-wider transition-all"
                       >
-                        Workspace →
+                        Open Proceeding →
                       </Link>
                     </div>
                   ))}

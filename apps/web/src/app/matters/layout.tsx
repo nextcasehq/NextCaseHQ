@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
-import { PrimaryAppNav } from '@/components/PrimaryAppNav';
+import { PrimaryAppNav, PRIMARY_APP_NAV_SECTIONS } from '@/components/PrimaryAppNav';
 
 interface NotificationItem {
   id: string;
@@ -98,8 +98,11 @@ export default function MattersLayout({
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-white text-[#241E17] font-sans selection:bg-[#8A6D2F] selection:text-white relative">
-      {/* Backdrop — below lg only, shown while the off-canvas Matter Navigator is open */}
-      {isMobileNavOpen && activeMatterId && (
+      {/* Backdrop — below lg only, shown while the off-canvas nav is open.
+          Unlike before, this now also covers the /matters list (no
+          activeMatterId) — the cross-module links below need to be
+          reachable there too, not only from within an open Matter. */}
+      {isMobileNavOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-20 lg:hidden"
           onClick={() => setIsMobileNavOpen(false)}
@@ -107,77 +110,101 @@ export default function MattersLayout({
         />
       )}
 
-      {/* Matter Navigator — static and visible at lg+ once a Matter is open;
-          below lg it's an off-canvas panel toggled by the Top Bar's hamburger
-          button. Absent entirely on the /matters list (no Matter to scope it
-          to). Reuses the exact off-canvas mechanism from dashboard/layout.tsx
-          (isMobileNavOpen state, Escape handler, translate-x transform,
-          backdrop) rather than importing it, since the two shells' nav
-          content differs enough that a shared abstraction is a Phase A
-          non-goal. */}
-      {activeMatterId && (
-        <aside
-          id="matter-navigator"
-          className={`
-            fixed lg:static inset-y-0 left-0 z-30 lg:z-20
-            w-60 border-r border-[#F4EEE0] bg-white flex flex-col flex-none h-full
-            transform transition-transform duration-200 ease-in-out lg:translate-x-0
-            ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'}
-          `}
-        >
-          <div className="h-16 px-6 border-b border-[#F4EEE0] flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-widest text-[#B0A588]">Matter</span>
-            <button
-              type="button"
-              onClick={() => setIsMobileNavOpen(false)}
-              aria-label="Close Matter Navigator"
-              className="lg:hidden p-1 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
-            >
-              ✕
-            </button>
-          </div>
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {NAVIGATOR_SECTIONS.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileNavOpen(false)}
-                className="block px-4 py-2.5 rounded text-sm font-semibold tracking-wide text-[#8A7A56] hover:text-[#241E17] hover:bg-[#FBF8F1] transition-all"
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
-          <div className="p-4 border-t border-[#F4EEE0]">
+      {/* Off-canvas nav — static and visible at lg+ only when a Matter is
+          open (the Matter Navigator section below needs one to scope to);
+          below lg it's always available via the Top Bar's hamburger,
+          whether or not a Matter is open, since the cross-module links at
+          the top (Case Diary / Matter Register / Draft Builder — the same
+          links PrimaryAppNav renders on desktop, hidden below md) must
+          never be reachable only from inside one specific Matter. Reuses
+          the off-canvas mechanism from dashboard/layout.tsx (isMobileNavOpen
+          state, Escape handler, translate-x transform, backdrop). */}
+      <aside
+        id="matter-navigator"
+        className={`
+          fixed ${activeMatterId ? 'lg:static' : ''} inset-y-0 left-0 z-30 lg:z-20
+          w-64 border-r border-[#F4EEE0] bg-white flex flex-col flex-none h-full
+          transform transition-transform duration-200 ease-in-out ${activeMatterId ? 'lg:translate-x-0' : ''}
+          ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <div className="h-16 px-6 border-b border-[#F4EEE0] flex items-center justify-between flex-none">
+          <span className="text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1">
+            <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsMobileNavOpen(false)}
+            aria-label="Close navigation menu"
+            className="lg:hidden p-1 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
+          >
+            ✕
+          </button>
+        </div>
+
+        <nav aria-label="Primary" className="px-4 py-6 space-y-1 flex-none border-b border-[#F4EEE0]">
+          {PRIMARY_APP_NAV_SECTIONS.map((section) => (
             <Link
-              href="/matters"
-              className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors"
+              key={section.key}
+              href={section.href}
+              aria-current={section.key === 'matters' ? 'page' : undefined}
+              className={`block px-4 py-2.5 rounded text-sm font-bold uppercase tracking-wide transition-all ${
+                section.key === 'matters'
+                  ? 'bg-[#FBF6EA] text-[#8A6D2F]'
+                  : 'text-[#8A7A56] hover:text-[#241E17] hover:bg-[#FBF8F1]'
+              }`}
             >
-              ← All Matters
+              {section.label}
             </Link>
-          </div>
-        </aside>
-      )}
+          ))}
+        </nav>
+
+        {activeMatterId && (
+          <>
+            <p className="px-6 pt-4 pb-1 text-[10px] font-black uppercase tracking-widest text-[#B0A588] flex-none">
+              This Matter
+            </p>
+            <nav className="flex-1 px-4 pb-4 space-y-1 overflow-y-auto">
+              {NAVIGATOR_SECTIONS.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileNavOpen(false)}
+                  className="block px-4 py-2.5 rounded text-sm font-semibold tracking-wide text-[#8A7A56] hover:text-[#241E17] hover:bg-[#FBF8F1] transition-all"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <div className="p-4 border-t border-[#F4EEE0] flex-none">
+              <Link
+                href="/matters"
+                className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors"
+              >
+                ← All Matters
+              </Link>
+            </div>
+          </>
+        )}
+      </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden h-full relative">
         {/* Top Bar */}
         <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between z-10 flex-none">
           <div className="flex items-center gap-3 min-w-0">
-            {activeMatterId && (
-              <button
-                type="button"
-                onClick={() => setIsMobileNavOpen(true)}
-                aria-label="Open Matter Navigator"
-                aria-expanded={isMobileNavOpen}
-                aria-controls="matter-navigator"
-                className="lg:hidden flex-none p-2 -ml-2 text-[#8A7A56] hover:text-[#241E17] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
-              >
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={isMobileNavOpen}
+              aria-controls="matter-navigator"
+              className="lg:hidden flex-none p-2 -ml-2 text-[#8A7A56] hover:text-[#241E17] transition-colors bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] rounded"
+            >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </button>
-            )}
+            </button>
             <Link href="/dashboard" className="text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1 flex-none">
               <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
             </Link>
@@ -196,6 +223,8 @@ export default function MattersLayout({
                 <span className="text-lg">📎</span>
               </button>
             )}
+
+            <FeedbackWidget />
 
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
@@ -314,7 +343,6 @@ export default function MattersLayout({
           </div>
         )}
       </div>
-      <FeedbackWidget />
     </div>
   );
 }

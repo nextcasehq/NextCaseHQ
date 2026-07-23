@@ -167,19 +167,46 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
     expect(body.court_note.court_forum_display).toBe('Tahsildar Court, Bengaluru');
     expect(body.court_note.input_method).toBe('MANUAL');
 
-    const caseRows = await db.execute<{ hearing_date: string; stage: string; court: string }>(
+    const caseRows = await db.execute<{ hearing_date: string; stage: string; court: string | null }>(
       TENANT_A,
       `SELECT hearing_date, stage, court FROM "LegalCase" WHERE id = $1`,
       [caseId]
     );
     // hearing_date is the Proceeding's next scheduled hearing, not the one
     // that just happened — VALID_PAYLOAD's next_hearing_date is 2026-03-15,
-    // not its (already-occurred) hearing_date of 2026-02-01.
+    // not its (already-occurred) hearing_date of 2026-02-01. `court` is
+    // deliberately untouched by a Court Note save (Phase 1 acceptance fix,
+    // priority 3): the Proceeding's court is the source of truth a hearing's
+    // forum is inherited FROM, never overwritten BY whatever forum a given
+    // Court Note recorded — createCase() above never sets one, so it stays
+    // null here exactly as it started.
     expect(caseRows[0]).toMatchObject({
       hearing_date: '2026-03-15',
       stage: 'Arguments',
-      court: 'Tahsildar Court, Bengaluru',
+      court: null,
     });
+  });
+
+  test('POST never overwrites the Proceeding\'s own court, even when it differs from the recorded forum', async () => {
+    const caseId = await createCase(TENANT_A);
+    await db.execute(TENANT_A, `UPDATE "LegalCase" SET court = $2 WHERE id = $1`, [caseId, 'Motor Accident Claims Tribunal, Jaipur']);
+
+    const res = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { ...VALID_PAYLOAD, court_forum_type: 'HIGH_COURT', court_forum_other: null }
+      ),
+      routeParams(caseId)
+    );
+    expect(res.status).toBe(201);
+
+    const caseRows = await db.execute<{ court: string | null }>(
+      TENANT_A,
+      `SELECT court FROM "LegalCase" WHERE id = $1`,
+      [caseId]
+    );
+    expect(caseRows[0].court).toBe('Motor Accident Claims Tribunal, Jaipur');
   });
 
   async function tenantEventCount(): Promise<number> {

@@ -23,7 +23,7 @@ import {
  * db/schema.sql's CourtNote table and its REVOKE UPDATE, DELETE — a
  * correction is a new Court Note, never an edit to a prior one). Saving one
  * atomically: (1) inserts the CourtNote row, (2) updates the Proceeding's
- * stage/court and its hearing_date — a forward-looking pointer set to
+ * stage and its hearing_date — a forward-looking pointer set to
  * next_hearing_date (or NULL when none was fixed), not the hearing that
  * just happened, since Matter Health, the dashboard, and the Seven-Day
  * Preparation workflow/reminder cron all read this column expecting "next
@@ -321,8 +321,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
          -- $19 is the Proceeding-wide status derived from hearing_outcome
          -- (legalCaseStatusForOutcome) — DISPOSED for any terminal outcome,
          -- HEARING otherwise; never touches the parent Matter's own status.
+         --
+         -- Deliberately NOT setting court here. This used to write
+         -- court_forum_display ($8) back onto LegalCase.court on every
+         -- Court Note, which (a) let a mis-set court_forum_type on any one
+         -- hearing permanently corrupt the Proceeding's real court field,
+         -- and (b) even when the form derived its default correctly,
+         -- resolveCourtForumDisplay() collapses a specific court name to
+         -- its generic category label (e.g. "Commercial Court, Mumbai" ->
+         -- "Commercial Court"), silently genericizing the field. The
+         -- Proceeding's court is the source of truth a hearing's forum is
+         -- inherited FROM (see the client defaulting it from cCase.court),
+         -- never the other way around.
          UPDATE "LegalCase"
-         SET hearing_date = $5, stage = $9, court = $8, status = $19, updated_at = now()
+         SET hearing_date = $5, stage = $9, status = $19, updated_at = now()
          WHERE id = (SELECT id FROM target_case)
          RETURNING id
        ),

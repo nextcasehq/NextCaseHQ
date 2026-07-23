@@ -283,7 +283,7 @@ function CasesChamberContent() {
               href={`/cases/${c.id}`}
               className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624] whitespace-nowrap"
             >
-              Open Workspace →
+              Open Proceeding →
             </Link>
           </div>
         </div>
@@ -367,30 +367,44 @@ function CasesChamberContent() {
             ) : (
               <>
                 <div>
-                  <label htmlFor={`hearing-forum-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                  <label className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
                     Court / Forum
                   </label>
-                  <select
-                    id={`hearing-forum-${c.id}`}
-                    value={hearingCourtForumType}
-                    onChange={(e) => setHearingCourtForumType(e.target.value as CourtForumType)}
-                    className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
-                  >
-                    {COURT_FORUM_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {COURT_FORUM_LABELS[type]}
-                      </option>
-                    ))}
-                  </select>
-                  {hearingCourtForumType === 'OTHER' && (
-                    <input
-                      type="text"
-                      value={hearingCourtForumOther}
-                      onChange={(e) => setHearingCourtForumOther(e.target.value)}
-                      placeholder="Court/forum name"
-                      aria-label="Other court/forum name"
-                      className="w-full mt-1.5 px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
-                    />
+                  {c.court ? (
+                    <div className="w-full px-3 py-2 bg-[#FBF8F1]/60 border border-dashed border-[#E7DFC9] rounded-lg">
+                      <p className="text-xs font-semibold text-[#3A3222]">{c.court}</p>
+                      <p className="text-[9px] text-[#B0A588] mt-0.5">
+                        Inherited from this Proceeding — recording a hearing never changes it.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        id={`hearing-forum-${c.id}`}
+                        value={hearingCourtForumType}
+                        onChange={(e) => setHearingCourtForumType(e.target.value as CourtForumType)}
+                        className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
+                      >
+                        {COURT_FORUM_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {COURT_FORUM_LABELS[type]}
+                          </option>
+                        ))}
+                      </select>
+                      {hearingCourtForumType === 'OTHER' && (
+                        <input
+                          type="text"
+                          value={hearingCourtForumOther}
+                          onChange={(e) => setHearingCourtForumOther(e.target.value)}
+                          placeholder="Court/forum name"
+                          aria-label="Other court/forum name"
+                          className="w-full mt-1.5 px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+                        />
+                      )}
+                      <p className="text-[9px] text-[#B0A588] mt-1">
+                        No court is set on this Proceeding yet — pick the closest match, or set it permanently from the Proceeding screen.
+                      </p>
+                    </>
                   )}
                 </div>
                 <div>

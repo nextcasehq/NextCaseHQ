@@ -11,6 +11,7 @@ import {
   type CourtForumType,
   type HearingOutcome,
 } from '@/lib/domain/court-note';
+import { classifyCourtForumType } from '@/lib/domain/court-forum-colors';
 
 const STAGE_SUGGESTIONS = [
   'Admission',
@@ -101,12 +102,17 @@ export default function CourtNotePage() {
   const id = params.id as string;
 
   const [caseTitle, setCaseTitle] = useState<string | null>(null);
+  const [caseCourt, setCaseCourt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   const [hearingDate, setHearingDate] = useState(todayISO());
   const [nextHearingDate, setNextHearingDate] = useState('');
+  // Default is overwritten as soon as the Proceeding loads (see the effect
+  // below) — 'HIGH_COURT' here is never actually submitted for a Proceeding
+  // that has a real court on file; it only matters for the rare edge case
+  // where the Proceeding has no court set at all yet.
   const [courtForumType, setCourtForumType] = useState<CourtForumType>('HIGH_COURT');
   const [courtForumOther, setCourtForumOther] = useState('');
   const [stage, setStage] = useState('');
@@ -137,6 +143,15 @@ export default function CourtNotePage() {
         }
         const data = await res.json();
         setCaseTitle(data.case.title);
+        // The Court/Forum a hearing is recorded at is inherited from the
+        // Proceeding's own court, never chosen fresh per hearing — this is
+        // the same rule the Case Diary's inline "Save Hearing" quick action
+        // already follows. Recording a hearing must never overwrite it.
+        setCaseCourt(data.case.court ?? null);
+        if (data.case.court) {
+          setCourtForumType(classifyCourtForumType(data.case.court));
+          setCourtForumOther(data.case.court);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -254,30 +269,44 @@ export default function CourtNotePage() {
           </div>
 
           <div>
-            <label htmlFor="court-forum" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest mb-1.5">
+            <label className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest mb-1.5">
               Court / Forum
             </label>
-            <select
-              id="court-forum"
-              value={courtForumType}
-              onChange={(e) => setCourtForumType(e.target.value as CourtForumType)}
-              className="w-full min-h-[52px] px-4 bg-white border border-[#E7DFC9] rounded-xl outline-none focus:border-[#8A6D2F] text-base font-semibold text-[#3A3222]"
-            >
-              {COURT_FORUM_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {COURT_FORUM_LABELS[type]}
-                </option>
-              ))}
-            </select>
-            {courtForumType === 'OTHER' && (
-              <input
-                type="text"
-                value={courtForumOther}
-                onChange={(e) => setCourtForumOther(e.target.value)}
-                placeholder="e.g. Tahsildar Court, Bengaluru"
-                aria-label="Other Court / Forum name"
-                className="w-full min-h-[52px] mt-2 px-4 bg-white border border-[#E7DFC9] rounded-xl outline-none focus:border-[#8A6D2F] text-base font-medium text-[#3A3222]"
-              />
+            {caseCourt ? (
+              <div className="w-full px-4 py-3 bg-[#FBF8F1]/60 border border-dashed border-[#E7DFC9] rounded-xl">
+                <p className="text-base font-semibold text-[#3A3222]">{caseCourt}</p>
+                <p className="text-[11px] text-[#B0A588] mt-1">
+                  Inherited from this Proceeding — recording a hearing never changes it.
+                </p>
+              </div>
+            ) : (
+              <>
+                <select
+                  id="court-forum"
+                  value={courtForumType}
+                  onChange={(e) => setCourtForumType(e.target.value as CourtForumType)}
+                  className="w-full min-h-[52px] px-4 bg-white border border-[#E7DFC9] rounded-xl outline-none focus:border-[#8A6D2F] text-base font-semibold text-[#3A3222]"
+                >
+                  {COURT_FORUM_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {COURT_FORUM_LABELS[type]}
+                    </option>
+                  ))}
+                </select>
+                {courtForumType === 'OTHER' && (
+                  <input
+                    type="text"
+                    value={courtForumOther}
+                    onChange={(e) => setCourtForumOther(e.target.value)}
+                    placeholder="e.g. Tahsildar Court, Bengaluru"
+                    aria-label="Other Court / Forum name"
+                    className="w-full min-h-[52px] mt-2 px-4 bg-white border border-[#E7DFC9] rounded-xl outline-none focus:border-[#8A6D2F] text-base font-medium text-[#3A3222]"
+                  />
+                )}
+                <p className="text-[11px] text-[#B0A588] mt-1.5">
+                  No court is set on this Proceeding yet — pick the closest match, or set it permanently from the Proceeding screen.
+                </p>
+              </>
             )}
           </div>
 
