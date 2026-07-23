@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Feedback Centre",
+    "date": "2026-07-23",
+    "description": "A new in-app Feedback Centre lets you send bug reports, feature requests, usability notes, AI feedback, documentation feedback, and general suggestions directly from any authenticated screen.",
+    "slug": "feedback-centre"
+  },
+  {
+    "title": "Help Centre and knowledge base",
+    "date": "2026-07-23",
+    "description": "A searchable Help Centre now ships in-app, covering the User Manual, Administrator Manual, Workflow Library, FAQ, and Glossary.",
+    "slug": "help-centre"
+  },
+  {
+    "title": "Court Note lifecycle correction",
+    "date": "2026-07-23",
+    "description": "Recording a Court Note now correctly propagates the next hearing date to the Proceeding, Matter Health, the dashboard, the Seven-Day Preparation workflow, and AI/drafting context.",
+    "slug": "court-note-lifecycle-fix"
+  },
+  {
+    "title": "Matter Workspace shell",
+    "date": "2026-07-21",
+    "description": "The Matter Workspace (/matters/[id]) now has its own dedicated shell: a Command Center search bar, Action Cards, and an off-canvas Matter Navigator.",
+    "slug": "matter-workspace-shell"
+  }
+]
