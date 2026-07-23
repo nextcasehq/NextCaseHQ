@@ -304,8 +304,11 @@ export const TriPaneChamber = () => {
 
       {/* ──────────────────────────────────────────────────────────────────
           CENTER PANEL (45%): DIALOGUE / REASONING / CONTRADICTION MODULES
+          A <div>, not <main>: the page's one <main> landmark comes from
+          the root layout (app/layout.tsx) — this is one pane of a
+          three-pane layout, not the page's overall main content region.
           ────────────────────────────────────────────────────────────────── */}
-      <main className={`
+      <div className={`
         flex-none w-full md:w-[45%] bg-white flex flex-col border-r border-[#F4EEE0] h-full overflow-hidden
         transition-all duration-300 ease-in-out
         ${activePanel === 1 ? 'block' : 'hidden md:flex'}
@@ -437,7 +440,7 @@ export const TriPaneChamber = () => {
             </button>
           </div>
         </form>
-      </main>
+      </div>
 
       {/* ──────────────────────────────────────────────────────────────────
           RIGHT PANEL (30%): DRAFTING CANVAS / HEARING PREPARATION
