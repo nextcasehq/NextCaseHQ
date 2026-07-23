@@ -33,5 +33,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  return [...marketingEntries, ...helpEntries];
+  const legalResourceEntries: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/legal-resources`, lastModified: new Date().toISOString(), changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${baseUrl}/legal-resources/practice-guides`, lastModified: new Date().toISOString(), changeFrequency: 'weekly', priority: 0.7 },
+  ];
+
+  return [...marketingEntries, ...helpEntries, ...legalResourceEntries];
 }

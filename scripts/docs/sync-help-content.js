@@ -13,21 +13,30 @@ const fs = require('fs');
 const path = require('path');
 
 const SOURCE_DIR = path.join(__dirname, '..', '..', 'docs', 'knowledge-base');
-const DEST_DIR = path.join(__dirname, '..', '..', 'apps', 'web', 'src', 'content', 'help');
 
-const FILES = ['user-manual.md', 'admin-manual.md', 'workflow-library.md', 'faq.md', 'glossary.md'];
+const HELP_DEST_DIR = path.join(__dirname, '..', '..', 'apps', 'web', 'src', 'content', 'help');
+const HELP_FILES = ['user-manual.md', 'admin-manual.md', 'workflow-library.md', 'faq.md', 'glossary.md'];
 
-fs.mkdirSync(DEST_DIR, { recursive: true });
+const RESOURCE_DEST_DIR = path.join(__dirname, '..', '..', 'apps', 'web', 'src', 'content', 'legal-resources');
+const RESOURCE_FILES = ['practice-guides.md'];
 
-let copied = 0;
-for (const file of FILES) {
-  const sourcePath = path.join(SOURCE_DIR, file);
-  if (!fs.existsSync(sourcePath)) {
-    console.warn(`[sync-help-content] Skipping ${file} — not found in docs/knowledge-base/`);
-    continue;
+function syncFiles(destDir, files) {
+  fs.mkdirSync(destDir, { recursive: true });
+  let copied = 0;
+  for (const file of files) {
+    const sourcePath = path.join(SOURCE_DIR, file);
+    if (!fs.existsSync(sourcePath)) {
+      console.warn(`[sync-help-content] Skipping ${file} — not found in docs/knowledge-base/`);
+      continue;
+    }
+    fs.copyFileSync(sourcePath, path.join(destDir, file));
+    copied += 1;
   }
-  fs.copyFileSync(sourcePath, path.join(DEST_DIR, file));
-  copied += 1;
+  return copied;
 }
 
-console.log(`[sync-help-content] Copied ${copied}/${FILES.length} files into apps/web/src/content/help/`);
+const helpCopied = syncFiles(HELP_DEST_DIR, HELP_FILES);
+const resourceCopied = syncFiles(RESOURCE_DEST_DIR, RESOURCE_FILES);
+
+console.log(`[sync-help-content] Copied ${helpCopied}/${HELP_FILES.length} files into apps/web/src/content/help/`);
+console.log(`[sync-help-content] Copied ${resourceCopied}/${RESOURCE_FILES.length} files into apps/web/src/content/legal-resources/`);

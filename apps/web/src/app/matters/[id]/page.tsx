@@ -822,12 +822,24 @@ export default function MatterDetailsChamberPage() {
                   <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Proceedings</h2>
                   <span className="text-[10px] font-mono text-[#726B58] font-bold">{proceedings.length} LINKED</span>
                 </div>
-                <button
-                  onClick={() => setShowProceedingForm(!showProceedingForm)}
-                  className="bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs px-4 py-2 rounded-lg transition-all uppercase tracking-wider"
-                >
-                  {showProceedingForm ? 'Close' : 'Add Proceeding'}
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* Optional, contextual — opens in a new tab so it never
+                      interrupts or loses the advocate's place in this Matter. */}
+                  <Link
+                    href="/legal-resources/practice-guides"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors"
+                  >
+                    Practice Guides →
+                  </Link>
+                  <button
+                    onClick={() => setShowProceedingForm(!showProceedingForm)}
+                    className="bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs px-4 py-2 rounded-lg transition-all uppercase tracking-wider"
+                  >
+                    {showProceedingForm ? 'Close' : 'Add Proceeding'}
+                  </button>
+                </div>
               </div>
 
               {showProceedingForm && (
