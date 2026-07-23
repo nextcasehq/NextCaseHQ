@@ -38,30 +38,12 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1090.0
         version: 3.1090.0
-      '@nextcase/ai-kernel':
-        specifier: workspace:*
-        version: link:../../packages/ai-kernel
       '@nextcase/country-packs':
         specifier: workspace:*
         version: link:../../packages/country-packs
-      '@nextcase/design-system-ndl':
-        specifier: workspace:*
-        version: link:../../packages/design-system-ndl
-      '@nextcase/messaging':
-        specifier: workspace:*
-        version: link:../../packages/messaging
       '@nextcase/ndl':
         specifier: workspace:*
         version: link:../../packages/ndl
-      '@nextcase/observability':
-        specifier: workspace:*
-        version: link:../../packages/observability
-      '@nextcase/prompt-library':
-        specifier: workspace:*
-        version: link:../../packages/prompt-library
-      '@nextcase/qa':
-        specifier: workspace:*
-        version: link:../../packages/qa
       '@tiptap/core':
         specifier: ^3.28.0
         version: 3.28.0(@tiptap/pm@3.28.0)
@@ -194,73 +176,9 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
-  packages/ai-kernel:
-    dependencies:
-      '@nextcase/ai-registry':
-        specifier: workspace:*
-        version: link:../ai-registry
-      '@nextcase/crypto':
-        specifier: workspace:*
-        version: link:../crypto
-      '@nextcase/prompt-library':
-        specifier: workspace:*
-        version: link:../prompt-library
-      '@nextcase/search-engine':
-        specifier: workspace:*
-        version: link:../search-engine
-
-  packages/ai-registry: {}
-
   packages/country-packs: {}
 
-  packages/crypto:
-    devDependencies:
-      '@types/jest':
-        specifier: ^29.0.0
-        version: 29.5.14
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.43
-      jest:
-        specifier: ^29.0.0
-        version: 29.7.0(@types/node@20.19.43)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3))
-      ts-jest:
-        specifier: ^29.0.0
-        version: 29.4.11(@babel/core@7.29.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.29.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@20.19.43)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3)))(typescript@5.9.3)
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
-
-  packages/design-system-ndl: {}
-
-  packages/event-bus: {}
-
-  packages/legal-kernel: {}
-
-  packages/messaging: {}
-
   packages/ndl: {}
-
-  packages/observability:
-    devDependencies:
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.43
-
-  packages/prompt-library: {}
-
-  packages/qa: {}
-
-  packages/search-engine: {}
-
-  packages/workflow-engine:
-    dependencies:
-      '@nextcase/event-bus':
-        specifier: workspace:*
-        version: link:../event-bus
-      '@nextcase/observability':
-        specifier: workspace:*
-        version: link:../observability
 
 packages:
 

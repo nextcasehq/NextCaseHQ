@@ -85,13 +85,13 @@ function MatterActionsMenu({ matterId, onArgumentsEvidence }: MatterActionsMenuP
           <Link href={`/matters/${matterId}`} role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors">
             Open Matter
           </Link>
-          <Link href="/prototypes/draft-document" role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors">
+          <Link href="/dashboard/draft-builder" role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors">
             Draft Document
           </Link>
-          <Link href="/prototypes/draft-document" role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors">
+          <Link href={`/documents/new?matter_id=${matterId}`} role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors">
             Upload Document
           </Link>
-          <Link href="/prototypes/next-hearing-stage" role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors">
+          <Link href={`/matters/${matterId}`} role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-xs font-semibold text-[#3A3222] hover:bg-[#FBF8F1] transition-colors">
             Next Hearing &amp; Stage
           </Link>
           <button
@@ -116,11 +116,11 @@ function MatterActionsMenu({ matterId, onArgumentsEvidence }: MatterActionsMenuP
  * Cases list. The top-bar Search/Notifications/AI Credits/Profile controls
  * live in dashboard/layout.tsx; this page does not duplicate search.
  *
- * "Draft a Document," "Upload / Link a Document," and "Next Hearing &
- * Stage" all open the already-merged /prototypes/* routes rather than a
- * new implementation — those routes remain clearly labelled prototypes
- * (simulated AI, no real uploads, local/session state only) even when
- * reached from this real, authenticated dashboard.
+ * "Draft a Document" and "Upload / Link a Document" open the real Document
+ * Creator/upload flow; "Next Hearing & Stage" opens the Matter Register to
+ * record a real Court Note. None of the three point at the /prototypes/*
+ * routes any more — those were simulated-only (no real uploads, local/
+ * session state) and have been retired now that real equivalents exist.
  *
  * Current Stage / Next Hearing / Case Number enrichment on each Matter
  * Register card comes from the real, existing /api/cases endpoint (the
@@ -226,20 +226,20 @@ function DashboardPageContent() {
         <section className="order-2 lg:order-1">
           <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Link href="/prototypes/draft-document" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
+            <Link href="/dashboard/draft-builder" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
               <span className="text-2xl" aria-hidden="true">📝</span>
               <p className="text-sm font-bold text-[#111111]">Draft a Document</p>
-              <p className="text-[10px] text-[#8A7A56]">Prototype flow — template or blank draft, linked to a Matter Register.</p>
+              <p className="text-[10px] text-[#8A7A56]">Open the Document Creator — template or blank draft, linked to a Matter.</p>
             </Link>
-            <Link href="/prototypes/draft-document" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
+            <Link href="/documents/new" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
               <span className="text-2xl" aria-hidden="true">📄</span>
               <p className="text-sm font-bold text-[#111111]">Upload / Link a Document</p>
-              <p className="text-[10px] text-[#8A7A56]">Prototype flow — upload an existing document or link it to a matter.</p>
+              <p className="text-[10px] text-[#8A7A56]">Prepare or upload a document and link it to a Matter.</p>
             </Link>
-            <Link href="/prototypes/next-hearing-stage" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
+            <Link href="/matters" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 hover:border-[#8A6D2F] hover:shadow transition-all space-y-1.5">
               <span className="text-2xl" aria-hidden="true">📅</span>
               <p className="text-sm font-bold text-[#111111]">Next Hearing &amp; Stage</p>
-              <p className="text-[10px] text-[#8A7A56]">Prototype flow — track hearings and stage by court category.</p>
+              <p className="text-[10px] text-[#8A7A56]">Open a Matter to record a Court Note and track hearing dates.</p>
             </Link>
           </div>
         </section>
@@ -254,9 +254,6 @@ function DashboardPageContent() {
         <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h2 className="text-sm font-black uppercase tracking-widest text-[#111111]">Matter Registers</h2>
           <div className="flex items-center gap-4">
-            <Link href="/dashboard/matters" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-              Explore Matter Register Workspace →
-            </Link>
             <Link href="/matters" className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
               View All →
             </Link>

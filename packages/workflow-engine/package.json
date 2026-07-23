@@ -1,9 +1,0 @@
-{
-  "name": "@nextcase/workflow-engine",
-  "version": "1.0.0",
-  "main": "./src/index.ts",
-  "dependencies": {
-    "@nextcase/event-bus": "workspace:*",
-    "@nextcase/observability": "workspace:*"
-  }
-}
