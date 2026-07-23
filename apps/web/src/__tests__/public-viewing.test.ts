@@ -23,7 +23,7 @@ function readSource(relativePath: string): string {
 
 describe('Stage 2 — public-view journeys never link or redirect to the deleted /login route', () => {
   test.each([
-    'components/landing/Hero.tsx',
+    'components/landing/LandingPageContent.tsx',
     'app/search/page.tsx',
     'app/documents/new/page.tsx',
     'app/dashboard/draft-builder/page.tsx',
@@ -51,12 +51,14 @@ describe('Stage 2 — public-view journeys never link or redirect to the deleted
     }
   });
 
-  test('the landing page search bar and quick actions route to real public destinations, not a dead /login route', () => {
-    const hero = readSource('components/landing/Hero.tsx');
-    expect(hero).toContain("router.push(`/search?q=");
-    expect(hero).toContain('href="/dashboard"');
-    expect(hero).toContain('href="/documents/new"');
-    expect(hero).toContain('href="/dashboard/matters"');
+  test('the landing page search bar and action cards route to real public destinations, not a dead /login route', () => {
+    const landing = readSource('components/landing/LandingPageContent.tsx');
+    expect(landing).toContain("router.push(`/search?q=");
+    expect(landing).toContain('href: "/cases"');
+    expect(landing).toContain('href: "/dashboard/draft-builder"');
+    expect(landing).toContain('href: "/dashboard/matters"');
+    expect(landing).toContain('href: "/search?type=document"');
+    expect(landing).toContain('href="/ecourts-verification"');
   });
 });
 

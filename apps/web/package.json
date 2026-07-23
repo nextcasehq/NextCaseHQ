@@ -43,8 +43,6 @@
     "react-dom": "19.0.0",
     "resend": "^4.0.1",
     "stripe": "^22.3.2",
-    "survey-core": "2.5.35",
-    "survey-react-ui": "2.5.35",
     "twilio": "^5.4.3",
     "zod": "^4.4.3"
   },

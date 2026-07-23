@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <Badge variant="accent" className="mb-4">Compliance Terms of Service</Badge>
           <h1 className="text-4xl lg:text-7xl font-bold tracking-tight mb-6">Constitutional Usage Guidelines</h1>
@@ -42,7 +42,7 @@ export default function TermsPage() {
           <p>By initializing a NextCaseHQ practice tenant container or session and uploading encrypted file vectors, you agree to comply with our strict multi-tenant boundary isolation requirements.</p>
           <p>Any attempt to intentionally bypass session bindings, trigger cross-tenant data leaks, or manipulate immutable log HMACS is considered a direct constitutional violation, resulting in immediate container lockdown.</p>
         </div>
-      </main>
+      </div>
       <Footer />
     </div>
   );

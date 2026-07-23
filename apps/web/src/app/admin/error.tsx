@@ -13,7 +13,7 @@ export default function AdminError({
     <div className="flex items-center justify-center min-h-screen bg-[#FDFBF7] px-6 text-center">
       <div className="max-w-md">
         <h1 className="text-2xl font-black text-[#111111] mb-4">System Console Fault</h1>
-        <p className="text-sm text-[#8A7A56] mb-6 font-serif italic">{error.message || 'An unexpected fault occurred.'}</p>
+        <p className="text-sm text-[#6F5624] mb-6 font-serif italic">{error.message || 'An unexpected fault occurred.'}</p>
         <button
           onClick={reset}
           className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all"

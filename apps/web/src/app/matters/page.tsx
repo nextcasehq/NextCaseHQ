@@ -183,18 +183,18 @@ function MattersChamberContent() {
 
   if (needsAuth) {
     return (
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
         {reviewModeActive ? (
           <>
             <span className="text-3xl">👁️</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>
             <span className="text-3xl">🔒</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
               Sign in to view and manage matters under your tenant.
             </p>
             <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
@@ -202,7 +202,7 @@ function MattersChamberContent() {
             </p>
           </>
         )}
-      </main>
+      </div>
     );
   }
 
@@ -217,7 +217,7 @@ function MattersChamberContent() {
               Matter Workspace
             </h1>
           </div>
-          <p className="text-xs font-semibold text-[#B0A588] uppercase tracking-widest mt-1">
+          <p className="text-xs font-semibold text-[#726B58] uppercase tracking-widest mt-1">
             Client engagements — litigation, advisory, and everything in between
           </p>
         </div>
@@ -239,7 +239,7 @@ function MattersChamberContent() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowUnavailablePrompt(false)}
-              className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
+              className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
               aria-label="Dismiss"
             >
               ✕
@@ -251,9 +251,9 @@ function MattersChamberContent() {
       {/* Matter Creation Form */}
       {showCreateForm && (
         <div className="mb-10 p-6 bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm animate-fadeIn">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[#B0A588] mb-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#726B58] mb-4">
             New Matter Entry
-          </h3>
+          </h2>
           <form onSubmit={handleCreateMatter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
@@ -396,7 +396,7 @@ function MattersChamberContent() {
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 text-xs font-bold uppercase border border-[#E7DFC9] text-[#8A7A56] rounded-lg hover:bg-[#FBF8F1] transition-all"
+                className="px-4 py-2 text-xs font-bold uppercase border border-[#E7DFC9] text-[#6F5624] rounded-lg hover:bg-[#FBF8F1] transition-all"
               >
                 Cancel
               </button>
@@ -414,13 +414,13 @@ function MattersChamberContent() {
       {/* Filter Section */}
       <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center mb-8">
         <div className="w-full md:flex-1 relative flex items-center bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg p-1.5 focus-within:border-[#A9843F] transition-all">
-          <span className="pl-3 pr-2 text-[#B0A588]">🔍</span>
+          <span className="pl-3 pr-2 text-[#726B58]">🔍</span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search loaded matters by title, matter number, or client..."
-            className="w-full bg-transparent border-none outline-none text-[#111111] text-xs md:text-sm font-medium placeholder-[#B0A588] py-1.5"
+            className="w-full bg-transparent border-none outline-none text-[#111111] text-xs md:text-sm font-medium placeholder-[#726B58] py-1.5"
           />
         </div>
 
@@ -464,7 +464,7 @@ function MattersChamberContent() {
                   <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
                     {matter.matter_number || matter.id.slice(0, 8)}
                   </span>
-                  <span className="ml-2 text-[10px] font-bold text-[#B0A588] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
+                  <span className="ml-2 text-[10px] font-bold text-[#726B58] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
                     {matter.engagement_type.replace('_', ' ')}
                   </span>
                 </div>
@@ -478,19 +478,19 @@ function MattersChamberContent() {
                 </span>
               </div>
 
-              <h3 className="font-bold text-base text-[#111111] group-hover:text-[#8A6D2F] transition-colors mb-1">
+              <h2 className="font-bold text-base text-[#111111] group-hover:text-[#8A6D2F] transition-colors mb-1">
                 {matter.title}
-              </h3>
-              <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mb-3">
+              </h2>
+              <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider mb-3">
                 Client: {matter.client_name || 'Not yet linked'}
               </p>
 
-              <p className="text-xs text-[#8A7A56] leading-relaxed font-medium mb-4 flex-1">
+              <p className="text-xs text-[#6F5624] leading-relaxed font-medium mb-4 flex-1">
                 {matter.practice_area || 'No practice area set.'}
               </p>
 
               <div className="border-t border-[#F4EEE0] pt-4 flex items-center justify-between mt-auto">
-                <div className="text-[10px] font-mono text-[#B0A588] uppercase tracking-widest">
+                <div className="text-[10px] font-mono text-[#726B58] uppercase tracking-widest">
                   Opened: <span className="font-sans font-bold text-[#5C5340]">{new Date(matter.created_at).toLocaleDateString()}</span>
                 </div>
                 <Link

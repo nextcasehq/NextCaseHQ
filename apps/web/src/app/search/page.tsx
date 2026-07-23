@@ -117,13 +117,13 @@ function SearchPageContent() {
           <>
             <span className="text-3xl">👁️</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>
             <span className="text-3xl">🔒</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Sign in to search.</p>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to search.</p>
             <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
               Phone verification is required to save or access private work.
             </p>
@@ -139,7 +139,7 @@ function SearchPageContent() {
     <article>
       <header className="mb-6">
         <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Search</h1>
-        <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mt-1">
+        <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider mt-1">
           Matters, Proceedings, Clients, Court Notes, and Documents
         </p>
         {matterId && (
@@ -192,7 +192,7 @@ function SearchPageContent() {
           .filter((g) => g.items.length > 0)
           .map((g) => (
             <section key={g.type} className="mb-8">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-3">
                 {GROUP_LABELS[g.type] ?? g.type} ({g.items.length})
               </h2>
               <div className="space-y-3">
@@ -212,7 +212,7 @@ function SearchPageContent() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#8A7A56] mt-1">{item.snippet}</p>
+                    <p className="text-xs text-[#6F5624] mt-1">{item.snippet}</p>
                   </div>
                 ))}
               </div>
@@ -220,7 +220,7 @@ function SearchPageContent() {
           ))}
 
       {!hasSearched && !loading && (
-        <div className="text-center py-16 text-xs text-[#B0A588]">
+        <div className="text-center py-16 text-xs text-[#726B58]">
           Enter a search above to find Matters, Proceedings, Clients, Court Notes, and Documents.
         </div>
       )}
