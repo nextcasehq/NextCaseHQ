@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { NextRequest } from 'next/server';
 import { proxy } from '../proxy';
 import { signSessionToken } from '@/lib/auth/jwt';
@@ -433,5 +435,80 @@ describe('middleware — Product Review Mode, opt-in only (PRODUCT_REVIEW_MODE=t
     const body = await response.json();
     expect(body.document.id).toBe(DEMO_DOCUMENT_ID);
     expect(body.document.matter_id).toBe(DEMO_MATTER_ID);
+  });
+});
+
+/**
+ * Regression coverage for the exact bug class that silently broke the
+ * Feedback Centre, the Seven-Day Preparation cron reminder, and
+ * /api/health in production: a new top-level /api/<name>/ route gets
+ * built with its own correct auth (session cookie, CRON_SECRET, or none
+ * at all for a health probe) and is fully covered by its own route
+ * tests — but every one of those tests calls the route handler directly,
+ * which never passes through this file. If nobody remembers to also add
+ * the new prefix to isSelfAuthorizedApiRoute (or the /api/health
+ * passthrough) above, every real HTTP request to it is rejected here
+ * first with "Missing or invalid token", and no test catches it. Rather
+ * than trust that memory again, this enumerates the real filesystem
+ * under app/api/ and asserts every top-level route group is accounted
+ * for — so adding a new one without updating this file fails a test
+ * immediately, not months later during a live walkthrough.
+ */
+describe('middleware — every /api/* route group is deliberately accounted for', () => {
+  const API_DIR = path.join(__dirname, '..', 'app', 'api');
+  const topLevelGroups = fs
+    .readdirSync(API_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  // /api/admin/* is gated by its own, separate admin-session-cookie check
+  // (section 0 of proxy.ts, covered by the admin-specific tests above) —
+  // it never reaches the generic Bearer-token gate this suite is about.
+  const ADMIN_GATED = new Set(['admin']);
+
+  test('the real app/api/ directory has not silently gained an unaccounted-for top-level route group', () => {
+    // If this fails, a new /api/<name>/ was added — go decide whether it
+    // self-authorizes (add it to isSelfAuthorizedApiRoute), is a public
+    // probe (add it to the /api/health-style passthrough), or is
+    // genuinely meant to require this file's Bearer-JWT scheme, then
+    // update this list alongside proxy.ts.
+    const knownGroups = new Set([
+      'admin',
+      'ai',
+      'auth',
+      'billing',
+      'cases',
+      'clients',
+      'court-data-reports',
+      'cron',
+      'documents',
+      'feedback',
+      'health',
+      'judgments',
+      'matters',
+      'notifications',
+      'search',
+      'wallet',
+      'webhooks',
+    ]);
+    for (const group of topLevelGroups) {
+      expect(knownGroups.has(group)).toBe(true);
+    }
+  });
+
+  test.each(
+    // Every non-admin group above, checked with a real, valid session
+    // cookie — none of them should ever see this file's "Missing or
+    // invalid token" Bearer-JWT rejection, since none of them issue or
+    // expect a bearer token.
+    fs
+      .readdirSync(API_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !ADMIN_GATED.has(entry.name))
+      .map((entry) => entry.name)
+  )('GET /api/%s is never rejected by the generic Bearer-token gate', async (group) => {
+    const token = await sessionToken();
+    const response = await proxy(buildApiRequest(`/api/${group}`, { cookieValue: token }));
+    const body = await response.json().catch(() => null);
+    expect(body?.message).not.toBe('Missing or invalid token.');
   });
 });
