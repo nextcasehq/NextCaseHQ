@@ -279,8 +279,12 @@ export default function DashboardLayout({
         )}
       </header>
 
-      {/* Dynamic Route Content — full width, no sidebar */}
-      <main className="flex-1 overflow-auto bg-white w-full relative isolate">
+      {/* Dynamic Route Content — full width, no sidebar. No <main> here:
+          the page's one <main> landmark comes from the root layout
+          (app/layout.tsx), which already wraps every route's children in
+          <main> — a second one here would nest two <main> landmarks,
+          which is invalid HTML and confuses screen readers. */}
+      <div className="flex-1 overflow-auto bg-white w-full relative isolate">
         <BrandBackground />
         {children}
 
@@ -331,7 +335,7 @@ export default function DashboardLayout({
             </div>
           </div>
         )}
-      </main>
+      </div>
       <FeedbackWidget />
     </div>
   );

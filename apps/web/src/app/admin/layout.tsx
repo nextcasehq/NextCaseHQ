@@ -143,7 +143,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </aside>
 
-        <main className="flex-1 p-4 md:p-8 max-w-7xl overflow-x-hidden">{children}</main>
+        {/* No <main> here: the root layout (app/layout.tsx) already wraps
+            every route's children in the page's one <main> landmark. */}
+        <div className="flex-1 p-4 md:p-8 max-w-7xl overflow-x-hidden">{children}</div>
       </div>
     </div>
   );

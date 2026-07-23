@@ -798,7 +798,11 @@ export default function DraftBuilderPage() {
           </button>
         )}
 
-        <main ref={canvasScrollRef} onContextMenu={activeInterview ? undefined : handleContextMenu} className={`relative flex-1 overflow-auto ${canvasPaneBg}`}>
+        {/* A <div>, not <main>: the page's one <main> landmark comes from
+            the root layout (app/layout.tsx) — nesting a second <main>
+            inside the dashboard shell's content area would be invalid
+            HTML and confuse screen readers. */}
+        <div ref={canvasScrollRef} onContextMenu={activeInterview ? undefined : handleContextMenu} className={`relative flex-1 overflow-auto ${canvasPaneBg}`}>
           {activeInterview ? (
             <GuidedInterview
               config={activeInterview.config}
@@ -816,7 +820,7 @@ export default function DraftBuilderPage() {
               <DocumentCanvas editor={editor} pageSetup={pageSetup} defaultFontFamily={activeTemplate?.defaultFontFamily ?? 'Times New Roman'} />
             </>
           )}
-        </main>
+        </div>
 
         {/* Only shown for genuinely multi-page documents — a single
             thumbnail has no navigational value and, before this, took up
@@ -831,7 +835,7 @@ export default function DraftBuilderPage() {
           <>
             {/* top-[44px] (not inset-0/inset-y-0): the shared dashboard
                 shell's top bar (app/dashboard/layout.tsx) sits in its own
-                stacking context (its <main isolate> wrapper always paints
+                stacking context (its isolate wrapper always paints
                 above whatever's inside it, regardless of z-index), so a
                 fixed overlay that starts at the true viewport top would be
                 visually covered by — and have its own top strip's clicks

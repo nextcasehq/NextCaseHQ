@@ -54,7 +54,9 @@ const INFO_NEEDED = [
 export default function ECourtsVerificationPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[#FDFBF7] font-sans text-[#241E17] selection:bg-[#8A6D2F] selection:text-white">
-      <main className="flex-1">
+      {/* No <main> here: the root layout (app/layout.tsx) already wraps
+          every route's children in the page's one <main> landmark. */}
+      <div className="flex-1">
         <section className="border-b border-[#F4EEE0] bg-white">
           <div className="mx-auto max-w-3xl px-6 py-16 text-center md:px-12 md:py-24">
             <span className="text-[11px] font-bold uppercase tracking-widest text-[#8A6D2F]">
@@ -124,7 +126,7 @@ export default function ECourtsVerificationPage() {
             </div>
           </div>
         </section>
-      </main>
+      </div>
       <Footer />
     </div>
   );
