@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AuthOrReviewGate } from '@/components/ReviewModeNotice';
+import { getDocumentType } from '@/lib/domain/document-type';
 
 interface LegalCase {
   id: string;
@@ -14,6 +15,7 @@ interface LegalCase {
   stage: string | null;
   hearing_date: string | null;
   notes: string | null;
+  matter_id: string | null;
 }
 
 interface CourtNote {
@@ -25,6 +27,28 @@ interface CourtNote {
   note: string;
   next_actions: string | null;
   created_at: string;
+}
+
+interface ParentMatter {
+  id: string;
+  title: string;
+  matter_number: string | null;
+  client_name: string | null;
+}
+
+interface MatterOption {
+  id: string;
+  title: string;
+  matter_number: string | null;
+  client_name: string | null;
+}
+
+interface CaseDocument {
+  id: string;
+  title: string;
+  document_type: string | null;
+  version_count: number;
+  updated_at: string;
 }
 
 export default function CaseWorkspaceDetailsPage() {
@@ -43,39 +67,48 @@ export default function CaseWorkspaceDetailsPage() {
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [courtNotes, setCourtNotes] = useState<CourtNote[]>([]);
+  const [caseDocuments, setCaseDocuments] = useState<CaseDocument[]>([]);
+
+  // Parent Matter linkage — a Proceeding may belong to a Matter (the usual
+  // case) or stand alone. Either state is honest and shown plainly; there
+  // is no fabricated "awaiting activation" placeholder for the unlinked
+  // case, just a real action to link one.
+  const [parentMatter, setParentMatter] = useState<ParentMatter | null>(null);
+  const [showLinkMatter, setShowLinkMatter] = useState(false);
+  const [matterOptions, setMatterOptions] = useState<MatterOption[]>([]);
+  const [selectedMatterId, setSelectedMatterId] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const fetchCase = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/cases/${id}`);
+      if (res.status === 401) {
+        setNeedsAuth(true);
+        fetch('/api/beta-status')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.enabled) setReviewModeActive(true);
+          })
+          .catch(() => {});
+        return;
+      }
+      if (!res.ok) {
+        setCase(null);
+        return;
+      }
+      const data = await res.json();
+      setCase(data.case);
+      setNotes(data.case.notes || '');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/cases/${id}`);
-        if (cancelled) return;
-        if (res.status === 401) {
-          setNeedsAuth(true);
-          fetch('/api/beta-status')
-            .then((r) => (r.ok ? r.json() : null))
-            .then((data) => {
-              if (!cancelled && data?.enabled) setReviewModeActive(true);
-            })
-            .catch(() => {});
-          return;
-        }
-        if (!res.ok) {
-          setCase(null);
-          return;
-        }
-        const data = await res.json();
-        setCase(data.case);
-        setNotes(data.case.notes || '');
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+    fetchCase();
+  }, [fetchCase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +123,80 @@ export default function CaseWorkspaceDetailsPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/documents?case_id=${id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setCaseDocuments(data.documents);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!cCase?.matter_id) {
+      setParentMatter(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/matters/${cCase.matter_id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setParentMatter({
+          id: data.matter.id,
+          title: data.matter.title,
+          matter_number: data.matter.matter_number,
+          client_name: data.matter.client_name,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [cCase?.matter_id]);
+
+  const openLinkMatter = () => {
+    setShowLinkMatter(true);
+    setLinkError(null);
+    if (matterOptions.length > 0) return;
+    fetch('/api/matters?limit=100')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setMatterOptions(data.matters);
+      })
+      .catch(() => {});
+  };
+
+  const handleLinkMatter = async () => {
+    if (!selectedMatterId) return;
+    setIsLinking(true);
+    setLinkError(null);
+    try {
+      const res = await fetch(`/api/cases/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matter_id: selectedMatterId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setLinkError(body?.message || 'Could not link this Proceeding to the Matter.');
+        return;
+      }
+      setShowLinkMatter(false);
+      setSelectedMatterId('');
+      fetchCase();
+    } catch {
+      setLinkError('Network error — the Matter was not linked.');
+    } finally {
+      setIsLinking(false);
+    }
+  };
 
   const handleSaveNotes = async () => {
     const res = await fetch(`/api/cases/${id}`, {
@@ -172,6 +279,26 @@ export default function CaseWorkspaceDetailsPage() {
             <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">
               {cCase.title}
             </h1>
+
+            {/* Parent Matter — real linkage, never fabricated. A Proceeding
+                without a Matter is a fully valid, ordinary state (shown
+                plainly with an action to link one), not an error. */}
+            {parentMatter ? (
+              <p className="text-xs font-semibold text-[#6F5624]">
+                Part of Matter:{' '}
+                <Link href={`/matters/${parentMatter.id}`} className="font-bold text-[#8A6D2F] hover:underline">
+                  {parentMatter.title}
+                </Link>
+                {parentMatter.client_name ? ` — ${parentMatter.client_name}` : ''}
+              </p>
+            ) : (
+              <div className="text-xs font-semibold text-[#726B58]">
+                Not linked to any Matter.{' '}
+                <button type="button" onClick={openLinkMatter} className="font-bold text-[#8A6D2F] hover:underline">
+                  Link to Matter →
+                </button>
+              </div>
+            )}
           </div>
 
           <Link
@@ -182,8 +309,45 @@ export default function CaseWorkspaceDetailsPage() {
           </Link>
         </div>
 
+        {showLinkMatter && (
+          <div className="mb-8 p-4 bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center gap-3">
+            <select
+              value={selectedMatterId}
+              onChange={(e) => setSelectedMatterId(e.target.value)}
+              className="flex-1 px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
+            >
+              <option value="">Select a Matter…</option>
+              {matterOptions.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title}
+                  {m.matter_number ? ` (${m.matter_number})` : ''}
+                  {m.client_name ? ` — ${m.client_name}` : ''}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLinkMatter(false)}
+                className="px-4 py-2 border border-[#E7DFC9] text-[#6F5624] text-xs font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLinkMatter}
+                disabled={!selectedMatterId || isLinking}
+                className="px-5 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold uppercase rounded-lg shadow"
+              >
+                {isLinking ? 'Linking…' : 'Link'}
+              </button>
+            </div>
+            {linkError && <p role="alert" className="text-xs font-bold text-red-600 md:basis-full">{linkError}</p>}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Case Workspaces (Details, Timeline, Notes) */}
+          {/* Main Case Workspaces (Details, Notes, History) */}
           <div className="lg:col-span-2 space-y-6">
 
             {/* Core Field Details Panel */}
@@ -209,37 +373,9 @@ export default function CaseWorkspaceDetailsPage() {
               </div>
             </div>
 
-            {/* Case Timeline Placeholder */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-6">Case Chronology Timeline</h2>
-
-              {/* Vertical Chronology Line */}
-              <div className="relative pl-6 border-l-2 border-[#F4EEE0] space-y-6">
-                <div className="relative">
-                  {/* Point */}
-                  <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-green-500 rounded-full border-4 border-white shadow-sm" />
-                  <span className="text-[9px] font-mono font-bold text-green-800 block">12-Jan-2026</span>
-                  <h3 className="font-bold text-sm text-[#3A3222]">Litigation Case Registered</h3>
-                  <p className="text-xs text-[#6F5624] mt-1">Initial file ingestion completed successfully under RLS isolation.</p>
-                </div>
-
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-[#A9843F] rounded-full border-4 border-white shadow-sm animate-pulse" />
-                  <span className="text-[9px] font-mono font-bold text-[#8A6D2F] block">14-Jan-2026</span>
-                  <h3 className="font-bold text-sm text-[#3A3222]">Pleadings Draft Compiled</h3>
-                  <p className="text-xs text-[#6F5624] mt-1">First-draft petition loaded into the secure Drafting Canvas workspace.</p>
-                </div>
-
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-[#CFC3A8] rounded-full border-4 border-white shadow-sm opacity-60" />
-                  <span className="text-[9px] font-mono font-bold text-[#726B58] block">{cCase.hearing_date || 'TBD'}</span>
-                  <h3 className="font-bold text-sm text-[#4A4130]">Admission Hearing Scheduled</h3>
-                  <p className="text-xs text-[#726B58] mt-1">Awaiting argument presentation before {cCase.judge || 'the assigned judge'}.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Court Note History — real, append-only hearing records */}
+            {/* Court Note History — real, append-only hearing records. This
+                is the Proceeding's actual chronology; there is no separate
+                fabricated timeline alongside it. */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Court Note History</h2>
               {courtNotes.length === 0 ? (
@@ -268,18 +404,26 @@ export default function CaseWorkspaceDetailsPage() {
               )}
             </div>
 
-            {/* Active Notes Workspace Editor */}
+            {/* Private scratchpad — deliberately NOT the hearing record.
+                Anything that should update the Matter's stage/next hearing
+                date belongs in "Record Court Note" above; this textarea is
+                a personal, unstructured note that stays on this Proceeding
+                only. */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Courtroom Notes Workspace</h2>
+              <div className="flex justify-between items-center mb-1">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Private Scratchpad</h2>
                 {isSaved && (
-                  <span className="text-xs text-green-800 font-bold font-sans">✓ Saved to Secure Ledger</span>
+                  <span className="text-xs text-green-800 font-bold font-sans">✓ Saved</span>
                 )}
               </div>
+              <p className="text-[10px] text-[#B0A588] font-semibold mb-3">
+                Not part of the official hearing record and does not update the Matter — use &quot;Record Court Note&quot;
+                for anything that should.
+              </p>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Enter live courtroom notes, tasks, or arguments presented..."
+                placeholder="Personal notes, reminders, or drafts for this Proceeding..."
                 rows={6}
                 className="w-full p-4 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium font-mono text-[#3A3222]"
               />
@@ -288,33 +432,50 @@ export default function CaseWorkspaceDetailsPage() {
                   onClick={handleSaveNotes}
                   className="px-5 py-2.5 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow"
                 >
-                  Save Notes to Ledger
+                  Save Scratchpad
                 </button>
               </div>
             </div>
 
           </div>
 
-          {/* Right Sidebar - Action & Integrations Panel */}
+          {/* Right Sidebar */}
           <div className="space-y-6">
-            {/* Future Modules Inbound Sync Slots */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Integrated Litigation Slots</h2>
-
-              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg">
-                <span className="block text-[8px] font-bold text-[#726B58] uppercase tracking-widest mb-1">EVIDENCE LEDGER (P1)</span>
-                <span className="text-xs font-semibold text-[#4A4130]">0 Ingested Exhibits</span>
+            {/* Documents linked to this Proceeding — real data from the
+                existing GET /api/documents?case_id= filter, same pattern
+                the Matter Workspace's Documents section already uses. */}
+            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Documents</h2>
+                <Link
+                  href={parentMatter ? `/documents/new?matter_id=${parentMatter.id}` : '/documents/new'}
+                  className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                >
+                  + Prepare
+                </Link>
               </div>
-
-              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg">
-                <span className="block text-[8px] font-bold text-[#726B58] uppercase tracking-widest mb-1">AI CHAMBER INTEL (P1)</span>
-                <span className="text-xs font-semibold text-[#4A4130]">Awaiting Case Activation</span>
-              </div>
-
-              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg">
-                <span className="block text-[8px] font-bold text-[#726B58] uppercase tracking-widest mb-1">DRAFT CO-PILOT CANVAS</span>
-                <span className="text-xs font-semibold text-[#4A4130]">Awaiting Template Binding</span>
-              </div>
+              {caseDocuments.length > 0 ? (
+                <div className="space-y-3">
+                  {caseDocuments.map((docItem) => (
+                    <div key={docItem.id} className="flex items-center justify-between border-b border-[#F4EEE0] pb-3 last:border-0 last:pb-0 gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-[#3A3222] truncate">{docItem.title}</p>
+                        <p className="text-[9px] text-[#726B58] font-bold uppercase tracking-wider">
+                          {getDocumentType(docItem.document_type)?.label ?? 'Uploaded'} · v{docItem.version_count || 1}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/documents/${docItem.id}`}
+                        className="shrink-0 text-[9px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-1 rounded uppercase tracking-wider hover:bg-[#F4EEE0]"
+                      >
+                        Open
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs font-semibold text-[#6F5624]">No documents linked to this Proceeding yet.</p>
+              )}
             </div>
           </div>
         </div>

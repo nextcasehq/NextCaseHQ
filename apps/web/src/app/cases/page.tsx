@@ -36,6 +36,9 @@ interface LegalCase {
   stage: string | null;
   hearing_date: string | null;
   notes: string | null;
+  matter_id: string | null;
+  matter_title: string | null;
+  client_name: string | null;
 }
 
 function CasesChamberContent() {
@@ -52,17 +55,6 @@ function CasesChamberContent() {
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-
-  // Form State
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [title, setTitle] = useState('');
-  const [countryCode, setCountryCode] = useState('IN');
-  const [court, setCourt] = useState('');
-  const [judge, setJudge] = useState('');
-  const [stage, setStage] = useState('Filing Stage');
-  const [hearingDate, setHearingDate] = useState('');
-  const [caseStatus, setCaseStatus] = useState<'PENDING' | 'HEARING' | 'DISPOSED' | 'APPEAL'>('PENDING');
-  const [notes, setNotes] = useState('');
 
   // Case Diary core workflow — the advocate returns from court and, for
   // each matter, records only: current stage, next hearing date, and a
@@ -117,35 +109,6 @@ function CasesChamberContent() {
   useEffect(() => {
     fetchCases(selectedStatus);
   }, [selectedStatus, fetchCases]);
-
-  const handleCreateCase = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title) return;
-
-    const res = await fetch('/api/cases', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        country_code: countryCode,
-        court,
-        judge,
-        stage,
-        hearing_date: hearingDate || undefined,
-        status: caseStatus,
-        notes,
-      }),
-    });
-    if (!res.ok) return;
-
-    // Reset Form
-    setTitle('');
-    setCourt('');
-    setJudge('');
-    setNotes('');
-    setShowCreateForm(false);
-    fetchCases(selectedStatus);
-  };
 
   const openHearingForm = (c: LegalCase) => {
     setActiveHearingCaseId(c.id);
@@ -224,150 +187,13 @@ function CasesChamberContent() {
             Case Workspace Chamber
           </h1>
         </div>
-        <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
+        <Link
+          href="/cases/new"
           className="self-start md:self-auto bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs md:text-sm px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
         >
-          {showCreateForm ? 'Close Form' : 'Initiate New Case'}
-        </button>
+          + New Proceeding
+        </Link>
       </div>
-
-      {/* Case Creation Form */}
-      {showCreateForm && (
-        <div className="mb-10 p-6 bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[#726B58] mb-4">
-            Spawn New Case Workspace
-          </h2>
-
-          <form onSubmit={handleCreateCase} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Case Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Delhi High Court Writ Suit No. 132/2026"
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Jurisdiction Pack *
-              </label>
-              <select
-                required
-                value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
-              >
-                <option value="IN">IN (BNSS Compliant)</option>
-                <option value="US">US (FRCP Compliant)</option>
-                <option value="UK">UK (CPR Compliant)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Court / Forum
-              </label>
-              <input
-                type="text"
-                value={court}
-                onChange={(e) => setCourt(e.target.value)}
-                placeholder="e.g. Delhi High Court (Bench III)"
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Judge / Coram
-              </label>
-              <input
-                type="text"
-                value={judge}
-                onChange={(e) => setJudge(e.target.value)}
-                placeholder="e.g. Honble Justice"
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Current Procedural Stage
-              </label>
-              <input
-                type="text"
-                value={stage}
-                onChange={(e) => setStage(e.target.value)}
-                placeholder="e.g. Admission / Notice Stage"
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Next Hearing Date
-              </label>
-              <input
-                type="date"
-                value={hearingDate}
-                onChange={(e) => setHearingDate(e.target.value)}
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Initial Case Status
-              </label>
-              <select
-                value={caseStatus}
-                onChange={(e) => setCaseStatus(e.target.value as typeof caseStatus)}
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
-              >
-                <option value="PENDING">PENDING</option>
-                <option value="HEARING">HEARING</option>
-                <option value="DISPOSED">DISPOSED</option>
-                <option value="APPEAL">APPEAL</option>
-              </select>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Procedural Notes
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Enter immediate notes, courtroom tasks or next actions..."
-                rows={3}
-                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium font-sans"
-              />
-            </div>
-
-            <div className="md:col-span-2 flex justify-end gap-3 mt-2">
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 border border-[#E7DFC9] text-[#6F5624] text-xs font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase rounded-lg shadow"
-              >
-                Spawn Case
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* Filter Section */}
       <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex items-center flex-wrap gap-4 mb-8">
@@ -435,6 +261,14 @@ function CasesChamberContent() {
                   <h2 className="font-bold text-sm text-[#111111] group-hover:text-[#8A6D2F] transition-colors line-clamp-2">
                     {c.title}
                   </h2>
+                  {c.matter_id ? (
+                    <p className="text-[10px] font-bold text-[#8A6D2F] mt-1 truncate">
+                      📁 {c.matter_title || 'Linked Matter'}
+                      {c.client_name ? ` — ${c.client_name}` : ''}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-semibold text-[#B0A588] mt-1">Standalone — not linked to a Matter</p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5 text-xs text-[#6F5624] font-medium">
@@ -627,14 +461,14 @@ function CasesChamberContent() {
             </svg>
           }
           title="No Active Cases"
-          description="No litigation cases exist under the active tenant context. Spawn a new case to initiate the workspace."
+          description="No litigation cases exist under the active tenant context. Register a new Proceeding to begin."
           action={
-            <button
-              onClick={() => setShowCreateForm(true)}
+            <Link
+              href="/cases/new"
               className="bg-[#8A6D2F] hover:bg-[#6F5624] text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all uppercase tracking-wider"
             >
-              Initiate New Case
-            </button>
+              + New Proceeding
+            </Link>
           }
         />
       )}

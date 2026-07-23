@@ -334,7 +334,7 @@ function MattersChamberContent() {
                 <select
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value)}
-                  className="flex-1 px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
+                  className="flex-1 min-w-0 px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
                 >
                   <option value="">No client linked yet</option>
                   {clients.map((c) => (
@@ -356,7 +356,7 @@ function MattersChamberContent() {
                     value={newClientName}
                     onChange={(e) => setNewClientName(e.target.value)}
                     placeholder="Client name"
-                    className="flex-1 px-4 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
+                    className="flex-1 min-w-0 px-4 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
                   />
                   <button
                     type="button"

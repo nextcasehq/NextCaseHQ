@@ -47,6 +47,7 @@ describe('LegalCase <-> Matter linkage (backward-compatibility regression)', () 
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_B]);
+    await db.execute(TENANT_A, `DELETE FROM "Client" WHERE tenant_id = $1`, [TENANT_A]);
   });
 
   afterAll(async () => {
@@ -54,6 +55,7 @@ describe('LegalCase <-> Matter linkage (backward-compatibility regression)', () 
     await db.execute(TENANT_B, `DELETE FROM "LegalCase" WHERE tenant_id = $1`, [TENANT_B]);
     await db.execute(TENANT_A, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_A]);
     await db.execute(TENANT_B, `DELETE FROM "Matter" WHERE tenant_id = $1`, [TENANT_B]);
+    await db.execute(TENANT_A, `DELETE FROM "Client" WHERE tenant_id = $1`, [TENANT_A]);
     await closePool();
   });
 
@@ -156,5 +158,37 @@ describe('LegalCase <-> Matter linkage (backward-compatibility regression)', () 
     expect(patchRes.status).toBe(200);
     const patchBody = await patchRes.json();
     expect(patchBody.case.matter_id).toBe(matterRows[0].id);
+  });
+
+  test('GET /api/cases surfaces the linked Matter title and client name for display (Case Diary "which Matter" gap)', async () => {
+    const clientRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Client" (tenant_id, name) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'Acme Textiles']
+    );
+    const matterRows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title, client_id) VALUES ($1, $2, $3) RETURNING id`,
+      [TENANT_A, 'Acme Recovery Suit', clientRows[0].id]
+    );
+    await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { title: 'Linked to Matter With Client', country_code: 'IN', matter_id: matterRows[0].id }
+      )
+    );
+    await POST(
+      buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, { title: 'Standalone', country_code: 'IN' })
+    );
+
+    const res = await GET(buildRequest('GET', { cookie: await sessionCookieHeader(TENANT_A) }));
+    const body = await res.json();
+    const linked = body.cases.find((c: { title: string }) => c.title === 'Linked to Matter With Client');
+    const standalone = body.cases.find((c: { title: string }) => c.title === 'Standalone');
+    expect(linked.matter_title).toBe('Acme Recovery Suit');
+    expect(linked.client_name).toBe('Acme Textiles');
+    expect(standalone.matter_title).toBeNull();
+    expect(standalone.client_name).toBeNull();
   });
 });

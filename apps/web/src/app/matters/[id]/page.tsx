@@ -930,7 +930,7 @@ export default function MatterDetailsChamberPage() {
                         value={proceedingCourt}
                         onChange={(e) => setProceedingCourt(e.target.value)}
                         placeholder="Court / Forum"
-                        className="flex-1 px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium"
+                        className="flex-1 min-w-0 px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium"
                       />
                       <button
                         type="button"

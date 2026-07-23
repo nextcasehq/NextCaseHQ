@@ -113,11 +113,11 @@ export async function GET(request: NextRequest) {
     const conditions: string[] = [];
     const countParams: unknown[] = [];
     if (status) {
-      conditions.push(`status = $${countParams.length + 1}`);
+      conditions.push(`lc.status = $${countParams.length + 1}`);
       countParams.push(status);
     }
     if (matter_id) {
-      conditions.push(`matter_id = $${countParams.length + 1}`);
+      conditions.push(`lc.matter_id = $${countParams.length + 1}`);
       countParams.push(matter_id);
     }
     // The WHERE clause is identical for both queries — countParams' indices
@@ -130,19 +130,28 @@ export async function GET(request: NextRequest) {
     const limitPlaceholder = `$${listParams.length - 1}`;
     const offsetPlaceholder = `$${listParams.length}`;
 
+    // matter_title/client_name are read-only conveniences for the Case
+    // Diary list to show which Matter (and client) a Proceeding belongs to
+    // — a standalone Proceeding (matter_id null) simply gets null for both
+    // rather than an error, same as every other nullable LEFT JOIN here.
     const [rows, countRows] = await Promise.all([
-      db.execute<LegalCaseRow>(
+      db.execute<LegalCaseRow & { matter_title: string | null; client_name: string | null }>(
         session.tenantId,
-        `SELECT ${CASE_COLUMNS}
-         FROM "LegalCase"
+        `SELECT lc.id, lc.tenant_id, lc.title, lc.case_number, lc.country_code, lc.court_pack_id,
+                lc.law_pack_id, lc.procedure_pack_id, lc.state_metadata, lc.status, lc.court, lc.judge,
+                lc.stage, lc.hearing_date, lc.notes, lc.matter_id, lc.created_at, lc.updated_at,
+                m.title AS matter_title, c.name AS client_name
+         FROM "LegalCase" lc
+         LEFT JOIN "Matter" m ON m.id = lc.matter_id
+         LEFT JOIN "Client" c ON c.id = m.client_id
          ${statusFilter}
-         ORDER BY created_at DESC
+         ORDER BY lc.created_at DESC
          LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
         listParams
       ),
       db.execute<{ count: number }>(
         session.tenantId,
-        `SELECT COUNT(*)::int AS count FROM "LegalCase" ${countFilter}`,
+        `SELECT COUNT(*)::int AS count FROM "LegalCase" lc ${countFilter}`,
         countParams
       ),
     ]);
