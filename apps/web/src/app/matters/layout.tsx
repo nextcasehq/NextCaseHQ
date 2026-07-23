@@ -28,6 +28,7 @@ function relativeTime(isoTimestamp: string): string {
 
 const NAVIGATOR_SECTIONS = [
   { label: 'Overview', href: '#overview' },
+  { label: 'Litigation Journey', href: '#journey' },
   { label: 'Matter Health', href: '#health' },
   { label: 'Proceedings', href: '#proceedings' },
   { label: 'Timeline', href: '#timeline' },

@@ -7,7 +7,7 @@ import EmptyState from '@/components/EmptyState';
 import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
 import CourtBadge from '@/components/CourtBadge';
-import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
+import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { COURT_FORUM_TYPES, COURT_FORUM_LABELS, type CourtForumType } from '@/lib/domain/court-note';
 import { COURT_FORUM_COLORS, classifyCourtForumType } from '@/lib/domain/court-forum-colors';
 
@@ -61,6 +61,7 @@ function MattersChamberContent() {
   const [title, setTitle] = useState('');
   const [matterNumber, setMatterNumber] = useState('');
   const [engagementType, setEngagementType] = useState<MatterEngagementType>('LITIGATION');
+  const [matterCategory, setMatterCategory] = useState<string>('');
   const [practiceArea, setPracticeArea] = useState('');
   const [clientId, setClientId] = useState('');
   const [showNewClient, setShowNewClient] = useState(false);
@@ -155,6 +156,7 @@ function MattersChamberContent() {
         title,
         matter_number: matterNumber || undefined,
         engagement_type: engagementType,
+        matter_category: matterCategory || undefined,
         practice_area: practiceArea || undefined,
         client_id: clientId || undefined,
         opposing_party_name: opposingPartyName || undefined,
@@ -166,6 +168,7 @@ function MattersChamberContent() {
 
     setTitle('');
     setMatterNumber('');
+    setMatterCategory('');
     setPracticeArea('');
     setClientId('');
     setOpposingPartyName('');
@@ -290,6 +293,22 @@ function MattersChamberContent() {
               >
                 {MATTER_ENGAGEMENT_TYPES.map((t) => (
                   <option key={t} value={t}>{t.replace('_', ' ')}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
+                Matter Category
+              </label>
+              <select
+                value={matterCategory}
+                onChange={(e) => setMatterCategory(e.target.value)}
+                className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium text-[#3A3222]"
+              >
+                <option value="">Unspecified</option>
+                {MATTER_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>
                 ))}
               </select>
             </div>

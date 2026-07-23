@@ -7,7 +7,8 @@ import BrandBackground from '@/components/BrandBackground';
 import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
 import CourtBadge from '@/components/CourtBadge';
-import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
+import LitigationJourney from '@/components/LitigationJourney';
+import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
 import MatterClosurePanel from './MatterClosurePanel';
 
@@ -16,6 +17,7 @@ interface Matter {
   title: string;
   matter_number: string | null;
   engagement_type: MatterEngagementType;
+  matter_category: string | null;
   practice_area: string | null;
   status: MatterStatus;
   client_id: string | null;
@@ -26,6 +28,7 @@ interface Matter {
   bench: string | null;
   judge: string | null;
   description: string | null;
+  current_stage: string | null;
   opened_at: string;
   closed_at: string | null;
   created_at: string;
@@ -194,6 +197,7 @@ export default function MatterDetailsChamberPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editStatus, setEditStatus] = useState<MatterStatus>('ACTIVE');
+  const [editMatterCategory, setEditMatterCategory] = useState<string>('');
   const [editDescription, setEditDescription] = useState('');
 
   const [showProceedingForm, setShowProceedingForm] = useState(false);
@@ -228,6 +232,7 @@ export default function MatterDetailsChamberPage() {
     setMatter(data.matter);
     setEditTitle(data.matter.title);
     setEditStatus(data.matter.status);
+    setEditMatterCategory(data.matter.matter_category ?? '');
     setEditDescription(data.matter.description ?? '');
   }, [id]);
 
@@ -337,7 +342,12 @@ export default function MatterDetailsChamberPage() {
     const res = await fetch(`/api/matters/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: editTitle, status: editStatus, description: editDescription }),
+      body: JSON.stringify({
+        title: editTitle,
+        status: editStatus,
+        matter_category: editMatterCategory || null,
+        description: editDescription,
+      }),
     });
     if (!res.ok) return;
     setIsEditing(false);
@@ -506,6 +516,12 @@ export default function MatterDetailsChamberPage() {
           />
         )}
 
+        <LitigationJourney
+          engagementType={matter.engagement_type}
+          matterCategory={matter.matter_category}
+          currentStage={matter.current_stage}
+        />
+
         {/* Command Center — Search Experience + Action Cards (Product
             Direction, Phase A). The search field submits to the existing,
             already-shipped GET /search page (backed by GET /api/search),
@@ -545,7 +561,10 @@ export default function MatterDetailsChamberPage() {
                 own real write/AI actions at the point of use instead. */}
             {[
               { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note` },
-              { label: '📤 Upload Documents', href: `/documents/new?matter_id=${id}` },
+              // Mislabeled "Upload Documents" until now — this destination
+              // (Category → Type → Facts → AI-generate → Save) has no file
+              // picker at all; it's the AI-drafting flow, matter-scoped.
+              { label: '🤖 AI-Draft a Document', href: `/documents/new?matter_id=${id}` },
               { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
               { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
             ].map((card) => (
@@ -790,6 +809,17 @@ export default function MatterDetailsChamberPage() {
                       className="w-full px-4 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium"
                     >
                       {MATTER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">Matter Category</label>
+                    <select
+                      value={editMatterCategory}
+                      onChange={(e) => setEditMatterCategory(e.target.value)}
+                      className="w-full px-4 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium"
+                    >
+                      <option value="">Unspecified</option>
+                      {MATTER_CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>)}
                     </select>
                   </div>
                   <div>
