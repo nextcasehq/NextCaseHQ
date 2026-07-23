@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
+import CourtBadge from '@/components/CourtBadge';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
 import MatterClosurePanel from './MatterClosurePanel';
@@ -151,6 +152,20 @@ function ComingSoonPanel({ title, description, id }: { title: string; descriptio
       </div>
     </div>
   );
+}
+
+// Pure derived value from a date already present in the Matter Health
+// payload — never persisted, so it can't itself go stale.
+function daysRemainingLabel(nextHearingDate: string | null): string {
+  if (!nextHearingDate) return 'N/A';
+  const target = new Date(`${nextHearingDate}T00:00:00Z`);
+  if (Number.isNaN(target.getTime())) return 'N/A';
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const diffDays = Math.round((target.getTime() - todayUtc.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays > 0) return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
+  return `Overdue ${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? '' : 's'}`;
 }
 
 export default function MatterDetailsChamberPage() {
@@ -621,7 +636,7 @@ export default function MatterDetailsChamberPage() {
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   <div>
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Current Stage</span>
                     <span className="text-sm font-bold text-[#8A6D2F] font-mono uppercase">{health.stage || 'N/A'}</span>
@@ -629,6 +644,18 @@ export default function MatterDetailsChamberPage() {
                   <div>
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Next Hearing</span>
                     <span className="text-sm font-mono font-bold text-[#3A3222]">{health.next_hearing_date || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest mb-1">Court</span>
+                    {health.last_court_forum_display || matter?.court ? (
+                      <CourtBadge court={health.last_court_forum_display || matter?.court} />
+                    ) : (
+                      <span className="text-sm font-bold text-[#3A3222]">N/A</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Days Remaining</span>
+                    <span className="text-sm font-bold text-[#3A3222]">{daysRemainingLabel(health.next_hearing_date)}</span>
                   </div>
                   <div>
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">Pending Actions</span>
@@ -659,7 +686,7 @@ export default function MatterDetailsChamberPage() {
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{matterCourtNotes[0].hearing_date}</span>
                       <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{matterCourtNotes[0].stage}</span>
-                      <span className="text-[10px] text-[#726B58]">· {matterCourtNotes[0].court_forum_display}</span>
+                      <CourtBadge court={matterCourtNotes[0].court_forum_display} />
                       <Link href={`/cases/${matterCourtNotes[0].case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
                         {matterCourtNotes[0].case_title}
                       </Link>
@@ -685,7 +712,7 @@ export default function MatterDetailsChamberPage() {
                               <div className="flex flex-wrap items-baseline gap-x-2">
                                 <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
                                 <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{cn.stage}</span>
-                                <span className="text-[10px] text-[#726B58]">· {cn.court_forum_display}</span>
+                                <CourtBadge court={cn.court_forum_display} />
                                 <Link href={`/cases/${cn.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
                                   {cn.case_title}
                                 </Link>
@@ -952,7 +979,7 @@ export default function MatterDetailsChamberPage() {
                           <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded">
                             {c.id.slice(0, 8)}
                           </span>
-                          <span className="text-xs font-bold text-[#6F5624]">{c.court || 'N/A'}</span>
+                          {c.court ? <CourtBadge court={c.court} /> : <span className="text-xs font-bold text-[#6F5624]">N/A</span>}
                         </div>
                         <h3 className="font-bold text-sm text-[#3A3222]">{c.title}</h3>
                         <p className="text-xs text-[#726B58] font-mono mt-1">Status: {c.status}</p>

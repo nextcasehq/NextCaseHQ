@@ -28,12 +28,19 @@ import {
  * this same CourtNote row instead (hearing_date/previous_hearing_date/
  * previous_stage), (3) — only when the Proceeding is linked to a Matter —
  * appends one MatterEvent (source_type='HEARING') so the Matter's existing
- * chronology (/api/matters/[id]/events) picks it up automatically, and (4)
- * — only when matter-linked and next_actions is non-empty — inserts
- * exactly one MatterTask (Milestone 2), a correctable, no-text checklist
- * entry that always reads its display text back from this same CourtNote
- * row rather than copying it, satisfying "never ask the advocate to enter
- * the same information twice."
+ * chronology (/api/matters/[id]/events) picks it up automatically, (4) —
+ * only when matter-linked and next_actions is non-empty — inserts exactly
+ * one MatterTask (Milestone 2), a correctable, no-text checklist entry that
+ * always reads its display text back from this same CourtNote row rather
+ * than copying it, satisfying "never ask the advocate to enter the same
+ * information twice," and (5) — only when this Proceeding is the Matter's
+ * current_proceeding_id — refreshes Matter.current_stage/next_hearing_date
+ * to match. Those two Matter-level columns were previously only ever
+ * written when a *new* Proceeding was created and marked current (see
+ * /api/matters/[id]/proceedings), so a routine Court Note against an
+ * already-current Proceeding left them silently stale after every ordinary
+ * hearing — the Digital Case File vision requires the Matter to always
+ * reflect the latest diary activity, not just the Proceeding it mirrors.
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -311,6 +318,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
          FROM target_case, inserted_note
          WHERE target_case.matter_id IS NOT NULL AND $11 IS NOT NULL AND btrim($11) <> ''
          ON CONFLICT (court_note_id) DO NOTHING
+         RETURNING id
+       ),
+       updated_matter AS (
+         -- Only refreshed when this Proceeding is the Matter's designated
+         -- "current" one (Matter.current_proceeding_id) — a Court Note on a
+         -- superseded/prior proceeding (e.g. the trial court record once an
+         -- appeal is current) must never overwrite the Matter's live stage
+         -- with stale, no-longer-relevant text.
+         UPDATE "Matter"
+         SET current_stage = $9, next_hearing_date = $5::date, updated_at = now()
+         WHERE id = (SELECT matter_id FROM target_case)
+           AND current_proceeding_id = (SELECT id FROM target_case)
          RETURNING id
        )
        SELECT inserted_note.*, target_case.matter_id AS updated_matter_id
