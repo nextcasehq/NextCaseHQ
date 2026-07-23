@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import BrandBackground from '@/components/BrandBackground';
 import EmptyState from '@/components/EmptyState';
+import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 
 interface Matter {
@@ -57,6 +58,7 @@ function MattersChamberContent() {
   const [newClientName, setNewClientName] = useState('');
   const [opposingPartyName, setOpposingPartyName] = useState('');
   const [court, setCourt] = useState('');
+  const [showCourtPicker, setShowCourtPicker] = useState(false);
   const [description, setDescription] = useState('');
 
   const fetchMatters = useCallback(async (status: string) => {
@@ -367,9 +369,18 @@ function MattersChamberContent() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60 mb-2">
-                Court / Forum
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold uppercase tracking-widest text-[#111111]/60">
+                  Court / Forum
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowCourtPicker((v) => !v)}
+                  className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624]"
+                >
+                  {showCourtPicker ? 'Close' : 'Find court →'}
+                </button>
+              </div>
               <input
                 type="text"
                 value={court}
@@ -377,6 +388,17 @@ function MattersChamberContent() {
                 placeholder="If applicable"
                 className="w-full px-4 py-2.5 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] transition-all text-sm font-medium text-[#3A3222]"
               />
+              {showCourtPicker && (
+                <div className="mt-3">
+                  <CourtPicker
+                    onSelect={(name) => {
+                      setCourt(name);
+                      setShowCourtPicker(false);
+                    }}
+                    onCancel={() => setShowCourtPicker(false)}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">
