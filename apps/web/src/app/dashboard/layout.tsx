@@ -170,7 +170,7 @@ export default function DashboardLayout({
           {!hideSearch && (
             <>
               <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center flex-1 max-w-sm bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg px-3 py-1.5 focus-within:border-[#8A6D2F] transition-colors">
-                <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#B0A588] flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#726B58] flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
                 </svg>
@@ -180,7 +180,7 @@ export default function DashboardLayout({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search matters, case numbers, parties, courts, documents..."
                   aria-label="Search"
-                  className="w-full bg-transparent border-none outline-none text-xs font-medium text-[#241E17] placeholder-[#B0A588] px-2 py-0.5"
+                  className="w-full bg-transparent border-none outline-none text-xs font-medium text-[#241E17] placeholder-[#726B58] px-2 py-0.5"
                 />
               </form>
               <button
@@ -188,7 +188,7 @@ export default function DashboardLayout({
                 onClick={() => setIsMobileSearchOpen((v) => !v)}
                 aria-label="Search"
                 aria-expanded={isMobileSearchOpen}
-                className="sm:hidden flex-none p-2 text-[#B0A588] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none"
+                className="sm:hidden flex-none p-2 text-[#726B58] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />
@@ -210,7 +210,7 @@ export default function DashboardLayout({
           {/* Interactive Notification Bell */}
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="relative p-1.5 text-[#B0A588] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
+            className="relative p-1.5 text-[#726B58] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
             aria-label="View notifications"
           >
             <span className={bellEmojiClass}>🔔</span>
@@ -233,7 +233,7 @@ export default function DashboardLayout({
               <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-[#E7DFC9] rounded-xl shadow-xl z-40 py-1.5 animate-in slide-in-from-top-1 duration-150">
                 <div className="px-4 py-2 border-b border-[#F4EEE0]">
                   <p className="text-xs font-bold uppercase tracking-wider text-[#3A3222]">Counsel Session</p>
-                  <p className="text-[9px] text-[#B0A588] font-mono">Bound Context: ACTIVE</p>
+                  <p className="text-[9px] text-[#726B58] font-mono">Bound Context: ACTIVE</p>
                 </div>
                 <Link
                   href="/dashboard/settings"
@@ -267,7 +267,7 @@ export default function DashboardLayout({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search matters, case numbers, parties, courts, documents..."
               aria-label="Search"
-              className="w-full bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#241E17] placeholder-[#B0A588] px-3 py-2"
+              className="w-full bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#241E17] placeholder-[#726B58] px-3 py-2"
             />
             <button type="submit" aria-label="Submit search" className="flex-none text-[#8A6D2F] bg-transparent border-none outline-none">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -290,7 +290,7 @@ export default function DashboardLayout({
               <h3 className="text-xs font-black uppercase tracking-widest text-[#3A3222]">Timeline & Notifications</h3>
               <button
                 onClick={() => setIsNotificationsOpen(false)}
-                className="text-xs font-bold text-[#B0A588] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
+                className="text-xs font-bold text-[#726B58] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
               >
                 ✕
               </button>
@@ -301,7 +301,7 @@ export default function DashboardLayout({
                   <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
                     <span className="text-sm">🔔</span>
                   </div>
-                  <p className="text-xs text-[#B0A588]">No notifications yet.</p>
+                  <p className="text-xs text-[#726B58]">No notifications yet.</p>
                 </div>
               )}
               {notifications.map((notif) => (
@@ -316,7 +316,7 @@ export default function DashboardLayout({
                     <span className="text-[9px] font-mono font-bold text-[#8A6D2F] bg-[#FBF6EA] px-1.5 py-0.5 rounded">
                       {notif.type}
                     </span>
-                    <span className="text-[9px] font-mono text-[#B0A588]">{relativeTime(notif.created_at)}</span>
+                    <span className="text-[9px] font-mono text-[#726B58]">{relativeTime(notif.created_at)}</span>
                   </div>
                   <p className="text-xs font-bold text-[#241E17] leading-relaxed font-sans">{notif.title}</p>
                   {notif.message && (
@@ -326,7 +326,7 @@ export default function DashboardLayout({
               ))}
             </div>
             <div className="p-4 border-t border-[#F4EEE0] bg-[#FBF8F1]/30 text-center">
-              <p className="text-[10px] text-[#B0A588] font-mono">NEXTCASE SECURITY TIMELINE</p>
+              <p className="text-[10px] text-[#726B58] font-mono">NEXTCASE SECURITY TIMELINE</p>
             </div>
           </div>
         )}

@@ -172,13 +172,13 @@ function PrepareNewDocumentForm() {
           <>
             <span className="text-3xl">👁️</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>
             <span className="text-3xl">🔒</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
               Sign-in is not yet available in this environment. Preparing a document requires an authenticated session.
             </p>
           </>
@@ -191,7 +191,7 @@ function PrepareNewDocumentForm() {
     <article>
       <header className="mb-6">
         <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-[#111111]">Prepare New Document</h1>
-        <p className="text-xs text-[#B0A588] font-bold uppercase tracking-wider mt-1">
+        <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider mt-1">
           Step {stepIndex + 1} of {STEP_ORDER.length}
         </p>
       </header>
@@ -203,7 +203,7 @@ function PrepareNewDocumentForm() {
           </p>
           <button
             onClick={() => setShowUnavailablePrompt(false)}
-            className="text-xs font-bold text-[#B0A588] hover:text-[#8A7A56]"
+            className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
             aria-label="Dismiss"
           >
             ✕
@@ -217,7 +217,7 @@ function PrepareNewDocumentForm() {
 
       {step === 'CATEGORY' && (
         <section className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Category</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Category</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {DOCUMENT_CATEGORIES.map((c) => (
               <button
@@ -243,7 +243,7 @@ function PrepareNewDocumentForm() {
 
       {step === 'TYPE' && category && (
         <section className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Document Type</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Document Type</h2>
           <div className="space-y-2">
             {documentTypesByCategory(category).map((t) => (
               <button
@@ -262,7 +262,7 @@ function PrepareNewDocumentForm() {
               </button>
             ))}
           </div>
-          <button onClick={() => goTo('CATEGORY')} className="mt-4 text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]">
+          <button onClick={() => goTo('CATEGORY')} className="mt-4 text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F]">
             ← Back
           </button>
         </section>
@@ -270,7 +270,7 @@ function PrepareNewDocumentForm() {
 
       {step === 'MATTER' && (
         <section className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Matter Association (optional)</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Matter Association (optional)</h2>
           <select
             value={matterId ?? ''}
             onChange={(e) => setMatterId(e.target.value || null)}
@@ -285,7 +285,7 @@ function PrepareNewDocumentForm() {
             ))}
           </select>
           <div className="flex items-center gap-4 mt-4">
-            <button onClick={() => goTo('TYPE')} className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]">
+            <button onClick={() => goTo('TYPE')} className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F]">
               ← Back
             </button>
             <button
@@ -300,11 +300,11 @@ function PrepareNewDocumentForm() {
 
       {step === 'FACTS' && category && (
         <section className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Facts</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Facts</h2>
           <div className="space-y-4">
             {DOCUMENT_FACT_FIELDS[category].map((field) => (
               <div key={field.key}>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#8A7A56] mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#6F5624] mb-1">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-0.5">*</span>}
                 </label>
@@ -327,7 +327,7 @@ function PrepareNewDocumentForm() {
             ))}
           </div>
           <div className="flex items-center gap-4 mt-6">
-            <button onClick={() => goTo('MATTER')} className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]">
+            <button onClick={() => goTo('MATTER')} className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F]">
               ← Back
             </button>
             <button
@@ -343,8 +343,8 @@ function PrepareNewDocumentForm() {
 
       {step === 'REVIEW' && draftContent !== null && (
         <section className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Review</h2>
-          <p className="text-[10px] text-[#B0A588] mb-2">AI-generated first draft — review and edit before saving. Nothing is saved yet.</p>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Review</h2>
+          <p className="text-[10px] text-[#726B58] mb-2">AI-generated first draft — review and edit before saving. Nothing is saved yet.</p>
           <textarea
             value={draftContent}
             onChange={(e) => setDraftContent(e.target.value)}
@@ -352,7 +352,7 @@ function PrepareNewDocumentForm() {
             className="w-full px-3 py-3 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-mono"
           />
           <div className="flex items-center gap-3 mt-4">
-            <button onClick={() => goTo('FACTS')} className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]">
+            <button onClick={() => goTo('FACTS')} className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F]">
               ← Edit Facts
             </button>
             <button

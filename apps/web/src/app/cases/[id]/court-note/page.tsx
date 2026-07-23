@@ -191,13 +191,13 @@ export default function CourtNotePage() {
   if (needsAuth) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <main className="flex-1 flex flex-col justify-center items-center py-20">
+        <div className="flex-1 flex flex-col justify-center items-center py-20">
           <span className="text-3xl">🔒</span>
           <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
           <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
             Phone verification is required to save or access private work.
           </p>
-        </main>
+        </div>
       </div>
     );
   }
@@ -205,34 +205,34 @@ export default function CourtNotePage() {
   if (notFound) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <main className="flex-1 flex flex-col justify-center items-center py-20">
+        <div className="flex-1 flex flex-col justify-center items-center py-20">
           <span className="text-3xl">⚠️</span>
           <h2 className="text-lg font-bold mt-2">Case Not Found</h2>
           <Link href="/cases" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
             Back to Cases
           </Link>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] font-sans pb-28">
-      <main className="max-w-xl mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-xl mx-auto px-4 py-6 sm:py-8">
         <Link
           href={`/cases/${id}`}
-          className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors"
+          className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F] transition-colors"
         >
           ← Back to {caseTitle || 'Case'}
         </Link>
 
         <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111] mt-3 mb-1">Record Court Note</h1>
-        <p className="text-xs text-[#8A7A56] mb-6">What just happened in court? Takes about 30 seconds.</p>
+        <p className="text-xs text-[#6F5624] mb-6">What just happened in court? Takes about 30 seconds.</p>
 
         <div className="space-y-5">
           {/* Primary fields — above the fold */}
           <div>
-            <label htmlFor="hearing-date" className="block text-[11px] font-bold text-[#B0A588] uppercase tracking-widest mb-1.5">
+            <label htmlFor="hearing-date" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest mb-1.5">
               Hearing Date
             </label>
             <input
@@ -245,7 +245,7 @@ export default function CourtNotePage() {
           </div>
 
           <div>
-            <label htmlFor="court-forum" className="block text-[11px] font-bold text-[#B0A588] uppercase tracking-widest mb-1.5">
+            <label htmlFor="court-forum" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest mb-1.5">
               Court / Forum
             </label>
             <select
@@ -273,7 +273,7 @@ export default function CourtNotePage() {
           </div>
 
           <div>
-            <label htmlFor="stage" className="block text-[11px] font-bold text-[#B0A588] uppercase tracking-widest mb-1.5">
+            <label htmlFor="stage" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest mb-1.5">
               Stage of Case
             </label>
             <input
@@ -294,7 +294,7 @@ export default function CourtNotePage() {
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="note" className="block text-[11px] font-bold text-[#B0A588] uppercase tracking-widest">
+              <label htmlFor="note" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest">
                 Court Note
               </label>
               <DictationButton
@@ -325,7 +325,7 @@ export default function CourtNotePage() {
           ) : (
             <>
               <div>
-                <label htmlFor="next-hearing-date" className="block text-[11px] font-bold text-[#B0A588] uppercase tracking-widest mb-1.5">
+                <label htmlFor="next-hearing-date" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest mb-1.5">
                   Next Hearing Date
                 </label>
                 <input
@@ -339,7 +339,7 @@ export default function CourtNotePage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="next-actions" className="block text-[11px] font-bold text-[#B0A588] uppercase tracking-widest">
+                  <label htmlFor="next-actions" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest">
                     Next Actions
                   </label>
                   <DictationButton
@@ -366,7 +366,7 @@ export default function CourtNotePage() {
             </p>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Sticky one-thumb save bar */}
       <div className="fixed bottom-0 inset-x-0 bg-white border-t border-[#E7DFC9] px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">

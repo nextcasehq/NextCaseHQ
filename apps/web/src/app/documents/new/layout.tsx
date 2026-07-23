@@ -42,11 +42,11 @@ export default function DocumentsNewLayout({ children }: { children: React.React
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <main className="relative isolate flex-1 max-w-3xl w-full mx-auto px-6 py-10">
+      <div className="relative isolate flex-1 max-w-3xl w-full mx-auto px-6 py-10">
         <BrandBackground />
         <Breadcrumbs items={[{ label: 'Documents' }, { label: 'Prepare New Document' }]} />
         {children}
-      </main>
+      </div>
     </div>
   );
 }

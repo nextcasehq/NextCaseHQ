@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 export default function SolutionsPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
             <svg viewBox="0 0 40 40" className="h-8 w-8" fill="none">
@@ -58,7 +58,7 @@ export default function SolutionsPage() {
                 <path d="M15 15h3M22 15h3M15 21h3M22 21h3M15 27h3M22 27h3" />
               </g>
             </svg>
-            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Practice Groups</h3>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Practice Groups</h2>
             <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               Enterprise tenant workspaces with secure workspace access control and cross-jurisdictional synchronization.
             </p>
@@ -71,7 +71,7 @@ export default function SolutionsPage() {
                 <path d="M15 21l3 3 7-7" />
               </g>
             </svg>
-            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Corporate Legal</h3>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Corporate Legal</h2>
             <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               Immutable compliance ledgers and stream-ingested file processing for complete oversight and audit transparency.
             </p>
@@ -83,14 +83,14 @@ export default function SolutionsPage() {
                 <path d="M10 33c0-6 4.5-10 10-10s10 4 10 10" />
               </g>
             </svg>
-            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Solo Practitioners</h3>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Solo Practitioners</h2>
             <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               A light, lightning-fast tactical layout with mobile Court Mode and offline transaction synchronization.
             </p>
           </Card>
         </div>
 
-      </main>
+      </div>
       <Footer />
     </div>
   );

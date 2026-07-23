@@ -44,10 +44,10 @@ export default function SearchLayout({ children }: { children: React.ReactNode }
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
-      <main className="relative isolate flex-1 max-w-3xl w-full mx-auto px-6 py-10">
+      <div className="relative isolate flex-1 max-w-3xl w-full mx-auto px-6 py-10">
         <BrandBackground />
         <nav aria-label="breadcrumb" className="mb-4">
-          <ol className="flex flex-wrap items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#B0A588]">
+          <ol className="flex flex-wrap items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#726B58]">
             <li>
               <span aria-current="page" className="text-[#8A6D2F]">
                 Search
@@ -56,7 +56,7 @@ export default function SearchLayout({ children }: { children: React.ReactNode }
           </ol>
         </nav>
         {children}
-      </main>
+      </div>
     </div>
   );
 }
