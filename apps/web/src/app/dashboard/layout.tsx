@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { AiCreditsTopBarControl } from '@/components/ai-credits/credits-popover';
 
@@ -37,7 +37,7 @@ function relativeTime(isoTimestamp: string): string {
  * menu; AI Chamber and Draft Builder remain real routes (they're
  * production Action Card destinations linked from the Matter Workspace
  * and the landing page — see matters/[id]/page.tsx and
- * components/landing/sections/HeroSection.tsx) but are no longer
+ * components/landing/LandingPageContent.tsx) but are no longer
  * shortcut-linked from this dashboard, since the new Quick Actions
  * (Draft a Document / Upload-Link a Document / Next Hearing & Stage)
  * are the dashboard's own entry points into that work now.
@@ -48,6 +48,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // The Document Creator is a dedicated drafting workspace, not a standard
+  // dashboard page — this drives two things below: the top bar's search
+  // (a matter/document lookup that navigates away to /search) doesn't
+  // belong in a drafting workflow, and the bar itself renders shorter and
+  // quieter so the editor gets the vertical space instead. Every other
+  // page this shared layout serves keeps the search bar and the standard
+  // header height exactly as-is.
+  const isDocumentCreatorRoute = (pathname ?? '').startsWith('/dashboard/draft-builder');
+  const hideSearch = isDocumentCreatorRoute;
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
@@ -55,6 +65,14 @@ export default function DashboardLayout({
   const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const profileRef = React.useRef<HTMLDivElement>(null);
+
+  // Closes any mobile search overlay left open from a prior page — this
+  // layout persists across client-side navigation within /dashboard/*, so
+  // isMobileSearchOpen can otherwise still be true from before the advocate
+  // navigated into the Document Creator.
+  React.useEffect(() => {
+    if (hideSearch) setIsMobileSearchOpen(false);
+  }, [hideSearch]);
 
   React.useEffect(() => {
     if (!isProfileOpen) return;
@@ -122,43 +140,63 @@ export default function DashboardLayout({
     }
   };
 
+  // Compact header sizing for the Document Creator only — a dedicated
+  // drafting workspace should read closer to Google Docs/Notion/Word Web's
+  // own quiet top bar than a standard dashboard page's. Explicit pixel
+  // values throughout, not the numbered Tailwind spacing scale: this
+  // repo's tailwind.config.ts doubles keys 1–16 (h-16 here is actually
+  // 128px, w-8/h-8 is 64px, not their normal Tailwind sizes), so arbitrary
+  // values are the only way to land on a genuinely small, exact height —
+  // the standard header (h-16, w-8/h-8, etc.) is untouched below for
+  // every other page.
+  const headerHeightClass = isDocumentCreatorRoute ? 'h-[44px]' : 'h-16';
+  const headerPaddingClass = isDocumentCreatorRoute ? 'px-3 md:px-4' : 'px-4 md:px-8';
+  const logoTextClass = isDocumentCreatorRoute ? 'text-sm' : 'text-lg';
+  const bellEmojiClass = isDocumentCreatorRoute ? 'text-sm' : 'text-lg';
+  const avatarSizeClass = isDocumentCreatorRoute ? 'w-[28px] h-[28px] text-[9px]' : 'w-8 h-8 text-xs';
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white text-[#241E17] font-sans selection:bg-[#8A6D2F] selection:text-white">
       {/* Top Header Row — brand, Search, Notifications, AI Credits, Profile */}
-      <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between gap-3 z-10 flex-none relative">
+      <header className={`${headerHeightClass} border-b border-[#F4EEE0] bg-white ${headerPaddingClass} flex items-center justify-between gap-3 z-10 flex-none relative`}>
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <Link href="/dashboard" className="flex-none text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1">
+          <Link href="/dashboard" className={`flex-none ${logoTextClass} font-black tracking-tight text-[#241E17] flex items-center gap-1`}>
             <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </Link>
 
           {/* Search — the one dashboard search experience; the main
-              content area does not duplicate this. */}
-          <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center flex-1 max-w-sm bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg px-3 py-1.5 focus-within:border-[#8A6D2F] transition-colors">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#726B58] flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search matters, case numbers, parties, courts, documents..."
-              aria-label="Search"
-              className="w-full bg-transparent border-none outline-none text-xs font-medium text-[#241E17] placeholder-[#726B58] px-2 py-0.5"
-            />
-          </form>
-          <button
-            type="button"
-            onClick={() => setIsMobileSearchOpen((v) => !v)}
-            aria-label="Search"
-            aria-expanded={isMobileSearchOpen}
-            className="sm:hidden flex-none p-2 text-[#726B58] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
-            </svg>
-          </button>
+              content area does not duplicate this. Not rendered on the
+              Document Creator (see hideSearch above). */}
+          {!hideSearch && (
+            <>
+              <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center flex-1 max-w-sm bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg px-3 py-1.5 focus-within:border-[#8A6D2F] transition-colors">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#726B58] flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search matters, case numbers, parties, courts, documents..."
+                  aria-label="Search"
+                  className="w-full bg-transparent border-none outline-none text-xs font-medium text-[#241E17] placeholder-[#726B58] px-2 py-0.5"
+                />
+              </form>
+              <button
+                type="button"
+                onClick={() => setIsMobileSearchOpen((v) => !v)}
+                aria-label="Search"
+                aria-expanded={isMobileSearchOpen}
+                className="sm:hidden flex-none p-2 text-[#726B58] hover:text-[#3A3222] transition-colors bg-transparent border-none outline-none"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 md:gap-4 flex-none">
@@ -175,7 +213,7 @@ export default function DashboardLayout({
             className="relative p-1.5 text-[#726B58] hover:text-[#3A3222] transition-colors cursor-pointer bg-transparent border-none outline-none"
             aria-label="View notifications"
           >
-            <span className="text-lg">🔔</span>
+            <span className={bellEmojiClass}>🔔</span>
             {unreadCount > 0 && (
               <span className="absolute top-0 right-0 w-2 h-2 bg-[#8A6D2F] rounded-full"></span>
             )}
@@ -187,7 +225,7 @@ export default function DashboardLayout({
               onClick={() => setIsProfileOpen((v) => !v)}
               aria-label="Profile menu"
               aria-expanded={isProfileOpen}
-              className="w-8 h-8 rounded-full bg-[#8A6D2F] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm cursor-pointer border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] focus-visible:ring-offset-2"
+              className={`${avatarSizeClass} rounded-full bg-[#8A6D2F] text-white flex items-center justify-center font-bold uppercase shadow-sm cursor-pointer border-none outline-none focus-visible:ring-2 focus-visible:ring-[#8A6D2F] focus-visible:ring-offset-2`}
             >
               NC
             </button>
@@ -217,7 +255,7 @@ export default function DashboardLayout({
 
         {/* Mobile search overlay — keeps the header itself uncluttered
             below sm, per "no horizontal overflow" / "no crowding". */}
-        {isMobileSearchOpen && (
+        {!hideSearch && isMobileSearchOpen && (
           <form
             onSubmit={handleSearchSubmit}
             className="sm:hidden absolute top-full left-0 right-0 bg-white border-b border-[#E7DFC9] shadow-md p-3 flex items-center gap-2 z-40"

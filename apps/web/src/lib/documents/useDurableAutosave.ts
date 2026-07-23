@@ -62,7 +62,7 @@ interface UseDurableAutosaveResult {
 
 const DEBOUNCE_MS_DEFAULT = 1200;
 
-function pointerKey(storageKey: string): string {
+export function pointerKey(storageKey: string): string {
   return `nchq:document-draft-id:${storageKey}`;
 }
 
@@ -101,6 +101,32 @@ export function useDurableAutosave({
   // use, until a future authenticated session takes over (Phone OTP is out
   // of scope for this milestone; this hook never assumes one exists).
   const isLocalOnlyRef = useRef(false);
+  // True from the moment resuming an existing draft sets draftId until the
+  // recovered content has actually landed in `content`/`title` (not just
+  // been decided). Two async gaps separate those two moments: (1) both
+  // resume branches below call setDraftId(existingId) before their own
+  // loadLocalDraft (IndexedDB) read resolves, and (2) once recovery calls
+  // onRecovered, restoring the html into the editor needs Tiptap's
+  // `editor` instance to exist (immediatelyRender: false — it starts
+  // null) and happens in the caller's own separate effect, so `content`
+  // (derived from currentHtml) doesn't actually match what was recovered
+  // until a later render still. In between, `content` is this render's
+  // fresh-mount default ('' html) while `title` is already the caller's
+  // real default (BLANK_DRAFT_TITLE, never null) — that alone makes the
+  // content-effect below think something changed, so without this guard
+  // it writes an empty-content record (at the real, already-current
+  // revision) either to IndexedDB directly or, worse, autosaves it to the
+  // server after the debounce, silently wiping the draft. See
+  // recoveryTargetRef for how the guard knows when it's finally safe to
+  // let go.
+  const recoveringRef = useRef(false);
+  // What onRecovered actually asked the caller to restore, set alongside
+  // recoveringRef = true. The content-effect compares against this (not
+  // syncedRef) while recovering=true, since syncedRef may deliberately
+  // still hold the OLD server content (see the 'local wins' comment
+  // below) — recovery is "done" once content/title match what was
+  // requested, regardless of what syncedRef says.
+  const recoveryTargetRef = useRef<{ content: string; title: string | null } | null>(null);
 
   const persistLocalOnly = useCallback(async (id: string, payload: { title: string; content: string }) => {
     await saveLocalDraft({
@@ -276,10 +302,14 @@ export function useDurableAutosave({
             if (cancelledFlag.current) return;
             isLocalOnlyRef.current = true;
             draftIdRef.current = existingId;
+            recoveringRef.current = true;
             setDraftId(existingId);
             const local = await loadLocalDraft(existingId);
             if (local && (local.content !== latestRef.current.content || local.title !== latestRef.current.title)) {
+              recoveryTargetRef.current = { content: local.content, title: local.title };
               onRecovered?.({ content: local.content, title: local.title });
+            } else {
+              recoveringRef.current = false;
             }
             setStatus('unauthenticated');
             return;
@@ -289,6 +319,7 @@ export function useDurableAutosave({
             if (cancelledFlag.current) return;
             draftIdRef.current = data.draft.id;
             revisionRef.current = data.draft.revision;
+            recoveringRef.current = true;
             setDraftId(data.draft.id);
 
             const local = await loadLocalDraft(data.draft.id);
@@ -318,10 +349,12 @@ export function useDurableAutosave({
                 resolved.source === 'local'
                   ? { content: data.draft.content, title: data.draft.title }
                   : { content: resolved.content, title: resolved.title };
+              recoveryTargetRef.current = { content: resolved.content, title: resolved.title };
               onRecovered?.({ content: resolved.content, title: resolved.title });
               setStatus('recovered_draft');
             } else {
               syncedRef.current = { content: data.draft.content, title: data.draft.title };
+              recoveringRef.current = false;
               setStatus('saved');
             }
             return;
@@ -333,6 +366,7 @@ export function useDurableAutosave({
 
         await createDraft({ title: latestRef.current.title, content: latestRef.current.content }, cancelledFlag);
       } catch {
+        recoveringRef.current = false;
         if (!cancelledFlag.current) setStatus('offline');
       }
     })();
@@ -352,6 +386,23 @@ export function useDurableAutosave({
   // otherwise never have been picked up (the ref alone isn't reactive).
   useEffect(() => {
     if (!draftId) return;
+    if (recoveringRef.current) {
+      // Recovery has set draftId (and possibly queued a restore into the
+      // editor) but content/title haven't caught up to what it decided
+      // yet — see recoveringRef's own comment. Once they do, recovery is
+      // genuinely finished: release the guard and fall through to the
+      // normal comparison below, which will correctly no-op (content now
+      // matches syncedRef, e.g. the 'server wins' case) or correctly
+      // schedule the real save (the 'local wins' case, where syncedRef
+      // was deliberately left at the old server content).
+      const target = recoveryTargetRef.current;
+      if (target && content === target.content && (title || null) === target.title) {
+        recoveringRef.current = false;
+        recoveryTargetRef.current = null;
+      } else {
+        return;
+      }
+    }
     if (content === syncedRef.current.content && (title || null) === syncedRef.current.title) {
       // Nothing has actually changed relative to what the server is
       // known to hold (e.g. this run was triggered only by draftId
