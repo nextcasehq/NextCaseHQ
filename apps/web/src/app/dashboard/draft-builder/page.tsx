@@ -1,23 +1,25 @@
 'use client';
 
 import React from 'react';
-import { useDurableAutosave, type AutosaveStatus } from '@/lib/documents/useDurableAutosave';
+import { useDurableAutosave, pointerKey, type AutosaveStatus } from '@/lib/documents/useDurableAutosave';
 import { serializeDraftPayload, parseDraftPayload } from '@/lib/documents/editor/draft-payload';
 import { DEFAULT_PAGE_SETUP, clampZoom, pageDimensionsMm, type PageSetup } from '@/lib/documents/editor/page-setup';
 import { LEGAL_TEMPLATES, BLANK_DRAFT_TITLE, type LegalTemplate } from '@/lib/documents/editor/templates';
-import { getInterviewConfigForTemplate } from '@/lib/documents/survey/registry';
-import type { InterviewConfig } from '@/lib/documents/survey/types';
+import { getInterviewConfigForTemplate } from '@/lib/documents/interview/registry';
+import type { InterviewConfig } from '@/lib/documents/interview/types';
 import { useDocumentEditor } from '@/components/document-editor/useDocumentEditor';
 import { Ribbon } from '@/components/document-editor/Ribbon';
+import { MobileToolbar } from '@/components/document-editor/MobileToolbar';
 import { PageSetupPanel } from '@/components/document-editor/PageSetupPanel';
 import { TemplateLibrary } from '@/components/document-editor/TemplateLibrary';
+import { DocumentChooser } from '@/components/document-editor/DocumentChooser';
 import { AttachmentsPanel } from '@/components/document-editor/AttachmentsPanel';
 import { DocumentCanvas, MM_TO_PX } from '@/components/document-editor/DocumentCanvas';
 import { StatusBar } from '@/components/document-editor/StatusBar';
 import { PageThumbnails } from '@/components/document-editor/PageThumbnails';
 import { FormattingBubble } from '@/components/document-editor/FormattingBubble';
 import { EditorContextMenu } from '@/components/document-editor/EditorContextMenu';
-import { SurveyWizard } from '@/components/document-editor/SurveyWizard';
+import { GuidedInterview } from '@/components/document-editor/GuidedInterview';
 
 const AUTOSAVE_STATUS_LABEL: Record<AutosaveStatus, string> = {
   saving: 'Saving',
@@ -41,7 +43,11 @@ const AUTOSAVE_STATUS_DOT: Record<AutosaveStatus, string> = {
 
 const UNAUTHENTICATED_MESSAGE = 'Local draft — phone verification required for permanent saving.';
 
-type MobileDrawer = 'none' | 'left' | 'right';
+// 'left' (Templates & Attachments) is the only sidebar with this
+// mobile-only overlay-drawer behavior now — Page Setup & Properties is a
+// slide-over drawer at every breakpoint, tracked separately by
+// `pageSetupOpen` below, since it's never a persistent sidebar anymore.
+type MobileDrawer = 'none' | 'left';
 
 /**
  * Document Creator — a Microsoft Word–style legal drafting workspace,
@@ -54,6 +60,12 @@ type MobileDrawer = 'none' | 'left' | 'right';
  * setup, and template identity are packed into the one opaque `content`
  * string the DocumentDraft API already knows how to store — that server
  * contract has not moved.
+ *
+ * Two phases, tracked by `phase`: 'choosing' (DocumentChooser — deciding
+ * what to prepare is a different task from editing it, and gets its own
+ * chrome-free screen) and 'editing' (everything below, unchanged). A
+ * fresh session starts in 'choosing'; resuming an existing draft or
+ * picking anything in 'choosing' moves to 'editing' and stays there.
  */
 export default function DraftBuilderPage() {
   const [draftTitle, setDraftTitle] = React.useState(BLANK_DRAFT_TITLE);
@@ -82,14 +94,97 @@ export default function DraftBuilderPage() {
     setSessionStartedAt(new Date());
   }, []);
 
+  // Two-phase workspace: an advocate's first task is deciding what to
+  // prepare, not editing, so the page starts in 'choosing' — a dedicated
+  // full-width gallery, no ribbon/canvas/sidebars at all — and only
+  // switches to 'editing' (today's full editor) once a document is
+  // actually chosen. A returning visitor with a draft already in progress
+  // (the localStorage pointer below) skips 'choosing' entirely and resumes
+  // straight into 'editing', the same way reopening an existing Google
+  // Docs file skips its "new document" gallery. Starts 'choosing' on the
+  // server render (no localStorage there) and corrects client-side in the
+  // effect below, same pattern as sessionStartedAt/leftOpen elsewhere in
+  // this file.
+  const [phase, setPhase] = React.useState<'choosing' | 'editing'>('choosing');
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hasExistingDraft = window.localStorage.getItem(pointerKey('draft-builder-session')) !== null;
+    if (hasExistingDraft) setPhase('editing');
+  }, []);
+
   const [mobileDrawer, setMobileDrawer] = React.useState<MobileDrawer>('none');
   const [leftOpen, setLeftOpen] = React.useState(true);
-  const [rightOpen, setRightOpen] = React.useState(true);
+  // Page Setup & Properties is a slide-over drawer at every breakpoint —
+  // never a persistent sidebar the way it used to be. It's touched once
+  // per document at most (paper size, margins, the read-only Document
+  // Properties block); no benchmark editor (Docs, Word, Pages) keeps page
+  // setup as permanent chrome, so there is no default-open state to
+  // reconcile with the server render the way leftOpen has to below.
+  const [pageSetupOpen, setPageSetupOpen] = React.useState(false);
+  // Below desktop (lg), the left sidebar persistently open (unlike
+  // mobile, it doesn't collapse into a drawer here — see the aside
+  // element's own `hidden md:flex`) leaves the canvas so narrow that even
+  // the 50% zoom floor doesn't fit, so the page silently overflows behind
+  // the sidebar and becomes unclickable there. Defaulting to collapsed
+  // reuses the existing expand/collapse toggle already built for
+  // reclaiming canvas space — the advocate can still reopen it with one
+  // tap. Starts true to match the server-rendered default (avoiding a
+  // hydration mismatch) and flips after mount, same pattern as
+  // sessionStartedAt above.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      setLeftOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [zoomMode, setZoomMode] = React.useState<'fixed' | 'fit-width'>('fixed');
   const [focusMode, setFocusMode] = React.useState(false);
   const [darkWorkspace, setDarkWorkspace] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [contextMenuPos, setContextMenuPos] = React.useState<{ x: number; y: number } | null>(null);
+  // Dark workspace is a set-once-per-session preference, not something
+  // reached for continuously the way Focus Mode is — no benchmark editor
+  // (Docs, Word, Notion) gives it the same permanent top-bar weight as the
+  // document title, so it lives behind a small overflow menu instead.
+  const [headerMenuOpen, setHeaderMenuOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (!headerMenuOpen) return;
+    const close = () => setHeaderMenuOpen(false);
+    const id = window.setTimeout(() => window.addEventListener('click', close), 0);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('click', close);
+    };
+  }, [headerMenuOpen]);
+
+  // Ctrl/Cmd+S is near-involuntary muscle memory from years of Word/Docs —
+  // left alone, it triggers the browser's own native "Save Page As"
+  // dialog, a jarring interruption with no relationship to the document
+  // (autosave already covers this). Reviewed Tiptap's own default keymap
+  // (StarterKit) for other shortcuts worth adding here: Bold/Italic/
+  // Underline/Undo/Redo are already bound by Tiptap itself and confirmed
+  // working, so Ctrl+S — a browser-level shortcut Tiptap has no reason to
+  // know about — is the one genuine gap.
+  const [showAutosaveToast, setShowAutosaveToast] = React.useState(false);
+  React.useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        // Suppressing the browser dialog matters even before a document
+        // exists (the chooser screen), but the confirmation message only
+        // makes sense once there's actually a draft being autosaved.
+        if (phase === 'editing') setShowAutosaveToast(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [phase]);
+  React.useEffect(() => {
+    if (!showAutosaveToast) return;
+    const id = window.setTimeout(() => setShowAutosaveToast(false), 2200);
+    return () => window.clearTimeout(id);
+  }, [showAutosaveToast]);
 
   const canvasScrollRef = React.useRef<HTMLDivElement>(null);
 
@@ -173,6 +268,13 @@ export default function DraftBuilderPage() {
   );
 
   const handleSelectTemplate = (template: LegalTemplate) => {
+    // A Guided Interview is already open — selecting anything else here
+    // (from the sidebar's gallery, which stays reachable during editing)
+    // used to silently start and autosave a brand-new draft underneath
+    // the still-visible interview, with no warning: the interview's own
+    // Cancel button is the only way out of it, so a selection made while
+    // one is open must never reach applyTemplate.
+    if (activeInterview) return;
     // On mobile the library lives in a slide-out drawer over the canvas —
     // dismiss it as soon as a choice is made so the wizard/editor
     // underneath is actually visible, instead of staying hidden behind it.
@@ -181,7 +283,11 @@ export default function DraftBuilderPage() {
     if (interviewConfig) {
       // Opening the interview never touches the current draft — it's a
       // wizard rendered in place of the canvas, on this same page, until
-      // "Generate Draft" is clicked.
+      // "Generate Draft" is clicked. Choosing it is still choosing a
+      // document, though, so the workspace moves into 'editing' now —
+      // the interview itself stays chrome-free (see the ribbon/toolbar/
+      // status bar conditions below), only the canvas underneath it is.
+      setPhase('editing');
       setActiveInterview({ template, config: interviewConfig });
       return;
     }
@@ -190,6 +296,7 @@ export default function DraftBuilderPage() {
       setPendingTemplate(template);
       return;
     }
+    setPhase('editing');
     void applyTemplate(template);
   };
 
@@ -204,12 +311,14 @@ export default function DraftBuilderPage() {
   };
 
   const handleStartBlank = () => {
+    if (activeInterview) return;
     setMobileDrawer('none');
     const hasSubstantialContent = currentHtml.replace(/<[^>]+>/g, '').trim().length > 40;
     if (hasSubstantialContent && selectedTemplateId !== null) {
       setPendingTemplate('blank');
       return;
     }
+    setPhase('editing');
     void applyTemplate(null);
   };
 
@@ -238,7 +347,14 @@ export default function DraftBuilderPage() {
     const { width } = pageDimensionsMm(pageSetup.paperSize, pageSetup.orientation);
     const widthPx = width * MM_TO_PX;
     const available = container.clientWidth - 64;
-    const nextZoom = clampZoom(Math.round((available / widthPx) * 100));
+    // Capped at 100: on a wide desktop window, letting this grow past the
+    // page's real print size would work against the "see nearly a whole
+    // page at once" goal Fit Width exists for in the first place — a
+    // bigger zoom shows more detail per screen-inch but proportionally
+    // LESS of the page's total height on screen, the opposite of what a
+    // wide monitor should buy the advocate. Below 100% (a narrow tablet or
+    // phone), it still shrinks exactly as before.
+    const nextZoom = Math.min(100, clampZoom(Math.round((available / widthPx) * 100)));
     setZoomMode('fit-width');
     setPageSetup((prev) => ({ ...prev, zoom: nextZoom }));
   }, [pageSetup.paperSize, pageSetup.orientation]);
@@ -249,6 +365,79 @@ export default function DraftBuilderPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [zoomMode, computeFitWidthZoom]);
+
+  // Below desktop (lg), the sidebars/thumbnail rail used to leave too
+  // little room for a full-width A4/Letter page at the 100% zoom
+  // default — the page rendered far wider than the available viewport,
+  // mostly centered off-screen, making the editor practically untappable
+  // on a phone (see the mobile toolbar's own regression coverage for how
+  // this was found: typing appeared to work in a Playwright test because
+  // the click landed outside the real contenteditable entirely).
+  //
+  // Fit Width now auto-engages on EVERY viewport, desktop included: a
+  // fixed 100% zoom leaves a large, empty grey margin on anything wider
+  // than a small laptop — real screen space the advocate is drafting on,
+  // sitting unused. Fitting the page to whatever room the canvas actually
+  // has (sidebars/thumbnail rail included) is the same "use the whole
+  // window" behavior Google Docs/Notion default to, and the explicit
+  // fixed-zoom buttons (50–200%) remain available for anyone who wants
+  // the page at its literal print size instead.
+  // Keyed on `phase`, not just mount: the canvas this measures doesn't
+  // exist yet while phase is 'choosing' (computeFitWidthZoom no-ops
+  // safely against a null ref then), so the real first computation has to
+  // happen when 'editing' actually mounts the canvas, not just once at
+  // the page's own initial render.
+  React.useEffect(() => {
+    computeFitWidthZoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // Product rule, not a one-off fix: whenever the workspace transitions
+  // into an editable canvas, keyboard focus moves there automatically —
+  // an advocate should never need an extra click before typing. This one
+  // effect is the single place that rule lives; every transition that
+  // should trigger it changes one of these dependencies: `phase` (blank/
+  // template/interview selection, and resuming an existing draft all set
+  // it to 'editing'), `activeInterview` (becomes null once a Guided
+  // Interview generates its draft or is cancelled, revealing the canvas
+  // underneath it), and `selectedTemplateId` (changes on every template
+  // switch mid-edit, including via the "Create New Draft?" confirmation —
+  // each one loads fresh content the advocate will want to start typing
+  // into immediately). 'start' places the cursor at the top of whatever
+  // just loaded, matching where a lawyer's eye actually goes first.
+  React.useEffect(() => {
+    if (phase !== 'editing' || activeInterview || !editor) return;
+    editor.commands.focus('start');
+  }, [phase, activeInterview, editor, selectedTemplateId]);
+
+  // Same rule, the one transition above can't cover: entering Focus Mode
+  // doesn't change phase/activeInterview/selectedTemplateId (the advocate
+  // was already editing), so it needs its own trigger. Plain `.focus()`
+  // (no 'start'/'end') deliberately preserves wherever the cursor already
+  // was — unlike a fresh document, there's real mid-draft position here
+  // worth keeping, not resetting.
+  React.useEffect(() => {
+    if (!focusMode || !editor) return;
+    editor.commands.focus();
+  }, [focusMode, editor]);
+
+  // Selecting a template (or blank) replaces pageSetup wholesale with the
+  // template's own — always zoom: 100 — undoing Fit Width the same way a
+  // fresh paper size/orientation would. Recomputing whenever
+  // selectedTemplateId changes (not just paperSize/orientation) catches
+  // the common case of two templates sharing the same A4/portrait
+  // dimensions, where paperSize/orientation alone wouldn't change.
+  // leftOpen is included too: toggling that sidebar changes the canvas's
+  // available width just as much as a resize does, but doesn't fire a
+  // window 'resize' event — without this, the auto-collapse above would
+  // leave zoom computed against the still-narrow pre-collapse width from
+  // the very first render. Page Setup & Properties needs no equivalent
+  // entry: it's a slide-over drawer that overlays the canvas rather than
+  // resizing it, so opening/closing it never changes the available width.
+  React.useEffect(() => {
+    if (zoomMode === 'fit-width') computeFitWidthZoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSetup.paperSize, pageSetup.orientation, selectedTemplateId, leftOpen]);
 
   const handlePageSetupChange = (next: PageSetup) => {
     setZoomMode('fixed');
@@ -311,65 +500,35 @@ export default function DraftBuilderPage() {
           ‹
         </button>
       </div>
-      {/* The Document Creator's two creation modes — "Create Manually"
-          (Start Blank Draft, below) and "Create Using Template" (the
-          template cards). Templates tagged "Guided Interview" open a
-          step-based questionnaire (see SurveyWizard) whose answers
-          generate the draft; all other templates load their static
-          content directly into the manual editor. */}
+      {/* One flat gallery, not two separately-labelled sections for
+          starting blank vs. picking a template — Blank Document is just
+          the first card, same weight as every template, the way Google
+          Docs' and Word's own "new document" picker work. Templates
+          tagged "Guided Interview" open a step-based questionnaire (see
+          GuidedInterview) whose answers generate the draft; all other
+          templates load their static content directly into the manual
+          editor — see the badge on each card. */}
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create Manually</h3>
-        <button
-          type="button"
-          onClick={handleStartBlank}
-          className="w-full py-2 bg-[#111111] hover:bg-[#111111]/90 text-white text-[10px] uppercase tracking-widest font-bold rounded-lg transition-all"
-        >
-          Start Blank Draft
-        </button>
-      </div>
-      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">Create Using Template</h3>
-        <p className="text-[10px] text-[#B0A588] mb-3">
-          Templates marked &ldquo;Guided Interview&rdquo; open a step-based questionnaire that generates the draft from your
-          answers. Other templates load their full content directly into the editor below for manual completion.
-        </p>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-2">Create a Document</h3>
         <TemplateLibrary
           selectedTemplateId={selectedTemplateId}
           onSelectTemplate={handleSelectTemplate}
           onStartBlank={handleStartBlank}
-          hideBlankAction
+          isBlankSelected={selectedTemplateId === null}
         />
       </div>
+      {/* Trimmed from a 9-row block (Status, Matter, Template, Pages,
+          Words, Characters, Created, Last Saved, Autosave Status) down to
+          the two rows that were genuinely unique here. Status and
+          Autosave Status showed the identical value twice in this same
+          panel, Pages/Words/Characters duplicate the status bar exactly,
+          Matter never varies (always "Unlinked Draft" — no Matter Register
+          link exists yet), and Template repeats what's already visible via
+          the highlighted card in the gallery above. Created and Last Saved
+          are the only facts not shown anywhere else on screen. */}
       <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0 space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Current Draft</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Draft Info</h3>
         <dl className="space-y-1.5 text-xs">
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Status</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{AUTOSAVE_STATUS_LABEL[autosave.status]}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Matter</dt>
-            {/* Honest by construction: this page never fetches or links a
-                Matter Register record — claiming a real link here would be
-                a fabricated connection. */}
-            <dd className="text-[#3A3222] font-bold text-right">Unlinked Draft</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Template</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{activeTemplate?.name ?? 'Blank Draft'}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Pages</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{pageCount}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Words</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{wordCount}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Characters</dt>
-            <dd className="text-[#3A3222] font-bold text-right">{characterCount}</dd>
-          </div>
           <div className="flex justify-between gap-2">
             <dt className="text-[#8A7A56] font-semibold">Created</dt>
             {/* No server-side created_at is exposed by the autosave API
@@ -385,21 +544,10 @@ export default function DraftBuilderPage() {
             <dt className="text-[#8A7A56] font-semibold">Last Saved</dt>
             <dd className="text-[#3A3222] font-bold text-right">{lastSavedAt ? lastSavedAt.toLocaleTimeString() : '—'}</dd>
           </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-[#8A7A56] font-semibold">Autosave Status</dt>
-            <dd className="text-[#3A3222] font-bold text-right flex items-center gap-1.5 justify-end">
-              <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`} />
-              {AUTOSAVE_STATUS_LABEL[autosave.status]}
-            </dd>
-          </div>
         </dl>
       </div>
-      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0">
+      <div className="pb-4 last:border-b-0 last:pb-0">
         <AttachmentsPanel />
-      </div>
-      <div className="pb-4 border-b border-[#F4EEE0] last:border-b-0 last:pb-0 opacity-60">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-1">AI Panel</h3>
-        <p className="text-[10px] text-[#B0A588] italic">Reserved for a future milestone.</p>
       </div>
     </>
   );
@@ -410,11 +558,11 @@ export default function DraftBuilderPage() {
         <h2 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Page Setup &amp; Properties</h2>
         <button
           type="button"
-          onClick={() => setRightOpen(false)}
-          aria-label="Collapse right panel"
-          className="hidden md:block text-[#B0A588] hover:text-[#8A6D2F] text-xs font-bold"
+          onClick={() => setPageSetupOpen(false)}
+          aria-label="Close panel"
+          className="text-[#B0A588] hover:text-[#8A6D2F] text-xs font-bold uppercase tracking-widest"
         >
-          ›
+          ✕ Close
         </button>
       </div>
       <PageSetupPanel
@@ -447,58 +595,100 @@ export default function DraftBuilderPage() {
     </>
   );
 
+  // The chooser is the entire page until a document is picked — no
+  // header, ribbon, canvas, or sidebars render alongside it. See
+  // DocumentChooser's own doc comment for why.
+  if (phase === 'choosing') {
+    return (
+      <div className={`h-screen flex flex-col overflow-hidden font-sans ${workspaceBg}`}>
+        <DocumentChooser onSelectTemplate={handleSelectTemplate} onStartBlank={handleStartBlank} />
+      </div>
+    );
+  }
+
   return (
     <div className={`h-screen flex flex-col overflow-hidden font-sans ${workspaceBg}`}>
       {!focusMode && (
-        <header className={`no-print shrink-0 border-b px-4 md:px-6 py-3 ${chromeBg}`}>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="min-w-0 flex items-center gap-3">
+        // A single compact row (~36px), not the old two-line stack (a big
+        // uppercase "DOCUMENT CREATOR" heading with the editable title on
+        // its own line beneath) — the shared dashboard header above this
+        // already establishes app context, so this page's own header only
+        // needs to carry the document's title plus a few small controls,
+        // the same weight Google Docs/Notion give their own title bar.
+        <header className={`no-print shrink-0 border-b px-3 py-[6px] ${chromeBg}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setMobileDrawer(mobileDrawer === 'left' ? 'none' : 'left')}
                 aria-label="Toggle templates and attachments"
-                className={`md:hidden px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                className={`md:hidden shrink-0 flex items-center gap-1 px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                ☰
+                <span aria-hidden="true">☰</span>
+                <span>Templates</span>
               </button>
-              <div>
-                <h1 className={`text-lg md:text-xl font-black uppercase tracking-widest ${chromeText}`}>Document Creator</h1>
-                <input
-                  aria-label="Document title"
-                  value={draftTitle}
-                  onChange={(e) => setDraftTitle(e.target.value)}
-                  className={`mt-0.5 text-xs font-serif italic bg-transparent border-none outline-none focus:underline w-full max-w-md ${chromeText} opacity-70`}
-                  placeholder="Untitled Draft"
-                />
-              </div>
+              {/* No "Document" label here — it was purely decorative (no
+                  function, nothing it clarified that the title input
+                  itself doesn't already), and the shared dashboard header
+                  above already establishes app context. */}
+              <input
+                aria-label="Document title"
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                className={`text-sm font-semibold bg-transparent border-none outline-none focus:underline min-w-0 flex-1 max-w-[140px] sm:max-w-md ${chromeText}`}
+                placeholder="Untitled Draft"
+              />
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest ${chromeText} opacity-70`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${AUTOSAVE_STATUS_DOT[autosave.status]}`}></span>
-                {AUTOSAVE_STATUS_LABEL[autosave.status]}
-              </span>
-              <button
-                type="button"
-                onClick={() => setDarkWorkspace((v) => !v)}
-                className={`px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
-              >
-                {darkWorkspace ? '☀ Light' : '● Dark'}
-              </button>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Autosave status used to also appear here, duplicating the
+                  status bar (and, in the sidebar, itself) — removed in
+                  favor of the status bar as the one place it's shown. */}
               <button
                 type="button"
                 onClick={() => setFocusMode(true)}
-                className={`px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                ⛶ Focus Mode
+                ⛶ Focus
               </button>
               <button
                 type="button"
-                onClick={() => setMobileDrawer(mobileDrawer === 'right' ? 'none' : 'right')}
-                aria-label="Toggle page setup and properties"
-                className={`md:hidden px-2.5 py-1.5 border rounded-lg text-[10px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                onClick={() => setPageSetupOpen(true)}
+                aria-label="Open page setup and properties"
+                className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
               >
-                ⚙
+                ⚙<span className="hidden sm:inline"> Page Setup</span>
               </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHeaderMenuOpen((v) => !v);
+                  }}
+                  aria-label="More workspace options"
+                  aria-expanded={headerMenuOpen}
+                  className={`px-2 py-1 border rounded text-[9px] font-bold uppercase tracking-widest ${chromeBg} ${chromeText}`}
+                >
+                  ⋯
+                </button>
+                {headerMenuOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute right-0 top-full mt-1 z-30 w-40 rounded-lg border shadow-lg p-1 ${chromeBg}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDarkWorkspace((v) => !v);
+                        setHeaderMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-2 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-[#FBF8F1] ${chromeText}`}
+                    >
+                      {darkWorkspace ? '☀ Light workspace' : '● Dark workspace'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -536,9 +726,15 @@ export default function DraftBuilderPage() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
             <h2 className="text-sm font-bold text-[#111111]">Create New Draft?</h2>
+            {/* Previously claimed the old draft "remains available from
+                Draft History" — no such feature exists anywhere in the
+                app, so that was a promise the product couldn't keep. What
+                is actually true: the old draft is preserved, not deleted
+                or overwritten, there just isn't yet an in-app way to
+                browse back to it. */}
             <p className="text-xs text-[#5C5340]">
-              Your current draft is safely preserved. A new independent draft will now be created. Your existing
-              draft remains available from Draft History.
+              Your current draft is safely preserved — it won&rsquo;t be deleted or overwritten. There isn&rsquo;t yet a
+              way to browse back to it from within the app, so a new, independent draft will be created now.
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -561,19 +757,33 @@ export default function DraftBuilderPage() {
         </div>
       )}
 
-      {!focusMode && (
-        <div className="no-print shrink-0 px-4 md:px-6 pt-3">
+      {/* Also hidden during an active Guided Interview: there's no rich
+          text to format while filling in a questionnaire, so the ribbon
+          was pure visual noise sitting above it — the same "only appear
+          while editing" rule the chooser itself follows. */}
+      {!focusMode && !activeInterview && (
+        <div className="no-print shrink-0 px-4 md:px-6 pt-3 hidden md:block">
           <Ribbon editor={editor} pageSetup={pageSetup} onPageSetupChange={handlePageSetupChange} onPrint={handlePrint} />
         </div>
       )}
+      {!focusMode && !activeInterview && <MobileToolbar editor={editor} onPrint={handlePrint} />}
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* pb-[24px] reserves the StatusBar's own height (h-[24px], fixed
+          bottom-0 — see StatusBar.tsx) since a fixed-position element
+          never takes up space in normal flow. Without it, on a short
+          viewport (e.g. mobile landscape) the sidebar/editor's own
+          scrollable content can extend the full remaining height and end
+          up rendered underneath the status bar, both visually clipped and
+          unclickable there. Also skipped during an active interview,
+          since the status bar itself doesn't render then either (page/
+          word counts describe the canvas, not the questionnaire). */}
+      <div className={`flex-1 flex overflow-hidden ${focusMode || activeInterview ? '' : 'pb-[24px]'}`}>
         {!focusMode && (
           <aside
-            style={{ width: leftOpen ? '272px' : '0px' }}
+            style={{ width: leftOpen ? '240px' : '0px' }}
             className={`no-print hidden md:flex flex-col overflow-hidden ${leftOpen ? 'border-r' : 'border-r-0'} ${chromeBg}`}
           >
-            <div className="w-[272px] shrink-0 overflow-y-auto p-4 space-y-4">{leftSidebarContent}</div>
+            <div className="w-[240px] shrink-0 overflow-y-auto p-[12px] space-y-3">{leftSidebarContent}</div>
           </aside>
         )}
 
@@ -590,7 +800,7 @@ export default function DraftBuilderPage() {
 
         <main ref={canvasScrollRef} onContextMenu={activeInterview ? undefined : handleContextMenu} className={`relative flex-1 overflow-auto ${canvasPaneBg}`}>
           {activeInterview ? (
-            <SurveyWizard
+            <GuidedInterview
               config={activeInterview.config}
               templateHtml={activeInterview.template.html}
               onCancel={() => setActiveInterview(null)}
@@ -608,51 +818,35 @@ export default function DraftBuilderPage() {
           )}
         </main>
 
-        {!focusMode && !activeInterview && (
-          <div className={`no-print hidden md:block w-16 shrink-0 overflow-y-auto border-l ${chromeBg}`}>
+        {/* Only shown for genuinely multi-page documents — a single
+            thumbnail has no navigational value and, before this, took up
+            60px of permanent width on every fresh (one-page) draft. */}
+        {!focusMode && !activeInterview && pageCount > 1 && (
+          <div className={`no-print hidden md:block w-[60px] shrink-0 overflow-y-auto border-l ${chromeBg}`}>
             <PageThumbnails pageCount={pageCount} currentPage={currentPage} onNavigate={handleNavigateToPage} orientation={pageSetup.orientation} />
           </div>
         )}
 
-        {!focusMode && !rightOpen && (
-          <button
-            type="button"
-            onClick={() => setRightOpen(true)}
-            aria-label="Expand right panel"
-            className={`no-print hidden md:flex items-center justify-center w-4 shrink-0 border-l ${chromeBg} ${chromeText} hover:bg-[#FBF8F1]`}
-          >
-            ‹
-          </button>
-        )}
-
-        {!focusMode && (
-          <aside
-            style={{ width: rightOpen ? '288px' : '0px' }}
-            className={`no-print hidden md:flex flex-col overflow-hidden ${rightOpen ? 'border-l' : 'border-l-0'} ${chromeBg}`}
-          >
-            <div className="w-[288px] shrink-0 overflow-y-auto p-4 space-y-4">{rightSidebarContent}</div>
-          </aside>
-        )}
-
         {mobileDrawer !== 'none' && (
           <>
-            {/* top-16 (not inset-0/inset-y-0): the shared dashboard shell's
-                top bar (app/dashboard/layout.tsx) sits in its own stacking
-                context (its <main isolate> wrapper always paints above
-                whatever's inside it, regardless of z-index), so a fixed
-                overlay that starts at the true viewport top would be
+            {/* top-[44px] (not inset-0/inset-y-0): the shared dashboard
+                shell's top bar (app/dashboard/layout.tsx) sits in its own
+                stacking context (its <main isolate> wrapper always paints
+                above whatever's inside it, regardless of z-index), so a
+                fixed overlay that starts at the true viewport top would be
                 visually covered by — and have its own top strip's clicks
-                intercepted by — that shared bar. Anchoring below its fixed
-                4rem (h-16) height keeps the drawer entirely clickable. */}
+                intercepted by — that shared bar. Anchoring below its
+                height keeps the drawer entirely clickable. That height is
+                44px here (not the shared header's usual 128px, itself
+                h-16 doubled by this repo's tailwind.config.ts spacing
+                scale) — layout.tsx renders a shorter, quieter bar
+                specifically on this route, so the offset below has to
+                match it exactly rather than reuse the h-16 utility. */}
             <div
-              className="no-print fixed top-16 inset-x-0 bottom-0 bg-black/40 z-40 md:hidden"
+              className="no-print fixed top-[44px] inset-x-0 bottom-0 bg-black/40 z-40 md:hidden"
               onClick={() => setMobileDrawer('none')}
             />
-            <div
-              className={`no-print fixed top-16 bottom-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4 ${
-                mobileDrawer === 'left' ? 'left-0' : 'right-0'
-              }`}
-            >
+            <div className="no-print fixed top-[44px] bottom-0 left-0 z-50 w-72 bg-white shadow-2xl md:hidden overflow-y-auto p-4 space-y-4">
               <button
                 type="button"
                 onClick={() => setMobileDrawer('none')}
@@ -661,13 +855,30 @@ export default function DraftBuilderPage() {
               >
                 ✕ Close
               </button>
-              {mobileDrawer === 'left' ? leftSidebarContent : rightSidebarContent}
+              {leftSidebarContent}
+            </div>
+          </>
+        )}
+
+        {/* Page Setup & Properties: a slide-over drawer at every
+            breakpoint, not a persistent sidebar — paper size/orientation/
+            margins are already one click away via the ribbon's Layout
+            menu, and Document Properties is read-only, derived metadata
+            nobody edits. Neither earns 240px of permanent width. Same
+            top-[44px] reasoning as the left drawer above, but not
+            md:hidden: this one replaces what used to be a desktop-only
+            aside, so it has to work at every width, not just mobile. */}
+        {pageSetupOpen && (
+          <>
+            <div className="no-print fixed top-[44px] inset-x-0 bottom-0 bg-black/40 z-40" onClick={() => setPageSetupOpen(false)} />
+            <div className={`no-print fixed top-[44px] bottom-0 right-0 z-50 w-72 sm:w-80 shadow-2xl overflow-y-auto p-4 space-y-4 ${chromeBg}`}>
+              {rightSidebarContent}
             </div>
           </>
         )}
       </div>
 
-      {!focusMode && (
+      {!focusMode && !activeInterview && (
         <StatusBar
           currentPage={currentPage}
           pageCount={pageCount}
@@ -689,6 +900,20 @@ export default function DraftBuilderPage() {
         >
           Exit Focus Mode
         </button>
+      )}
+
+      {/* A reflexive Ctrl/Cmd+S (see the keydown handler above) is
+          intercepted silently everywhere except here — this is the one
+          acknowledgement that the keystroke did something, since autosave
+          already covers what the browser's own save dialog would have
+          tried to do. */}
+      {showAutosaveToast && (
+        <div
+          role="status"
+          className="no-print fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-[#111111] text-white text-[11px] font-semibold rounded-lg shadow-lg"
+        >
+          All changes are saved automatically.
+        </div>
       )}
 
       <EditorContextMenu editor={editor} position={contextMenuPos} onClose={() => setContextMenuPos(null)} />

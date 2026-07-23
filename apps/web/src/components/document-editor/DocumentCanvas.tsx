@@ -37,7 +37,12 @@ export function DocumentCanvas({ editor, pageSetup, defaultFontFamily }: Documen
   const naturalUnitHeight = RULER_HEIGHT_PX + 4 + heightPx;
 
   return (
-    <div className="flex flex-col items-center py-8 overflow-x-auto">
+    // py-8 (a doubled-scale 64px top AND bottom under this repo's
+    // tailwind.config.ts spacing override) used to spend 128px of vertical
+    // space on empty grey margin before any page content was visible —
+    // an explicit, much smaller py-[16px] keeps a little breathing room
+    // around the page without eating a large chunk of the viewport.
+    <div className="flex flex-col items-center py-[16px] overflow-x-auto">
       <div
         style={{
           transform: `scale(${scale})`,

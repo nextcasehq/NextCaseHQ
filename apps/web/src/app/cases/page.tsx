@@ -289,12 +289,12 @@ function CasesChamberContent() {
       )}
 
       {/* Filter Section */}
-      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex items-center justify-between gap-4 mb-8">
+      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex items-center flex-wrap gap-4 mb-8">
         <span className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">
           Filters:
         </span>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {['ALL', 'PENDING', 'HEARING', 'DISPOSED', 'APPEAL'].map(status => (
             <button
               key={status}
