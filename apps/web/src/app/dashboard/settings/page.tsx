@@ -41,8 +41,8 @@ export default function SettingsPage() {
       <div className="space-y-6">
         {/* Cryptographic Key Management Configuration */}
         <div className="p-6 border border-[#111111]/10 rounded bg-white space-y-4">
-          <h3 className="font-bold text-lg text-[#111111]">Cryptographic Key Management</h3>
-          <p className="text-xs text-[#111111]/50 font-serif italic">Define the secure hardware key provider wrapping active tenant DEKs.</p>
+          <h2 className="font-bold text-lg text-[#111111]">Cryptographic Key Management</h2>
+          <p className="text-xs text-[#111111]/70 font-serif italic">Define the secure hardware key provider wrapping active tenant DEKs.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
             {[
@@ -56,7 +56,7 @@ export default function SettingsPage() {
                 className={`p-4 text-xs font-bold uppercase tracking-wider rounded border text-left transition-all ${
                   provider === prov.id
                     ? 'border-[#111111] bg-[#111111]/5 text-[#111111]'
-                    : 'border-[#111111]/10 bg-transparent text-[#111111]/50 hover:bg-[#111111]/2'
+                    : 'border-[#111111]/10 bg-transparent text-[#111111]/70 hover:bg-[#111111]/2'
                 }`}
               >
                 <span className="block opacity-40 text-[9px] mb-1">PROVIDER ID</span>
@@ -64,15 +64,15 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
-          <p className="text-[10px] font-mono text-[#111111]/40 pt-2">
+          <p className="text-[10px] font-mono text-[#111111]/70 pt-2">
             ACTIVE PROVIDER: {provider} // CIRCUIT_BREAKER_STATUS: STABLE
           </p>
         </div>
 
         {/* Regional Jurisdictional Packs */}
         <div className="p-6 border border-[#111111]/10 rounded bg-white space-y-4">
-          <h3 className="font-bold text-lg text-[#111111]">Regional Jurisdictional Packs</h3>
-          <p className="text-xs text-[#111111]/50 font-serif italic">Enable or disable regional litigation telemetry validation templates (e.g. India BNSS/BNS).</p>
+          <h2 className="font-bold text-lg text-[#111111]">Regional Jurisdictional Packs</h2>
+          <p className="text-xs text-[#111111]/70 font-serif italic">Enable or disable regional litigation telemetry validation templates (e.g. India BNSS/BNS).</p>
 
           <div className="flex flex-wrap gap-3 pt-2">
             {[
@@ -88,7 +88,7 @@ export default function SettingsPage() {
                   className={`px-5 py-3 text-xs font-bold uppercase tracking-wider rounded border transition-all flex items-center gap-2 ${
                     isActive
                       ? 'border-[#111111] bg-[#111111] text-[#FDFBF7]'
-                      : 'border-[#111111]/10 bg-transparent text-[#111111]/40 hover:text-[#111111]'
+                      : 'border-[#111111]/10 bg-transparent text-[#111111]/70 hover:text-[#111111]'
                   }`}
                 >
                   <span>{isActive ? '✓' : '✗'}</span>
@@ -101,8 +101,8 @@ export default function SettingsPage() {
 
         {/* Latency Threshold Budgets */}
         <div className="p-6 border border-[#111111]/10 rounded bg-white space-y-4">
-          <h3 className="font-bold text-lg text-[#111111]">OpenTelemetry Performance Budgets</h3>
-          <p className="text-xs text-[#111111]/50 font-serif italic">Set milliseconds speed limit alert boundaries. Alerts fire if API times exceed budget.</p>
+          <h2 className="font-bold text-lg text-[#111111]">OpenTelemetry Performance Budgets</h2>
+          <p className="text-xs text-[#111111]/70 font-serif italic">Set milliseconds speed limit alert boundaries. Alerts fire if API times exceed budget.</p>
 
           <div className="space-y-3 pt-2">
             <div className="flex justify-between text-xs font-mono text-[#111111]/60">
@@ -111,6 +111,7 @@ export default function SettingsPage() {
             </div>
             <input
               type="range"
+              aria-label="Edge Middleware Target Budget (milliseconds)"
               min={5}
               max={50}
               value={latencyBudget}

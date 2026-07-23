@@ -29,8 +29,7 @@ describe('Public /login removal', () => {
   });
 
   test('the landing page no longer links to /login', () => {
-    expect(readSource('components/landing/sections/HeroSection.tsx')).not.toContain('/login');
-    expect(readSource('components/landing/sections/CtaBand.tsx')).not.toContain('/login');
+    expect(readSource('components/landing/LandingPageContent.tsx')).not.toContain('/login');
   });
 
   test.each([

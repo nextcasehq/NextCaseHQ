@@ -53,7 +53,7 @@ export function StatusBar({
     <div
       role="status"
       aria-label="Document status bar"
-      className="no-print fixed bottom-0 left-0 right-0 z-30 h-8 bg-white border-t border-[#E7DFC9]/80 flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-3"
+      className="no-print fixed bottom-0 left-0 right-0 z-30 h-[24px] bg-white border-t border-[#E7DFC9]/80 flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-3"
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Item>

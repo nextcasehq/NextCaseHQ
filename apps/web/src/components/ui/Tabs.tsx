@@ -29,7 +29,7 @@ export const Tabs: React.FC<TabsProps> = ({
             className={`py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all relative outline-none ${
               isActive
                 ? 'border-[#111111] text-[#111111]'
-                : 'border-transparent text-[#111111]/40 hover:text-[#111111]'
+                : 'border-transparent text-[#111111]/70 hover:text-[#111111]'
             }`}
           >
             {item.label}

@@ -293,6 +293,30 @@ describe('middleware — always-on public preview (independent of PRODUCT_REVIEW
     expect(body?.review_mode).not.toBe(true);
   });
 
+  test('GET /api/judgments/search is NOT intercepted by the legacy Bearer-token gate — it authorizes itself via the real session cookie, same as /api/search', async () => {
+    // Regression: any /api/* route not added to isSelfAuthorizedApiRoute
+    // falls through to a Bearer-token check nothing in this app actually
+    // issues, making the route unreachable even with a real, valid
+    // session cookie (caught via live Playwright verification when this
+    // route was first built — the route handler's own requireSession()
+    // was correct, but requests never reached it).
+    const token = await sessionToken();
+    const response = await proxy(buildApiRequest('/api/judgments/search?q=contract', { cookieValue: token }));
+    expect(response.status).not.toBe(401);
+    const body = await response.json().catch(() => null);
+    expect(body?.message).not.toBe('Missing or invalid token.');
+  });
+
+  test('GET /api/judgments/search with no session at all is not blocked by the middleware itself — the route handler enforces auth (and returns its own 401)', async () => {
+    const response = await proxy(buildApiRequest('/api/judgments/search?q=contract'));
+    // The middleware passes it through either way; only the /api/judgments
+    // self-authorized allowlist entry is under test here, not the route
+    // handler's own requireSession() (covered by
+    // app/api/judgments/search/__tests__/route.test.ts).
+    const body = await response.json().catch(() => null);
+    expect(body?.message).not.toBe('Missing or invalid token.');
+  });
+
   test('GET /api/search/demo/{a real demo id} returns that item with no session, regardless of PRODUCT_REVIEW_MODE', async () => {
     process.env.PRODUCT_REVIEW_MODE = 'false';
     const response = await proxy(buildApiRequest('/api/search/demo/demo-act-0001'));

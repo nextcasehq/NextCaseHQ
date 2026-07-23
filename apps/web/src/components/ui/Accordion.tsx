@@ -31,7 +31,7 @@ export const Accordion: React.FC<AccordionProps> = ({ items, className = '' }) =
               <span className="font-serif text-base font-bold text-[#111111] group-hover:text-[#111111]/80 transition-colors">
                 {item.title}
               </span>
-              <span className="text-sm font-mono text-[#111111]/40 group-hover:text-[#111111] transition-all">
+              <span className="text-sm font-mono text-[#111111]/70 group-hover:text-[#111111] transition-all">
                 {isOpen ? '[-]' : '[+]'}
               </span>
             </button>

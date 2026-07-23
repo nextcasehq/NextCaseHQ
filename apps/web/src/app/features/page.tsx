@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-serif selection:bg-[#111111] selection:text-[#FDFBF7]">
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-20 lg:py-32 w-full">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
             <svg viewBox="0 0 40 40" className="h-8 w-8" fill="none">
@@ -56,7 +56,7 @@ export default function FeaturesPage() {
                 <path d="M15.5 20l3 3 6-6" />
               </g>
             </svg>
-            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Zero-Knowledge Envelope</h3>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Zero-Knowledge Envelope</h2>
             <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               End-to-end envelope cryptography and hardware-backed KMS keys shield counsel transcripts and exhibits.
             </p>
@@ -70,7 +70,7 @@ export default function FeaturesPage() {
               </g>
               <circle cx="20" cy="9" r="1.8" fill="#8A6D2F" />
             </svg>
-            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Statutory Engines</h3>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Statutory Engines</h2>
             <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               Instant, automated compliance mappings for BNS, BNSS, FRCP, CPR, and Negotiable Instruments (NI) Act timelines.
             </p>
@@ -82,14 +82,14 @@ export default function FeaturesPage() {
                 <path d="M23 12l5 5" />
               </g>
             </svg>
-            <h3 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Interactive Draft Sheet</h3>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Interactive Draft Sheet</h2>
             <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
               A premium WYSIWYG legal document engine with automated citation reference binding.
             </p>
           </Card>
         </div>
 
-      </main>
+      </div>
       <Footer />
     </div>
   );

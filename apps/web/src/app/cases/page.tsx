@@ -110,18 +110,18 @@ function CasesChamberContent() {
 
   if (needsAuth) {
     return (
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
         {reviewModeActive ? (
           <>
             <span className="text-3xl">👁️</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
           </>
         ) : (
           <>
             <span className="text-3xl">🔒</span>
             <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">
+            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
               Sign in to view and manage litigation cases under your tenant.
             </p>
             <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
@@ -129,12 +129,12 @@ function CasesChamberContent() {
             </p>
           </>
         )}
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+    <div className="relative isolate flex-1 max-w-7xl w-full mx-auto px-6 py-10">
       <BrandBackground />
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E7DFC9]/60">
@@ -154,9 +154,9 @@ function CasesChamberContent() {
       {/* Case Creation Form */}
       {showCreateForm && (
         <div className="mb-10 p-6 bg-white border border-[#E7DFC9]/80 rounded-xl shadow-sm">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[#B0A588] mb-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#726B58] mb-4">
             Spawn New Case Workspace
-          </h3>
+          </h2>
 
           <form onSubmit={handleCreateCase} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -273,7 +273,7 @@ function CasesChamberContent() {
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 border border-[#E7DFC9] text-[#8A7A56] text-xs font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
+                className="px-4 py-2 border border-[#E7DFC9] text-[#6F5624] text-xs font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
               >
                 Cancel
               </button>
@@ -289,12 +289,12 @@ function CasesChamberContent() {
       )}
 
       {/* Filter Section */}
-      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex items-center justify-between gap-4 mb-8">
-        <span className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">
+      <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex items-center flex-wrap gap-4 mb-8">
+        <span className="text-xs font-bold uppercase tracking-widest text-[#726B58]">
           Filters:
         </span>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {['ALL', 'PENDING', 'HEARING', 'DISPOSED', 'APPEAL'].map(status => (
             <button
               key={status}
@@ -345,22 +345,22 @@ function CasesChamberContent() {
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-sm text-[#111111] group-hover:text-[#8A6D2F] transition-colors line-clamp-2">
+                  <h2 className="font-bold text-sm text-[#111111] group-hover:text-[#8A6D2F] transition-colors line-clamp-2">
                     {c.title}
-                  </h3>
+                  </h2>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-[#8A7A56] font-medium">
+                <div className="space-y-1.5 text-xs text-[#6F5624] font-medium">
                   <div className="flex justify-between">
-                    <span className="text-[9px] text-[#B0A588] uppercase font-bold tracking-wider">Forum:</span>
+                    <span className="text-[9px] text-[#726B58] uppercase font-bold tracking-wider">Forum:</span>
                     <span className="text-[#4A4130] text-right truncate max-w-[70%] font-semibold">{c.court || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[9px] text-[#B0A588] uppercase font-bold tracking-wider">Judge:</span>
+                    <span className="text-[9px] text-[#726B58] uppercase font-bold tracking-wider">Judge:</span>
                     <span className="text-[#4A4130] text-right truncate max-w-[70%] font-semibold">{c.judge || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[9px] text-[#B0A588] uppercase font-bold tracking-wider">Stage:</span>
+                    <span className="text-[9px] text-[#726B58] uppercase font-bold tracking-wider">Stage:</span>
                     <span className="text-[#4A4130] text-right font-semibold">{c.stage || 'N/A'}</span>
                   </div>
                 </div>
@@ -368,7 +368,7 @@ function CasesChamberContent() {
 
               <div className="border-t border-[#F4EEE0] pt-4 mt-5 flex items-center justify-between">
                 <div>
-                  <span className="block text-[8px] font-bold text-[#B0A588] uppercase tracking-widest">NEXT HEARING</span>
+                  <span className="block text-[8px] font-bold text-[#726B58] uppercase tracking-widest">NEXT HEARING</span>
                   <span className="text-xs font-mono font-bold text-[#8A6D2F]">{c.hearing_date || 'N/A'}</span>
                 </div>
                 <Link
@@ -409,7 +409,7 @@ function CasesChamberContent() {
           }
         />
       )}
-    </main>
+    </div>
   );
 }
 

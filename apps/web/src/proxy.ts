@@ -215,6 +215,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/matters') ||
     pathname.startsWith('/api/clients') ||
     pathname.startsWith('/api/search') ||
+    pathname.startsWith('/api/judgments') ||
     pathname.startsWith('/api/wallet') ||
     pathname.startsWith('/api/notifications') ||
     pathname.startsWith('/api/ai') ||

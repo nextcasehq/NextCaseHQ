@@ -113,24 +113,24 @@ export default function CaseWorkspaceDetailsPage() {
   if (needsAuth) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <main className="flex-1 flex flex-col justify-center items-center py-20">
+        <div className="flex-1 flex flex-col justify-center items-center py-20">
           {reviewModeActive ? (
             <>
               <span className="text-3xl">👁️</span>
               <h2 className="text-lg font-bold mt-2">Not Available</h2>
-              <p className="text-xs text-[#B0A588] mt-1">Function available after production activation.</p>
+              <p className="text-xs text-[#726B58] mt-1">Function available after production activation.</p>
             </>
           ) : (
             <>
               <span className="text-3xl">🔒</span>
               <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
-              <p className="text-xs text-[#B0A588] mt-1">Sign in to view this case workspace.</p>
+              <p className="text-xs text-[#726B58] mt-1">Sign in to view this case workspace.</p>
               <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
                 Phone verification is required to save or access private work.
               </p>
             </>
           )}
-        </main>
+        </div>
       </div>
     );
   }
@@ -138,14 +138,14 @@ export default function CaseWorkspaceDetailsPage() {
   if (!cCase) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
-        <main className="flex-1 flex flex-col justify-center items-center py-20">
+        <div className="flex-1 flex flex-col justify-center items-center py-20">
           <span className="text-3xl">⚠️</span>
           <h2 className="text-lg font-bold mt-2">Case Workspace Not Found</h2>
-          <p className="text-xs text-[#B0A588] mt-1">This Case ID does not exist or you lack multi-tenant RLS clearance.</p>
+          <p className="text-xs text-[#726B58] mt-1">This Case ID does not exist or you lack multi-tenant RLS clearance.</p>
           <Link href="/cases" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
             Back to Case Workspace
           </Link>
-        </main>
+        </div>
       </div>
     );
   }
@@ -153,10 +153,10 @@ export default function CaseWorkspaceDetailsPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans selection:bg-[#8A6D2F] selection:text-white">
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
         {/* Back Link */}
         <div className="mb-6">
-          <Link href="/cases" className="text-xs font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F] transition-colors">
+          <Link href="/cases" className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F] transition-colors">
             ← Back to Case Workspace Chamber
           </Link>
         </div>
@@ -196,22 +196,22 @@ export default function CaseWorkspaceDetailsPage() {
 
             {/* Core Field Details Panel */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Litigation Panel Information</h3>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Litigation Panel Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">COURT / FORUM</span>
+                  <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">COURT / FORUM</span>
                   <span className="text-sm font-bold text-[#3A3222]">{cCase.court || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">JUDGE / CORAM</span>
+                  <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">JUDGE / CORAM</span>
                   <span className="text-sm font-bold text-[#3A3222]">{cCase.judge || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">PROCEDURAL STAGE</span>
+                  <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">PROCEDURAL STAGE</span>
                   <span className="text-sm font-bold text-[#8A6D2F] font-mono uppercase">{cCase.stage || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-[#B0A588] uppercase tracking-widest">NEXT HEARING DATE</span>
+                  <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">NEXT HEARING DATE</span>
                   <span className="text-sm font-mono font-bold text-[#3A3222]">{cCase.hearing_date || 'N/A'}</span>
                 </div>
               </div>
@@ -219,39 +219,39 @@ export default function CaseWorkspaceDetailsPage() {
 
             {/* Case Timeline Placeholder */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-6">Case Chronology Timeline</h3>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-6">Case Chronology Timeline</h2>
 
               {/* Vertical Chronology Line */}
               <div className="relative pl-6 border-l-2 border-[#F4EEE0] space-y-6">
                 <div className="relative">
                   {/* Point */}
                   <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-green-500 rounded-full border-4 border-white shadow-sm" />
-                  <span className="text-[9px] font-mono font-bold text-green-600 block">12-Jan-2026</span>
-                  <h4 className="font-bold text-sm text-[#3A3222]">Litigation Case Registered</h4>
-                  <p className="text-xs text-[#8A7A56] mt-1">Initial file ingestion completed successfully under RLS isolation.</p>
+                  <span className="text-[9px] font-mono font-bold text-green-800 block">12-Jan-2026</span>
+                  <h3 className="font-bold text-sm text-[#3A3222]">Litigation Case Registered</h3>
+                  <p className="text-xs text-[#6F5624] mt-1">Initial file ingestion completed successfully under RLS isolation.</p>
                 </div>
 
                 <div className="relative">
                   <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-[#A9843F] rounded-full border-4 border-white shadow-sm animate-pulse" />
                   <span className="text-[9px] font-mono font-bold text-[#8A6D2F] block">14-Jan-2026</span>
-                  <h4 className="font-bold text-sm text-[#3A3222]">Pleadings Draft Compiled</h4>
-                  <p className="text-xs text-[#8A7A56] mt-1">First-draft petition loaded into the secure Drafting Canvas workspace.</p>
+                  <h3 className="font-bold text-sm text-[#3A3222]">Pleadings Draft Compiled</h3>
+                  <p className="text-xs text-[#6F5624] mt-1">First-draft petition loaded into the secure Drafting Canvas workspace.</p>
                 </div>
 
-                <div className="relative opacity-60">
-                  <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-[#CFC3A8] rounded-full border-4 border-white shadow-sm" />
-                  <span className="text-[9px] font-mono font-bold text-[#B0A588] block">{cCase.hearing_date || 'TBD'}</span>
-                  <h4 className="font-bold text-sm text-[#4A4130]">Admission Hearing Scheduled</h4>
-                  <p className="text-xs text-[#B0A588] mt-1">Awaiting argument presentation before {cCase.judge || 'the assigned judge'}.</p>
+                <div className="relative">
+                  <span className="absolute -left-[31px] top-1.5 w-4 h-4 bg-[#CFC3A8] rounded-full border-4 border-white shadow-sm opacity-60" />
+                  <span className="text-[9px] font-mono font-bold text-[#726B58] block">{cCase.hearing_date || 'TBD'}</span>
+                  <h3 className="font-bold text-sm text-[#4A4130]">Admission Hearing Scheduled</h3>
+                  <p className="text-xs text-[#726B58] mt-1">Awaiting argument presentation before {cCase.judge || 'the assigned judge'}.</p>
                 </div>
               </div>
             </div>
 
             {/* Court Note History — real, append-only hearing records */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588] mb-4">Court Note History</h3>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Court Note History</h2>
               {courtNotes.length === 0 ? (
-                <p className="text-xs font-semibold text-[#8A7A56]">
+                <p className="text-xs font-semibold text-[#6F5624]">
                   No Court Notes recorded yet. Record one right after your next hearing.
                 </p>
               ) : (
@@ -260,15 +260,15 @@ export default function CaseWorkspaceDetailsPage() {
                     <div key={cn.id} className="border-l-2 border-[#F4EEE0] pl-4">
                       <div className="flex flex-wrap items-baseline gap-x-2">
                         <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
-                        <span className="text-[10px] font-bold text-[#B0A588] uppercase tracking-wider">{cn.stage}</span>
-                        <span className="text-[10px] text-[#B0A588]">· {cn.court_forum_display}</span>
+                        <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{cn.stage}</span>
+                        <span className="text-[10px] text-[#726B58]">· {cn.court_forum_display}</span>
                       </div>
                       <p className="text-xs text-[#3A3222] mt-1">{cn.note}</p>
                       {cn.next_actions && (
                         <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {cn.next_actions}</p>
                       )}
                       {cn.next_hearing_date && (
-                        <p className="text-[10px] text-[#B0A588] mt-1">Next hearing: {cn.next_hearing_date}</p>
+                        <p className="text-[10px] text-[#726B58] mt-1">Next hearing: {cn.next_hearing_date}</p>
                       )}
                     </div>
                   ))}
@@ -279,9 +279,9 @@ export default function CaseWorkspaceDetailsPage() {
             {/* Active Notes Workspace Editor */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Courtroom Notes Workspace</h3>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Courtroom Notes Workspace</h2>
                 {isSaved && (
-                  <span className="text-xs text-green-600 font-bold font-sans">✓ Saved to Secure Ledger</span>
+                  <span className="text-xs text-green-800 font-bold font-sans">✓ Saved to Secure Ledger</span>
                 )}
               </div>
               <textarea
@@ -307,26 +307,26 @@ export default function CaseWorkspaceDetailsPage() {
           <div className="space-y-6">
             {/* Future Modules Inbound Sync Slots */}
             <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#B0A588]">Integrated Litigation Slots</h3>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Integrated Litigation Slots</h2>
 
-              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg opacity-60">
-                <span className="block text-[8px] font-bold text-[#B0A588] uppercase tracking-widest mb-1">EVIDENCE LEDGER (P1)</span>
+              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg">
+                <span className="block text-[8px] font-bold text-[#726B58] uppercase tracking-widest mb-1">EVIDENCE LEDGER (P1)</span>
                 <span className="text-xs font-semibold text-[#4A4130]">0 Ingested Exhibits</span>
               </div>
 
-              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg opacity-60">
-                <span className="block text-[8px] font-bold text-[#B0A588] uppercase tracking-widest mb-1">AI CHAMBER INTEL (P1)</span>
+              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg">
+                <span className="block text-[8px] font-bold text-[#726B58] uppercase tracking-widest mb-1">AI CHAMBER INTEL (P1)</span>
                 <span className="text-xs font-semibold text-[#4A4130]">Awaiting Case Activation</span>
               </div>
 
-              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg opacity-60">
-                <span className="block text-[8px] font-bold text-[#B0A588] uppercase tracking-widest mb-1">DRAFT CO-PILOT CANVAS</span>
+              <div className="p-3 border border-dashed border-[#E7DFC9] rounded-lg">
+                <span className="block text-[8px] font-bold text-[#726B58] uppercase tracking-widest mb-1">DRAFT CO-PILOT CANVAS</span>
                 <span className="text-xs font-semibold text-[#4A4130]">Awaiting Template Binding</span>
               </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

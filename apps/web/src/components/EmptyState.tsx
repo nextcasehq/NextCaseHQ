@@ -20,7 +20,7 @@ export default function EmptyState({ icon, title, description, action }: EmptySt
         {icon}
       </div>
       <h3 className="text-base font-bold text-[#4A4130]">{title}</h3>
-      <p className="text-xs text-[#B0A588] mt-1 max-w-sm mx-auto">{description}</p>
+      <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">{description}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
