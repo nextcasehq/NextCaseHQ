@@ -39,7 +39,7 @@ product feature skip that line.
 *See also:* DRAFT_CREATE / DRAFT_IMPROVE, Document Creator, Generated Information.
 
 **Appeal** — A request to a higher court to review and reverse or modify a lower court's judgment or order.
-*In NextCaseHQ:* Modeled as its own Proceeding with status APPEAL; there is no parent/child link yet connecting an appeal Proceeding back to the suit it appeals — a documented future enhancement, not built today.
+*In NextCaseHQ:* Modeled as its own Proceeding with status APPEAL, linked back to the suit it appeals via a "Further Proceeding" relationship (relationship_to_prior: APPEAL) — the original Proceeding is never edited, and the chain between the two stays intact under the same Matter.
 *See also:* Proceeding, Revision, Execution.
 
 **Arbitration** — A private dispute-resolution process where parties submit their dispute to one or more arbitrators for a binding decision, outside the regular court system.
@@ -169,7 +169,7 @@ product feature skip that line.
 *See also:* Cross-Examination, Affidavit.
 
 **Execution** — The legal process of enforcing a court's decree or order, such as recovering money or possession awarded by a judgment.
-*In NextCaseHQ:* One of the kinds of formal instance a Proceeding can represent ("an execution application"); no parent/child link exists yet between an execution Proceeding and the decree/suit it enforces.
+*In NextCaseHQ:* One of the kinds of formal instance a Proceeding can represent ("an execution application"), recorded as its own Proceeding linked back to the decree/suit it enforces via a "Further Proceeding" relationship (relationship_to_prior: EXECUTION).
 *See also:* Decree, Proceeding, Appeal.
 
 **Family Court** — A court with jurisdiction over matrimonial and family disputes such as divorce, maintenance, and custody.
@@ -336,7 +336,7 @@ product feature skip that line.
 *See also:* Engagement Type, Litigation, Notice.
 
 **Proceeding** — One formal instance before one court or forum under a Matter — a suit, petition, appeal, execution application, criminal case, or arbitration reference.
-*In NextCaseHQ:* Internally modeled as LegalCase. Fields: title, case_number, country_code, court, judge, stage, status (PENDING, HEARING, DISPOSED, APPEAL), hearing_date, notes, and a nullable matter_id. No parent/child link exists yet between Proceedings — an appeal is not formally linked to the suit it appeals.
+*In NextCaseHQ:* Internally modeled as LegalCase. Fields: title, case_number, country_code, court, judge, stage, status (PENDING, HEARING, DISPOSED, APPEAL), hearing_date, notes, a nullable matter_id, and an optional link back to a prior Proceeding (prior_proceeding_id + relationship_to_prior) for appeals, revisions, executions, and similar continuations.
 *See also:* Matter, Court Note, Status (Proceeding).
 
 **Prosecution** — The party (typically the state, represented by a public prosecutor) bringing criminal charges against an accused.

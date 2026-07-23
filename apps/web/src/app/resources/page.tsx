@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 
 const title = 'Resources | NextCaseHQ';
 const description =
-  'NextCaseHQ compliance handbooks, whitepapers, and operational reports on regulatory change and zero-knowledge litigation practice.';
+  'NextCaseHQ compliance handbooks, whitepapers, and operational reports on regulatory change and secure litigation practice.';
 
 export const metadata: Metadata = {
   title,
@@ -48,8 +48,8 @@ export default function ResourcesPage() {
 
           <Card className="p-8 space-y-4">
             <span className="text-xs font-mono font-bold text-[#6C5831] uppercase">Whitepaper</span>
-            <h2 className="font-sans font-bold text-sm uppercase tracking-wider">Zero-Knowledge Envelopes for Litigation</h2>
-            <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">An in-depth cryptographic audit explaining client-side Key Distribution and AES-GCM 256-bit isolation patterns.</p>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider">Tenant Isolation in Multi-Firm Legal Platforms</h2>
+            <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">An overview of database-enforced row-level security and how it keeps every firm's matters, documents, and evidence separated.</p>
           </Card>
         </div>
       </div>

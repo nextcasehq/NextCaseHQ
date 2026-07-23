@@ -152,14 +152,13 @@ Matter, since a Matter can have any number of Proceedings under it):
 - **Stage:** "Bail Application Filed"
 - **Status:** `PENDING`
 
-NextCaseHQ has no parent/child or cross-reference link between Proceedings
-today, so the bail Proceeding and the trial Proceeding are two independent
-rows connected only by both pointing at the same Matter. The advocate
-keeps them practically tied together by consistent naming ("Bail
-Application — Arvind Malhotra" clearly reads alongside "Sessions Case —
-Arvind Malhotra") and by noting the cross-reference in each Proceeding's
-free-text `notes` field (e.g., the bail Proceeding's notes mention the
-Sessions Case number, and vice versa).
+When creating the bail Proceeding, add it as a Further Proceeding of the
+Sessions Case with relationship "Connected Proceeding" — this records a
+formal link back to the trial Proceeding it relates to, so the two stay
+traceable as one matter even though each carries its own number and
+Court Notes. Consistent naming ("Bail Application — Arvind Malhotra"
+clearly reading alongside "Sessions Case — Arvind Malhotra") is still
+good practice on top of that link, not a substitute for it.
 
 **Court Note sequence:** All Court Notes for both Proceedings use
 `court_forum_type` = **Criminal Court**.
@@ -829,24 +828,22 @@ Pvt. Ltd.* recovery suit: Kapoor Textiles Pvt. Ltd. is dissatisfied with
 the decree and files a first appeal before the appropriate appellate
 court.
 
-**How this is set up in NextCaseHQ, accurately:** NextCaseHQ has **no
-parent/child link between Proceedings** — an appeal is not formally
-linked to the suit it appeals; this is a known, flagged future
-enhancement, not something built today. The practical, honest way an
-advocate tracks an appeal today is:
+**How this is set up in NextCaseHQ, accurately:** NextCaseHQ formally
+links an appeal Proceeding back to the suit it appeals. The practical
+way an advocate tracks an appeal is:
 
 1. **Keep the same Matter.** The appeal is not a new client engagement —
    it is the continuation of the same dispute — so the advocate does
    **not** create a new Matter. They continue using the original "Rina
    Kapoor vs. Kapoor Textiles Pvt. Ltd." Matter.
-2. **Create a second, independent Proceeding** at `/cases/new`, with
-   `matter_id` set to the same Matter:
+2. **Add a Further Proceeding** from the Matter's Proceedings panel,
+   choosing the original recovery suit as the Proceeding it continues
+   from and "Appeal" as the relationship:
    - **Title:** something that reads unmistakably as the appeal against
      the first Proceeding — e.g., "First Appeal against Recovery Suit
-     Decree" — deliberately worded so that, scanning the Matter's
-     Proceedings list, its relationship to the original suit is obvious
-     from the title alone, since there is no structural field that would
-     do this automatically.
+     Decree" — still good practice for readability, even though the
+     relationship itself is now recorded structurally rather than only
+     in the title.
    - **Case number:** the appellate court's own appeal number (unrelated
      to the trial court's suit number).
    - **Court:** the appellate court (e.g., District Judge's court hearing
@@ -854,19 +851,13 @@ advocate tracks an appeal today is:
      jurisdiction).
    - **Stage:** "Appeal Filed."
    - **Status:** `PENDING`.
-   - **Notes:** the free-text `notes` field on this Proceeding is used to
-     record the cross-reference explicitly — e.g., "Appeal against decree
-     dated [date] in [original suit case number], [original court]" —
-     since this is the only place, short of the title, where that link
-     can be captured today.
 3. **Update the original Proceeding's status.** On the original recovery
    suit Proceeding (Section 1), the advocate changes its **status to
    `APPEAL`** — one of the four enumerated status values (`PENDING`,
    `HEARING`, `DISPOSED`, `APPEAL`) — which correctly flags, on that
-   Proceeding's own record, that it has been taken up in appeal, even
-   though the underlying data model does not draw an actual line between
-   the two rows. Its `notes` field is likewise updated to reference the
-   new appeal Proceeding's case number.
+   Proceeding's own record, that it has been taken up in appeal, in
+   addition to the structural link recorded on the new appeal
+   Proceeding.
 
 **Court Notes on the appeal:** Recorded exactly as any other Proceeding's
 Court Notes — `court_forum_type` set to whatever the appellate forum
@@ -900,30 +891,26 @@ Ltd.* Matter: after the appeal in Section 13 is dismissed and the decree
 is confirmed, Kapoor Textiles Pvt. Ltd. still does not pay, so Rina Kapoor's
 advocate files an execution petition to enforce the decree.
 
-**Same honesty constraint as appeals:** Execution proceedings suffer from
-exactly the same gap — NextCaseHQ does not model a formal link between a
-decree's original suit Proceeding and the execution petition that enforces
-it. The workflow is therefore identical in shape to Section 13:
+**Same structural link as appeals:** Execution proceedings link back to
+the Proceeding whose decree they enforce, the same way an appeal links
+back to the suit it appeals. The workflow is therefore identical in
+shape to Section 13:
 
 1. **Same Matter, no new one created.** Execution is enforcement of the
    same underlying claim, not a new engagement.
-2. **A third Proceeding** under this Matter (the recovery suit and the
-   appeal already being the first two), created at `/cases/new` with
-   `matter_id` pointing at the same Matter:
-   - **Title:** "Execution Petition — Recovery Suit Decree" — again
+2. **Add a third Proceeding as a Further Proceeding** under this Matter
+   (the recovery suit and the appeal already being the first two),
+   choosing the appeal Proceeding as the one it continues from and
+   "Execution" as the relationship:
+   - **Title:** "Execution Petition — Recovery Suit Decree" — still
      worded so its relationship to the underlying decree is obvious on
-     sight.
+     sight, on top of the structural link.
    - **Case number:** the executing court's execution petition number.
    - **Court:** the executing court (often the same trial court that
      passed the decree, since execution is typically filed where the
      decree was passed unless transferred).
    - **Stage:** "Execution Petition Filed."
    - **Status:** `PENDING`.
-   - **Notes:** explicitly cross-referencing the decree — e.g., "Execution
-     of decree dated [date] passed in [original suit case number],
-     confirmed in appeal [appeal case number]" — capturing, in free text,
-     the full chain that the data model itself does not structurally
-     preserve.
 3. **The original suit and appeal Proceedings are left as `DISPOSED`**
    (the appeal, once dismissed, was updated to `DISPOSED` following its
    own judgment as described in Section 13) — there is no status value

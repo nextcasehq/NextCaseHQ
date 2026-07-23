@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 
 const title = "Our Mission | NextCaseHQ";
 const description =
-  "NextCaseHQ's mission: give modern advocates and counsel the world's most secure, high-focus, zero-knowledge litigation operating system.";
+  "NextCaseHQ's mission: give modern advocates and counsel a secure, high-focus litigation operating system.";
 
 export const metadata: Metadata = {
   title,
@@ -44,16 +44,16 @@ export default function AboutPage() {
           <Badge variant="accent" className="mb-4">Our Mission</Badge>
           <h1 className="text-4xl lg:text-6xl font-bold tracking-tight mb-6">The NextCaseHQ Mission</h1>
           <p className="font-serif italic text-lg leading-relaxed text-[#111111]/70">
-            To provide modern advocates and counsel with the world&apos;s most secure, high-focus, zero-knowledge litigation operating system.
+            To provide modern advocates and counsel with a secure, high-focus litigation operating system.
           </p>
         </div>
 
         <div className="max-w-3xl mx-auto space-y-6 font-serif leading-relaxed text-[#111111]/80 bg-white border border-[#C6A253]/20 rounded-2xl p-8 shadow-sm mb-12">
           <p>
-            NextCaseHQ was founded at the intersection of cryptography, software engineering, and the law. We believe that legal workflows require an absolute commitment to privacy, data sovereignty, and performance.
+            NextCaseHQ was founded at the intersection of software engineering and the law. We believe that legal workflows require an absolute commitment to privacy, tenant isolation, and performance.
           </p>
           <p>
-            By designing a platform from the ground up using state-of-the-art zero-knowledge schemas, custom database RLS contexts, and unified context assembly pipelines, we guarantee that counsel remains fully in control of their sensitive evidence and draft filings.
+            By designing a platform from the ground up using database-enforced row-level security and unified context assembly pipelines, we aim to keep counsel fully in control of their sensitive evidence and draft filings.
           </p>
         </div>
 

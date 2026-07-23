@@ -10,10 +10,10 @@ const sourceSans = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans", 
 
 export const metadata: Metadata = {
   title: {
-    default: "NextCaseHQ - Zero-Knowledge Litigation Operating System",
+    default: "NextCaseHQ - Litigation Operating System",
     template: "%s | NextCaseHQ",
   },
-  description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings in unified context.",
+  description: "Secure, multi-tenant practice management platform for modern litigation. Search cases, manage matters, and draft filings in unified context.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://nextcasehq.com"),
   alternates: {
     canonical: "/",
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
     ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
     : undefined,
   openGraph: {
-    title: "NextCaseHQ - Zero-Knowledge Litigation Operating System",
-    description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings in unified context.",
+    title: "NextCaseHQ - Litigation Operating System",
+    description: "Secure, multi-tenant practice management platform for modern litigation. Search cases, manage matters, and draft filings in unified context.",
     url: "/",
     siteName: "NextCaseHQ",
     type: "website",
@@ -33,8 +33,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "NextCaseHQ - Zero-Knowledge Litigation Operating System",
-    description: "Secure, zero-knowledge operating system for modern litigation. Search cases, analyze evidence, and draft filings in unified context.",
+    title: "NextCaseHQ - Litigation Operating System",
+    description: "Secure, multi-tenant practice management platform for modern litigation. Search cases, manage matters, and draft filings in unified context.",
   },
 };
 

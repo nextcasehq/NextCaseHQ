@@ -186,7 +186,7 @@ Proceedings live at `/cases`, with the full detail view at `/cases/[id]` and cre
 
 Because the link runs from the Proceeding to its Matter, nothing stops you from attaching several Proceedings to the same Matter. This is the correct way to model a client engagement that spans more than one forum: an original suit and a connected appeal, a criminal complaint alongside a civil recovery suit arising from the same facts, or parallel proceedings in different courts. Each Proceeding is tracked, listed, and reminded on independently, while the Matter workspace's Proceedings tab and Timeline give you the combined picture.
 
-One limitation worth knowing plainly: there is currently no formal parent/child link between Proceedings themselves. If you have a suit and its appeal both recorded as Proceedings, NextCaseHQ does not yet model "this appeal arises from that suit" as a structured relationship — both simply sit under the same Matter. This is a known gap, flagged as a possible future enhancement rather than something built today, and it's worth keeping in mind if you're relying on the platform to trace an appeal back to its originating suit automatically.
+You can also formally link one Proceeding to another when the second continues the first — an appeal, a revision, a review, or an execution application arising from an earlier suit or decree. Add the new Proceeding as a "Further Proceeding" of the one it continues from, choosing the relationship that applies (Appeal, Revision, Review, Execution, and several others). The earlier Proceeding is never edited or replaced; the new one carries a reference back to it, so the full chain — trial, appeal, execution — stays traceable under the same Matter.
 
 ### Proceeding status and stage
 
@@ -430,7 +430,7 @@ No. Court Notes are append-only by design. If something needs correcting or addi
 Yes. A Matter can carry several parallel Proceedings — for example, a suit and a related petition arising from the same client engagement.
 
 **Can I link an appeal to the original suit it arises from?**
-Not yet. There is currently no parent/child relationship modelled between Proceedings — both would simply be recorded under the same Matter, without a formal structured link between them.
+Yes. Add the appeal as a "Further Proceeding" of the original suit, and NextCaseHQ records the link back to it — the original Proceeding stays untouched, and the two remain traceable as one chain under the same Matter.
 
 **Will I get an SMS or email when a hearing is coming up?**
 Not today. The Seven-Day Preparation reminder is delivered only through the in-app notification bell.
@@ -506,7 +506,7 @@ A Task is only created when you enter something in the next actions field. If yo
 Reminders are currently delivered only through the in-app notification bell. There is no email or SMS delivery today, so nothing will reach you outside the application itself.
 
 **"I need to link an appeal to the suit it came from, and I can't find how."**
-There isn't a way to do this yet — Proceedings don't currently support a parent/child relationship. Both the suit and the appeal should be recorded as separate Proceedings under the same Matter; just be aware the formal link between them isn't modelled today.
+Look for "Add Proceeding" (or "Add Further Proceeding") on the Matter's Proceedings panel — when you add the appeal from there and select it as continuing the original suit, NextCaseHQ records the link between them. If you added the appeal as a plain, unlinked Proceeding instead, add it again through that flow so the relationship is captured.
 
 **"Judgment Research isn't returning real case law."**
 That's expected for now — it's an architecture milestone with a placeholder provider and no external legal-research vendor connected yet. It is not a working substitute for your existing citation research process today.

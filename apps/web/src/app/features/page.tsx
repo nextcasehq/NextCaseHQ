@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 
 const title = "Platform Features | NextCaseHQ";
 const description =
-  "Explore NextCaseHQ's modular zero-knowledge litigation workspace: end-to-end encrypted document handling, statutory compliance mapping, and an interactive draft sheet.";
+  "Explore NextCaseHQ's modular litigation workspace: tenant-isolated matter and document handling, statutory compliance mapping, and an interactive draft sheet.";
 
 export const metadata: Metadata = {
   title,
@@ -44,7 +44,7 @@ export default function FeaturesPage() {
           <Badge variant="accent" className="mb-4">Platform Features</Badge>
           <h1 className="text-4xl lg:text-6xl font-bold tracking-tight mb-6">Litigation Operating System Features</h1>
           <p className="font-serif italic text-lg leading-relaxed text-[#111111]/70">
-            Explore the modular zero-knowledge litigation workspace designed to empower modern counsel.
+            Explore the modular litigation workspace designed to empower modern counsel.
           </p>
         </div>
 
@@ -56,9 +56,9 @@ export default function FeaturesPage() {
                 <path d="M15.5 20l3 3 6-6" />
               </g>
             </svg>
-            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Zero-Knowledge Envelope</h2>
+            <h2 className="font-sans font-bold text-sm uppercase tracking-wider text-[#111111]">Tenant-Isolated Architecture</h2>
             <p className="text-sm text-[#111111]/70 leading-relaxed font-serif">
-              End-to-end envelope cryptography and hardware-backed KMS keys shield counsel transcripts and exhibits.
+              Every Matter, document, and Proceeding is scoped by database-enforced row-level security, so one firm's data is never visible to another.
             </p>
           </Card>
           <Card className="p-8 space-y-3">
