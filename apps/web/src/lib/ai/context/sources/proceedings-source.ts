@@ -8,6 +8,7 @@ interface ProceedingRow {
   status: string;
   court: string | null;
   stage: string | null;
+  hearing_date: string | null;
   created_at: string;
 }
 
@@ -17,6 +18,10 @@ function renderProceeding(row: ProceedingRow): string {
   parts.push(`— ${row.status}`);
   if (row.court) parts.push(`at ${row.court}`);
   if (row.stage) parts.push(`[${row.stage}]`);
+  // hearing_date is the Proceeding's next scheduled hearing (kept current by
+  // every Court Note save — see api/cases/[id]/court-notes/route.ts), not a
+  // history of past hearings, so it's safe to always render as "upcoming."
+  if (row.hearing_date) parts.push(`— next hearing ${row.hearing_date}`);
   return `- ${parts.join(' ')}`;
 }
 
@@ -31,7 +36,7 @@ export const proceedingsSource: ContextSource = {
     const db = new DatabaseClient();
     const rows = await db.execute<ProceedingRow>(
       tenantId,
-      `SELECT title, case_number, status, court, stage, created_at
+      `SELECT title, case_number, status, court, stage, hearing_date, created_at
        FROM "LegalCase"
        WHERE matter_id = $1
        ORDER BY created_at DESC`,

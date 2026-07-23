@@ -3,11 +3,16 @@ import { GET, POST } from '../route';
 import { signSessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
 import { DatabaseClient, closePool } from '@/lib/db/db-client';
+import { getCachedMatterContext } from '@/lib/ai/context/cache';
 
 const TENANT_A = '26d78714-6af1-451b-84ae-c169a64cf08a';
 const TENANT_B = '2dbe41f0-fbd9-424f-8836-a970447092cb';
 const USER_ID = 'd2b8aa80-42d1-4efb-98bb-18989f765cf4';
 const NON_EXISTENT_ID = '00000000-0000-4000-8000-000000000000';
+
+function hasRedis(): boolean {
+  return Boolean(process.env.REDIS_URL);
+}
 
 async function sessionCookieHeader(tenantId: string): Promise<string> {
   const token = await signSessionToken({ sub: USER_ID, tenantId, email: 'court-notes-test@nextcase.local' });
@@ -150,8 +155,11 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
       `SELECT hearing_date, stage, court FROM "LegalCase" WHERE id = $1`,
       [caseId]
     );
+    // hearing_date is the Proceeding's next scheduled hearing, not the one
+    // that just happened — VALID_PAYLOAD's next_hearing_date is 2026-03-15,
+    // not its (already-occurred) hearing_date of 2026-02-01.
     expect(caseRows[0]).toMatchObject({
-      hearing_date: '2026-02-01',
+      hearing_date: '2026-03-15',
       stage: 'Arguments',
       court: 'Tahsildar Court, Bengaluru',
     });
@@ -285,7 +293,68 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
       `SELECT hearing_date, stage FROM "LegalCase" WHERE id = $1`,
       [caseId]
     );
-    expect(caseRows[0]).toMatchObject({ hearing_date: '2026-03-15', stage: 'Final Hearing' });
+    // hearing_date follows the second note's next_hearing_date (2026-04-20),
+    // not its own hearing_date (2026-03-15, already in the past by now).
+    expect(caseRows[0]).toMatchObject({ hearing_date: '2026-04-20', stage: 'Final Hearing' });
+  });
+
+  test('a Court Note with no next_hearing_date clears the Proceeding hearing_date rather than leaving it stale', async () => {
+    const caseId = await createCase(TENANT_A);
+    await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+
+    const { next_hearing_date: _omit, ...payloadWithNoNextHearing } = VALID_PAYLOAD as typeof VALID_PAYLOAD & {
+      next_hearing_date?: string;
+    };
+    const res = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { ...payloadWithNoNextHearing, hearing_date: '2026-03-15', stage: 'Disposed', note: 'Petition disposed of.' }
+      ),
+      routeParams(caseId)
+    );
+    expect(res.status).toBe(201);
+
+    const caseRows = await db.execute<{ hearing_date: string | null }>(
+      TENANT_A,
+      `SELECT hearing_date FROM "LegalCase" WHERE id = $1`,
+      [caseId]
+    );
+    expect(caseRows[0].hearing_date).toBeNull();
+  });
+
+  test('the Matter timeline entry states the next hearing date when one was fixed', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+
+    const events = await db.execute<{ description: string }>(
+      TENANT_A,
+      `SELECT description FROM "MatterEvent" WHERE matter_id = $1`,
+      [matterId]
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].description).toContain('Next hearing: 2026-03-15');
+  });
+
+  test('the Matter timeline entry omits "Next hearing" when none was fixed', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    const { next_hearing_date: _omit, ...payloadWithNoNextHearing } = VALID_PAYLOAD as typeof VALID_PAYLOAD & {
+      next_hearing_date?: string;
+    };
+    await POST(
+      buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, payloadWithNoNextHearing),
+      routeParams(caseId)
+    );
+
+    const events = await db.execute<{ description: string }>(
+      TENANT_A,
+      `SELECT description FROM "MatterEvent" WHERE matter_id = $1`,
+      [matterId]
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].description).not.toContain('Next hearing:');
   });
 
   test('Court Notes are not visible from another tenant session (RLS)', async () => {
@@ -395,7 +464,11 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
       routeParams(caseId)
     );
     const secondBody = await second.json();
-    expect(secondBody.court_note.previous_hearing_date).toBe('2026-02-01');
+    // previous_hearing_date is the Proceeding's hearing_date immediately
+    // before this update — which, correctly, is VALID_PAYLOAD's
+    // next_hearing_date (2026-03-15) propagated forward by the first POST,
+    // not that first POST's own (already-past) hearing_date of 2026-02-01.
+    expect(secondBody.court_note.previous_hearing_date).toBe('2026-03-15');
     expect(secondBody.court_note.previous_stage).toBe('Arguments');
   });
 
@@ -431,5 +504,25 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
     expect(res.status).toBe(201);
     const notes = await db.execute<{ id: string }>(TENANT_A, `SELECT id FROM "CourtNote" WHERE case_id = $1`, [caseId]);
     expect(notes).toHaveLength(2);
+  });
+
+  test('end-to-end: AI/drafting context reflects the corrected next hearing date after a Court Note save', async () => {
+    if (!hasRedis()) return;
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    await getCachedMatterContext(TENANT_A, matterId); // prime the cache — no hearing_date yet
+
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+
+    const items = await getCachedMatterContext(TENANT_A, matterId);
+    // Both consumers of Matter context must see the *next* hearing
+    // (VALID_PAYLOAD's next_hearing_date, 2026-03-15), not the hearing that
+    // just happened (2026-02-01) — this is what a real /api/ai/draft or
+    // /api/ai/ask call sees for this Matter once the fix is deployed.
+    const proceedingItem = items.find((i) => i.sourceType === 'PROCEEDING');
+    expect(proceedingItem?.render()).toContain('next hearing 2026-03-15');
+    const chronologyItem = items.find((i) => i.sourceType === 'CHRONOLOGY_ENTRY');
+    expect(chronologyItem?.render()).toContain('Next hearing: 2026-03-15');
   });
 });

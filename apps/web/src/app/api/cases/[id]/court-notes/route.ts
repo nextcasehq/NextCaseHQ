@@ -20,16 +20,20 @@ import {
  * db/schema.sql's CourtNote table and its REVOKE UPDATE, DELETE — a
  * correction is a new Court Note, never an edit to a prior one). Saving one
  * atomically: (1) inserts the CourtNote row, (2) updates the Proceeding's
- * current hearing_date/stage/court so the case detail page always reflects
- * the latest hearing without a second action, (3) — only when the
- * Proceeding is linked to a Matter — appends one MatterEvent
- * (source_type='HEARING') so the Matter's existing chronology
- * (/api/matters/[id]/events) picks it up automatically, and (4) — only
- * when matter-linked and next_actions is non-empty — inserts exactly one
- * MatterTask (Milestone 2), a correctable, no-text checklist entry that
- * always reads its display text back from this same CourtNote row rather
- * than copying it, satisfying "never ask the advocate to enter the same
- * information twice."
+ * stage/court and its hearing_date — a forward-looking pointer set to
+ * next_hearing_date (or NULL when none was fixed), not the hearing that
+ * just happened, since Matter Health, the dashboard, and the Seven-Day
+ * Preparation workflow/reminder cron all read this column expecting "next
+ * hearing" — the hearing that just occurred is preserved permanently on
+ * this same CourtNote row instead (hearing_date/previous_hearing_date/
+ * previous_stage), (3) — only when the Proceeding is linked to a Matter —
+ * appends one MatterEvent (source_type='HEARING') so the Matter's existing
+ * chronology (/api/matters/[id]/events) picks it up automatically, and (4)
+ * — only when matter-linked and next_actions is non-empty — inserts
+ * exactly one MatterTask (Milestone 2), a correctable, no-text checklist
+ * entry that always reads its display text back from this same CourtNote
+ * row rather than copying it, satisfying "never ask the advocate to enter
+ * the same information twice."
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -247,6 +251,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const eventDescriptionParts = [
       `Court Note — ${input.stage} (${courtForumDisplay}): ${input.note}`,
     ];
+    if (input.next_hearing_date) {
+      eventDescriptionParts.push(`Next hearing: ${input.next_hearing_date}`);
+    }
     if (input.next_actions && input.next_actions.trim()) {
       eventDescriptionParts.push(`Next: ${input.next_actions.trim()}`);
     }
@@ -275,8 +282,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
          RETURNING ${COURT_NOTE_COLUMNS}
        ),
        updated_case AS (
+         -- The Proceeding's hearing_date is a forward-looking pointer to the
+         -- next scheduled hearing, not a record of the hearing that just
+         -- happened — every downstream reader (Matter Health, the dashboard,
+         -- the Seven-Day Preparation workflow, the reminder cron) filters
+         -- this column expecting "when is this Proceeding next due in
+         -- court." $5 (next_hearing_date) is that date, or NULL when none
+         -- was fixed (e.g. orders reserved, matter disposed) — correctly
+         -- clearing the field rather than leaving it pointing at a hearing
+         -- that has now already happened. The hearing that just occurred is
+         -- never lost: it's permanently preserved on this same CourtNote row
+         -- (hearing_date/previous_hearing_date/previous_stage above).
          UPDATE "LegalCase"
-         SET hearing_date = $4, stage = $9, court = $8, updated_at = now()
+         SET hearing_date = $5, stage = $9, court = $8, updated_at = now()
          WHERE id = (SELECT id FROM target_case)
          RETURNING id
        ),
