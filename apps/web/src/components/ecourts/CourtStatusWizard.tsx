@@ -3,7 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { districtCourtsConfig } from '@/lib/ecourts-registry/configs/district-courts';
+import { COURT_SYSTEMS } from '@/lib/ecourts-registry/registry';
 import type { SearchMethodStepConfig, SelectOption, StepConfig } from '@/lib/ecourts-registry/types';
+
+const AVAILABLE_COURT_SYSTEMS = COURT_SYSTEMS.filter((cs) => cs.status === 'available');
 
 function resolveOptions(
   step: Extract<StepConfig, { kind: 'select' }>,
@@ -45,21 +48,33 @@ function CompletedStepChip({
 }
 
 /**
- * Registry-driven eCourts Case Status wizard. The visible flow is always
- * District Courts' real, verified hierarchy — geography drives it, with
- * no "pick a court system" step ahead of State. Every step's rendering is
- * decided purely by its `kind` (from lib/ecourts-registry/configs/
- * district-courts.ts) — no per-step-key or per-court branching lives
- * here, so adding a field, a search method, or a district's real Court
- * Establishment list is a config change only.
+ * Registry-driven eCourts Case Status wizard. District Courts remains the
+ * default, geography-first flow (no "pick a court system" step ahead of
+ * State) since it's the most common search. Now that more than one court
+ * system is `status: 'available'` in the registry, a small switcher lets
+ * an advocate pick a different one first — every step after that is
+ * still decided purely by its `kind` (from lib/ecourts-registry/configs/
+ * *.ts) — no per-step-key or per-court branching lives here, so adding a
+ * field, a search method, or a verified geography tier is a config
+ * change only.
  */
 export default function CourtStatusWizard() {
+  const [courtSystemId, setCourtSystemId] = React.useState(districtCourtsConfig.id);
   const [selections, setSelections] = React.useState<Record<string, string>>({});
   const [searchMethodKey, setSearchMethodKey] = React.useState('');
   const [fieldValues, setFieldValues] = React.useState<Record<string, string>>({});
   const [submitted, setSubmitted] = React.useState(false);
 
-  const steps = districtCourtsConfig.steps;
+  const activeConfig = AVAILABLE_COURT_SYSTEMS.find((cs) => cs.id === courtSystemId) ?? districtCourtsConfig;
+  const steps = activeConfig.steps;
+
+  function switchCourtSystem(id: string) {
+    setCourtSystemId(id);
+    setSelections({});
+    setSearchMethodKey('');
+    setFieldValues({});
+    setSubmitted(false);
+  }
 
   function resetFromStep(stepKey: string) {
     const idx = steps.findIndex((s) => s.key === stepKey);
@@ -112,6 +127,25 @@ export default function CourtStatusWizard() {
 
   return (
     <div className="space-y-4">
+      {AVAILABLE_COURT_SYSTEMS.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {AVAILABLE_COURT_SYSTEMS.map((cs) => (
+            <button
+              key={cs.id}
+              type="button"
+              onClick={() => switchCourtSystem(cs.id)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
+                cs.id === courtSystemId
+                  ? 'border-[#8A6D2F] bg-[#8A6D2F] text-white'
+                  : 'border-[#E7DFC9] bg-white text-[#8A7A56] hover:border-[#8A6D2F] hover:text-[#6F5624]'
+              }`}
+            >
+              {cs.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {completed.map((step) => {
         const { value, detail } = chipFor(step);
         return (

@@ -2,7 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { COURT_SYSTEMS, getCourtSystem } from '../registry';
 import { districtCourtsConfig } from '../configs/district-courts';
+import { highCourtsConfig } from '../configs/high-courts';
+import { supremeCourtConfig } from '../configs/supreme-court';
+import { consumerCommissionsConfig } from '../configs/consumer-commissions';
 import type { SearchMethodStepConfig, SelectOption, SelectStepConfig } from '../types';
+
+const AVAILABLE_IDS = ['district-courts', 'high-courts', 'supreme-court', 'consumer-commissions'];
 
 const SRC_ROOT = path.join(__dirname, '../../..');
 function readSource(relativePath: string): string {
@@ -31,10 +36,11 @@ describe('eCourts registry — court systems', () => {
     }
   });
 
-  test('only District Courts is available — every other court system is honestly marked coming-soon with no fields', () => {
+  test('District Courts, High Courts, Supreme Court, and Consumer Commissions are available — every other court system is honestly marked coming-soon with no fields', () => {
     for (const court of COURT_SYSTEMS) {
-      if (court.id === 'district-courts') {
+      if (AVAILABLE_IDS.includes(court.id)) {
         expect(court.status).toBe('available');
+        expect(court.steps.length).toBeGreaterThan(0);
       } else {
         expect(court.status).toBe('coming-soon');
         expect(court.steps).toHaveLength(0);
@@ -121,5 +127,50 @@ describe('eCourts registry — District Courts config, verified against services
     for (const option of caseTypeField.options ?? []) {
       expect(dashboardEcourts).toContain(`'${option}'`);
     }
+  });
+});
+
+describe('eCourts registry — High Courts config', () => {
+  test('the step sequence is State -> High Court -> Bench -> Search Method', () => {
+    const keys = highCourtsConfig.steps.map((s) => s.key);
+    expect(keys).toEqual(['state', 'highCourt', 'bench', 'searchMethod']);
+  });
+
+  test('High Court resolves dynamically from the selected state, with shared-jurisdiction states resolving to the same High Court', () => {
+    const highCourtStep = highCourtsConfig.steps[1] as SelectStepConfig;
+    const resolver = highCourtStep.options as (s: Record<string, string>) => SelectOption[] | 'free-text';
+    const maharashtra = resolver({ state: 'Maharashtra' }) as SelectOption[];
+    const goa = resolver({ state: 'Goa' }) as SelectOption[];
+    expect(maharashtra[0].value).toBe('Bombay High Court');
+    expect(goa[0].value).toBe('Bombay High Court');
+  });
+
+  test('Bench is always free-text — no verified, current bench list exists for any High Court yet', () => {
+    const benchStep = highCourtsConfig.steps[2] as SelectStepConfig;
+    expect(benchStep.options).toBe('free-text');
+  });
+});
+
+describe('eCourts registry — Supreme Court config', () => {
+  test('has no geography steps — a single national forum, straight to Search Method', () => {
+    const keys = supremeCourtConfig.steps.map((s) => s.key);
+    expect(keys).toEqual(['searchMethod']);
+  });
+});
+
+describe('eCourts registry — Consumer Commissions config', () => {
+  test('the step sequence is State -> Tier -> Commission -> Search Method', () => {
+    const keys = consumerCommissionsConfig.steps.map((s) => s.key);
+    expect(keys).toEqual(['state', 'tier', 'commission', 'searchMethod']);
+  });
+
+  test('State and National Commissions resolve to a single, real name; District Commission falls back to free-text', () => {
+    const commissionStep = consumerCommissionsConfig.steps[2] as SelectStepConfig;
+    const resolver = commissionStep.options as (s: Record<string, string>) => SelectOption[] | 'free-text';
+    const national = resolver({ tier: 'National Commission' }) as SelectOption[];
+    expect(national[0].value).toBe('National Consumer Disputes Redressal Commission, New Delhi');
+    const state = resolver({ tier: 'State Commission', state: 'Kerala' }) as SelectOption[];
+    expect(state[0].value).toBe('Kerala State Consumer Disputes Redressal Commission');
+    expect(resolver({ tier: 'District Commission', state: 'Kerala' })).toBe('free-text');
   });
 });

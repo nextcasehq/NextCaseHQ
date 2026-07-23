@@ -1,26 +1,35 @@
 import type { CourtSystemConfig } from './types';
 import { districtCourtsConfig } from './configs/district-courts';
+import { highCourtsConfig } from './configs/high-courts';
+import { supremeCourtConfig } from './configs/supreme-court';
+import { consumerCommissionsConfig } from './configs/consumer-commissions';
 
 /**
  * The one place every court system is registered. Adding a future court
- * system (High Courts, Supreme Court, ...) means adding one config object
- * here — no change anywhere else, including the wizard component.
+ * system means adding one config object here — no change anywhere else,
+ * including the wizard component.
  *
- * Only District Courts is `status: 'available'` today — its step sequence
- * and fields were verified against services.ecourts.gov.in. The rest are
- * listed (so the selector honestly reflects what NextCaseHQ intends to
- * cover) but marked 'coming-soon' rather than modeled with guessed fields,
- * since several of these run on separate, non-eCourts portals whose real
- * self-service search shape hasn't been verified yet — see the eCourts
- * Case Status design discussion for the per-court verification notes.
+ * District Courts, High Courts, Supreme Court, and Consumer Commissions
+ * are `status: 'available'`: their geography/jurisdiction structure is
+ * stable, well-documented public administrative/judicial fact (not
+ * eCourts-specific data), with any tier below that (Court Establishment,
+ * High Court bench, District Consumer Commission) degrading honestly to
+ * free-text rather than a guessed list wherever it hasn't been verified
+ * against an official source — see each config file's own comment for
+ * exactly what is and isn't verified.
+ *
+ * The rest are listed (so the selector honestly reflects what NextCaseHQ
+ * intends to cover) but marked 'coming-soon' rather than modeled with
+ * guessed fields, since they run on separate, non-eCourts portals whose
+ * real self-service search shape hasn't been verified yet.
  */
 export const COURT_SYSTEMS: readonly CourtSystemConfig[] = [
   districtCourtsConfig,
-  { id: 'high-courts', label: 'High Courts', status: 'coming-soon', steps: [] },
-  { id: 'supreme-court', label: 'Supreme Court of India', status: 'coming-soon', steps: [] },
+  highCourtsConfig,
+  supremeCourtConfig,
+  consumerCommissionsConfig,
   { id: 'nclt', label: 'NCLT', status: 'coming-soon', steps: [] },
   { id: 'nclat', label: 'NCLAT', status: 'coming-soon', steps: [] },
-  { id: 'consumer-commissions', label: 'Consumer Commissions', status: 'coming-soon', steps: [] },
   { id: 'rera', label: 'RERA', status: 'coming-soon', steps: [] },
   { id: 'drt-drat', label: 'DRT / DRAT', status: 'coming-soon', steps: [] },
   { id: 'cat', label: 'CAT', status: 'coming-soon', steps: [] },
