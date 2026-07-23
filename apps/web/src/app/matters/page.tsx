@@ -8,6 +8,8 @@ import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
 import CourtBadge from '@/components/CourtBadge';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
+import { COURT_FORUM_TYPES, COURT_FORUM_LABELS, type CourtForumType } from '@/lib/domain/court-note';
+import { COURT_FORUM_COLORS, classifyCourtForumType } from '@/lib/domain/court-forum-colors';
 
 interface Matter {
   id: string;
@@ -47,6 +49,11 @@ function MattersChamberContent() {
 
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  // Court-category tabs — office-navigation aid over the free-text
+  // Matter.court field, classified via the same keyword matcher the
+  // court-colour badges already use, so the tabs and the badge on each row
+  // are always in agreement.
+  const [selectedCourtCategory, setSelectedCourtCategory] = useState<CourtForumType | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Form State
@@ -176,6 +183,9 @@ function MattersChamberContent() {
   };
 
   const filteredMatters = matters.filter((m) => {
+    if (selectedCourtCategory !== 'ALL' && classifyCourtForumType(m.court) !== selectedCourtCategory) {
+      return false;
+    }
     const q = searchQuery.toLowerCase();
     if (!q) return true;
     return (
@@ -184,6 +194,11 @@ function MattersChamberContent() {
       (m.client_name ?? '').toLowerCase().includes(q)
     );
   });
+
+  const courtCategoryCounts = COURT_FORUM_TYPES.reduce<Record<string, number>>((acc, type) => {
+    acc[type] = matters.filter((m) => classifyCourtForumType(m.court) === type).length;
+    return acc;
+  }, {});
 
   if (needsAuth) {
     return (
@@ -412,6 +427,43 @@ function MattersChamberContent() {
           </form>
         </div>
       )}
+
+      {/* Court Category Tabs — office-navigation aid: quickly narrow the
+          register to one court category, colour-coded consistently with
+          the CourtBadge on every row. */}
+      <div className="flex flex-wrap gap-2 mb-4 overflow-x-auto pb-1">
+        <button
+          onClick={() => setSelectedCourtCategory('ALL')}
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border transition-all ${
+            selectedCourtCategory === 'ALL'
+              ? 'bg-[#111111] border-[#111111] text-white'
+              : 'bg-white hover:bg-[#FBF8F1] border-[#E7DFC9] text-[#5C5340]'
+          }`}
+        >
+          All Courts
+          <span className="opacity-70">({matters.length})</span>
+        </button>
+        {COURT_FORUM_TYPES.map((type) => {
+          const colors = COURT_FORUM_COLORS[type];
+          const isActive = selectedCourtCategory === type;
+          return (
+            <button
+              key={type}
+              onClick={() => setSelectedCourtCategory(type)}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border transition-all"
+              style={
+                isActive
+                  ? { backgroundColor: colors.text, borderColor: colors.text, color: '#FFFFFF' }
+                  : { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }
+              }
+            >
+              <span aria-hidden="true">{colors.icon}</span>
+              {COURT_FORUM_LABELS[type]}
+              <span className="opacity-70">({courtCategoryCounts[type] ?? 0})</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Filter Section */}
       <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center mb-8">

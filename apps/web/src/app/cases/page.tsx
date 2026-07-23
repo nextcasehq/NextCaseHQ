@@ -6,6 +6,24 @@ import BrandBackground from '@/components/BrandBackground';
 import EmptyState from '@/components/EmptyState';
 import { AuthOrReviewGate } from '@/components/ReviewModeNotice';
 import CourtBadge from '@/components/CourtBadge';
+import { COURT_FORUM_TYPES, COURT_FORUM_LABELS, type CourtForumType } from '@/lib/domain/court-note';
+import { classifyCourtForumType } from '@/lib/domain/court-forum-colors';
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+const CASE_DIARY_STAGE_SUGGESTIONS = [
+  'Admission',
+  'Notice',
+  'Written Statement',
+  'Evidence',
+  'Cross-Examination',
+  'Arguments',
+  'Order Reserved',
+  'Judgment',
+  'Disposed',
+];
 
 interface LegalCase {
   id: string;
@@ -45,6 +63,25 @@ function CasesChamberContent() {
   const [hearingDate, setHearingDate] = useState('');
   const [caseStatus, setCaseStatus] = useState<'PENDING' | 'HEARING' | 'DISPOSED' | 'APPEAL'>('PENDING');
   const [notes, setNotes] = useState('');
+
+  // Case Diary core workflow — the advocate returns from court and, for
+  // each matter, records only: current stage, next hearing date, and a
+  // short note. Saving posts to the same POST /api/cases/[id]/court-notes
+  // every other Court-Note entry point already uses, which — since the
+  // Phase 1 Matter-sync fix — keeps the Matter's current_stage,
+  // next_hearing_date, timeline, tasks, and AI context in lockstep with no
+  // duplicate entry, satisfying "the diary feeds the matter."
+  const [activeHearingCaseId, setActiveHearingCaseId] = useState<string | null>(null);
+  const [hearingStage, setHearingStage] = useState('');
+  const [hearingNextDate, setHearingNextDate] = useState('');
+  const [hearingNote, setHearingNote] = useState('');
+  const [hearingCourtForumType, setHearingCourtForumType] = useState<CourtForumType>('OTHER');
+  const [hearingCourtForumOther, setHearingCourtForumOther] = useState('');
+  const [hearingNextActions, setHearingNextActions] = useState('');
+  const [hearingShowMore, setHearingShowMore] = useState(false);
+  const [hearingSaving, setHearingSaving] = useState(false);
+  const [hearingError, setHearingError] = useState<string | null>(null);
+  const [hearingSavedCaseId, setHearingSavedCaseId] = useState<string | null>(null);
 
   const fetchCases = useCallback(async (status: string) => {
     setIsLoading(true);
@@ -108,6 +145,61 @@ function CasesChamberContent() {
     setNotes('');
     setShowCreateForm(false);
     fetchCases(selectedStatus);
+  };
+
+  const openHearingForm = (c: LegalCase) => {
+    setActiveHearingCaseId(c.id);
+    setHearingStage(c.stage || '');
+    setHearingNextDate('');
+    setHearingNote('');
+    setHearingCourtForumType(classifyCourtForumType(c.court));
+    setHearingCourtForumOther(c.court || '');
+    setHearingNextActions('');
+    setHearingShowMore(false);
+    setHearingError(null);
+  };
+
+  const closeHearingForm = () => {
+    setActiveHearingCaseId(null);
+    setHearingError(null);
+  };
+
+  const handleSaveHearing = async (caseId: string) => {
+    if (!hearingStage.trim() || !hearingNote.trim() || hearingSaving) return;
+    if (hearingCourtForumType === 'OTHER' && !hearingCourtForumOther.trim()) {
+      setHearingError('Enter the court/forum name.');
+      return;
+    }
+    setHearingSaving(true);
+    setHearingError(null);
+    try {
+      const res = await fetch(`/api/cases/${caseId}/court-notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hearing_date: todayISO(),
+          next_hearing_date: hearingNextDate || null,
+          court_forum_type: hearingCourtForumType,
+          court_forum_other: hearingCourtForumType === 'OTHER' ? hearingCourtForumOther.trim() : null,
+          stage: hearingStage.trim(),
+          note: hearingNote.trim(),
+          next_actions: hearingNextActions.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setHearingError(body?.message || 'Could not save the hearing. Please try again.');
+        return;
+      }
+      setActiveHearingCaseId(null);
+      setHearingSavedCaseId(caseId);
+      setTimeout(() => setHearingSavedCaseId((current) => (current === caseId ? null : current)), 2500);
+      fetchCases(selectedStatus);
+    } catch {
+      setHearingError('Network error — the hearing was not saved.');
+    } finally {
+      setHearingSaving(false);
+    }
   };
 
   if (needsAuth) {
@@ -306,6 +398,12 @@ function CasesChamberContent() {
         </div>
       )}
 
+      <datalist id="case-diary-stage-suggestions">
+        {CASE_DIARY_STAGE_SUGGESTIONS.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+
       {/* Cases Grid */}
       {isLoading ? (
         <div className="flex justify-center py-20">
@@ -371,6 +469,144 @@ function CasesChamberContent() {
                   Open Workspace →
                 </Link>
               </div>
+
+              {hearingSavedCaseId === c.id && (
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-center">
+                  ✓ Hearing saved — Matter updated
+                </p>
+              )}
+
+              {activeHearingCaseId === c.id ? (
+                <div className="mt-4 pt-4 border-t border-dashed border-[#E7DFC9] space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#726B58]">
+                    What happened today ({todayISO()})
+                  </p>
+                  <div>
+                    <label htmlFor={`hearing-stage-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                      Current Stage *
+                    </label>
+                    <input
+                      id={`hearing-stage-${c.id}`}
+                      type="text"
+                      list="case-diary-stage-suggestions"
+                      value={hearingStage}
+                      onChange={(e) => setHearingStage(e.target.value)}
+                      placeholder="e.g. Arguments"
+                      className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`hearing-next-date-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                      Next Hearing Date
+                    </label>
+                    <input
+                      id={`hearing-next-date-${c.id}`}
+                      type="date"
+                      value={hearingNextDate}
+                      onChange={(e) => setHearingNextDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`hearing-note-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                      Short Note *
+                    </label>
+                    <textarea
+                      id={`hearing-note-${c.id}`}
+                      value={hearingNote}
+                      onChange={(e) => setHearingNote(e.target.value)}
+                      placeholder="What happened, any court direction..."
+                      rows={2}
+                      className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+                    />
+                  </div>
+
+                  {!hearingShowMore ? (
+                    <button
+                      type="button"
+                      onClick={() => setHearingShowMore(true)}
+                      className="text-[9px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                    >
+                      + Court / Reminder
+                    </button>
+                  ) : (
+                    <>
+                      <div>
+                        <label htmlFor={`hearing-forum-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                          Court / Forum
+                        </label>
+                        <select
+                          id={`hearing-forum-${c.id}`}
+                          value={hearingCourtForumType}
+                          onChange={(e) => setHearingCourtForumType(e.target.value as CourtForumType)}
+                          className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
+                        >
+                          {COURT_FORUM_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {COURT_FORUM_LABELS[type]}
+                            </option>
+                          ))}
+                        </select>
+                        {hearingCourtForumType === 'OTHER' && (
+                          <input
+                            type="text"
+                            value={hearingCourtForumOther}
+                            onChange={(e) => setHearingCourtForumOther(e.target.value)}
+                            placeholder="Court/forum name"
+                            aria-label="Other court/forum name"
+                            className="w-full mt-1.5 px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <label htmlFor={`hearing-next-actions-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                          Reminder / Next Action
+                        </label>
+                        <input
+                          id={`hearing-next-actions-${c.id}`}
+                          type="text"
+                          value={hearingNextActions}
+                          onChange={(e) => setHearingNextActions(e.target.value)}
+                          placeholder="e.g. File rejoinder before next date"
+                          className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {hearingError && (
+                    <p role="alert" className="text-[10px] font-bold text-red-600">
+                      {hearingError}
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={closeHearingForm}
+                      className="flex-1 px-3 py-2 border border-[#E7DFC9] text-[#6F5624] text-[10px] font-bold uppercase rounded-lg hover:bg-[#FBF8F1]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveHearing(c.id)}
+                      disabled={!hearingStage.trim() || !hearingNote.trim() || hearingSaving}
+                      className="flex-1 px-3 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-bold uppercase rounded-lg"
+                    >
+                      {hearingSaving ? 'Saving…' : 'Save Hearing'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openHearingForm(c)}
+                  className="mt-3 w-full text-xs font-bold uppercase tracking-wider text-[#8A6D2F] border border-dashed border-[#E7DFC9] rounded-lg py-2 hover:border-[#8A6D2F] transition-colors"
+                >
+                  📝 Save Hearing
+                </button>
+              )}
             </div>
           ))}
         </div>
