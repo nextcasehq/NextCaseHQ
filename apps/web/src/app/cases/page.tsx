@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import BrandBackground from '@/components/BrandBackground';
 import EmptyState from '@/components/EmptyState';
+import { AuthOrReviewGate } from '@/components/ReviewModeNotice';
 
 interface LegalCase {
   id: string;
@@ -111,24 +112,11 @@ function CasesChamberContent() {
   if (needsAuth) {
     return (
       <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-20 text-center">
-        {reviewModeActive ? (
-          <>
-            <span className="text-3xl">👁️</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
-          </>
-        ) : (
-          <>
-            <span className="text-3xl">🔒</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
-              Sign in to view and manage litigation cases under your tenant.
-            </p>
-            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
-              Phone verification is required to save or access private work.
-            </p>
-          </>
-        )}
+        <AuthOrReviewGate
+          reviewModeActive={reviewModeActive}
+          what="the Case Diary"
+          authDescription="Sign in to view and manage litigation cases under your tenant."
+        />
       </div>
     );
   }

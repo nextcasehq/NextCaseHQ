@@ -108,7 +108,7 @@ export default function RegisterReveal({ data, onContinueDrafting, onNotice }: R
       onContinueDrafting();
       return;
     }
-    onNotice('Function available after production activation.');
+    onNotice(`"${label}" isn't wired up in this drafting prototype yet — only "Continue Drafting" is implemented so far.`);
   };
 
   return (
@@ -250,7 +250,7 @@ export default function RegisterReveal({ data, onContinueDrafting, onNotice }: R
             ))}
           </div>
           <button
-            onClick={() => onNotice('Function available after production activation.')}
+            onClick={() => onNotice('Document upload isn\'t wired up in this drafting prototype yet.')}
             className="mb-2 flex-shrink-0 px-3 py-1.5 border border-[#8A6D2F] text-[#8A6D2F] hover:bg-[#FBF6EA] font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all whitespace-nowrap"
           >
             + Upload Document

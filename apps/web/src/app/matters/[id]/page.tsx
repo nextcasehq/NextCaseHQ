@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { CourtPicker } from '@/components/ecourts/CourtPicker';
+import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
 import MatterClosurePanel from './MatterClosurePanel';
@@ -378,22 +379,11 @@ export default function MatterDetailsChamberPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <div className="flex-1 flex flex-col justify-center items-center py-20 text-center">
-          {reviewModeActive ? (
-            <>
-              <span className="text-3xl">👁️</span>
-              <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-              <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
-            </>
-          ) : (
-            <>
-              <span className="text-3xl">🔒</span>
-              <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-              <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this matter.</p>
-              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
-                Phone verification is required to save or access private work.
-              </p>
-            </>
-          )}
+          <AuthOrReviewGate
+            reviewModeActive={reviewModeActive}
+            what="this matter"
+            authDescription="Sign in to view this matter."
+          />
         </div>
       </div>
     );
@@ -494,20 +484,11 @@ export default function MatterDetailsChamberPage() {
         {/* Neutral prompt — shown when a reviewer submits a write instead of
             silently pretending it succeeded on the read-only demo Matter. */}
         {showUnavailablePrompt && (
-          <div className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-xs font-semibold text-[#5C5340]">
-              Function available after production activation.
-            </p>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowUnavailablePrompt(false)}
-                className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
-                aria-label="Dismiss"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
+          <ReviewModeActionNotice
+            action="Editing this matter"
+            onDismiss={() => setShowUnavailablePrompt(false)}
+            className="mb-8 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap"
+          />
         )}
 
         {/* Command Center — Search Experience + Action Cards (Product

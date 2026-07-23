@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { AuthOrReviewGate } from '@/components/ReviewModeNotice';
 
 interface LegalCase {
   id: string;
@@ -114,22 +115,13 @@ export default function CaseWorkspaceDetailsPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] text-[#111111] flex flex-col font-sans">
         <div className="flex-1 flex flex-col justify-center items-center py-20">
-          {reviewModeActive ? (
-            <>
-              <span className="text-3xl">👁️</span>
-              <h2 className="text-lg font-bold mt-2">Not Available</h2>
-              <p className="text-xs text-[#726B58] mt-1">Function available after production activation.</p>
-            </>
-          ) : (
-            <>
-              <span className="text-3xl">🔒</span>
-              <h2 className="text-lg font-bold mt-2">Authentication Required</h2>
-              <p className="text-xs text-[#726B58] mt-1">Sign in to view this case workspace.</p>
-              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
-                Phone verification is required to save or access private work.
-              </p>
-            </>
-          )}
+          <AuthOrReviewGate
+            reviewModeActive={reviewModeActive}
+            what="this case workspace"
+            authDescription="Sign in to view this case workspace."
+            headingClassName="text-lg font-bold mt-2"
+            bodyClassName="text-xs text-[#726B58] mt-1"
+          />
         </div>
       </div>
     );
