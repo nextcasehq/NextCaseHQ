@@ -642,6 +642,255 @@ const MATTER_SPECS = [
       { eventDate: d(-9), description: 'Advised on GST implications of the proposed new warehousing arrangement.', sourceType: 'MANUAL' },
     ],
   },
+  // -------------------------------------------------------------------------
+  // Additional matters anchored to *today's* date on purpose, so the Case
+  // Diary (/cases — every LegalCase row regardless of matter_id) and Matter
+  // Register both visibly demonstrate a today/upcoming/overdue/just-completed
+  // spread, not just a pile of old and future dates. Also rounds out the
+  // Matter Register's status mix (HEARING_SOON, ON_HOLD, STAYED,
+  // AWAITING_FILING, DISPOSED) beyond the original ACTIVE/CLOSED pair, for
+  // exercising the status filter.
+  // -------------------------------------------------------------------------
+  {
+    matterNumber: 'SAMPLE-NI-CHEQUE-01',
+    title: '(Sample) Rajendra Auto Spares vs. Deepak Motors — Cheque Dishonour Complaint',
+    engagementType: 'LITIGATION',
+    matterCategory: 'CRIMINAL',
+    status: 'ACTIVE',
+    court: 'Court of the Judicial Magistrate First Class, Nashik',
+    state: 'Maharashtra',
+    district: 'Nashik',
+    clientName: '(Sample) Rajendra Auto Spares',
+    opposingPartyName: 'Deepak Motors',
+    description: `${DISCLAIMER} A complaint under Section 138 of the Negotiable Instruments Act for dishonour of a cheque issued towards spare-parts supply dues — listed for hearing today.`,
+    proceedings: [
+      {
+        title: 'Criminal Complaint No. 512/2025',
+        caseNumber: 'CC 512/2025 (NI Act)',
+        status: 'HEARING',
+        court: 'Court of the Judicial Magistrate First Class, Nashik',
+        judge: "Hon'ble Judicial Magistrate First Class, Nashik",
+        stage: "Accused's evidence stage",
+        proceedingYear: 2025,
+        courtNotes: [
+          {
+            hearingDate: d(-49),
+            nextHearingDate: d(-21),
+            courtForumType: 'OTHER',
+            courtForumOther: 'Judicial Magistrate First Class',
+            stage: 'Complainant evidence concluded',
+            note: 'Complainant’s evidence and cross-examination concluded. Statement of the accused to be recorded next.',
+            nextActions: 'Prepare the accused for the Section 313 CrPC statement.',
+          },
+          {
+            hearingDate: d(-21),
+            nextHearingDate: d(0),
+            courtForumType: 'OTHER',
+            courtForumOther: 'Judicial Magistrate First Class',
+            stage: "Accused's statement recorded",
+            note: 'Statement of the accused recorded. Matter listed for defence evidence, if any, today.',
+            nextActions: 'Confirm with the client whether any defence witness will be examined today.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    matterNumber: 'SAMPLE-BAIL-OVERDUE-01',
+    title: '(Sample) State vs. Feroze Sheikh — Regular Bail Application',
+    engagementType: 'LITIGATION',
+    matterCategory: 'CRIMINAL',
+    status: 'ACTIVE',
+    court: 'Court of Sessions, Aurangabad',
+    state: 'Maharashtra',
+    district: 'Aurangabad',
+    clientName: '(Sample) Feroze Sheikh (Accused, represented on brief)',
+    opposingPartyName: 'State of Maharashtra',
+    description: `${DISCLAIMER} A regular bail application pending before the Sessions Court. The last listed date has already passed without an order or update being recorded — an overdue follow-up.`,
+    proceedings: [
+      {
+        title: 'Bail Application No. 663/2025',
+        caseNumber: 'BA 663/2025',
+        status: 'HEARING',
+        court: 'Court of Sessions, Aurangabad',
+        judge: "Hon'ble Additional Sessions Judge, Aurangabad",
+        stage: 'Arguments concluded — order awaited',
+        proceedingYear: 2025,
+        courtNotes: [
+          {
+            hearingDate: d(-18),
+            nextHearingDate: d(-4),
+            courtForumType: 'CRIMINAL_COURT',
+            stage: 'Arguments heard on bail application',
+            note: 'Arguments on the bail application heard from both sides. Order reserved, to be pronounced on the next date.',
+            nextActions: 'Follow up with the court registry on whether the order has been pronounced.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    matterNumber: 'SAMPLE-WRIT-SERVICE-01',
+    title: '(Sample) Nandkishore Bhosale vs. State of Maharashtra — Service Writ Petition',
+    engagementType: 'LITIGATION',
+    matterCategory: 'CONSTITUTIONAL',
+    status: 'HEARING_SOON',
+    court: 'High Court',
+    state: 'Maharashtra',
+    district: 'Mumbai',
+    clientName: '(Sample) Nandkishore Bhosale',
+    opposingPartyName: 'State of Maharashtra',
+    description: `${DISCLAIMER} A service-matter writ petition challenging a seniority-list revision, with final hearing listed within the week.`,
+    proceedings: [
+      {
+        title: 'Writ Petition No. 4410/2025',
+        caseNumber: 'WP 4410/2025',
+        status: 'HEARING',
+        court: 'High Court',
+        judge: "Hon'ble High Court",
+        stage: 'Final hearing listed',
+        proceedingYear: 2025,
+        courtNotes: [
+          {
+            hearingDate: d(-25),
+            nextHearingDate: d(3),
+            courtForumType: 'HIGH_COURT',
+            stage: 'Final hearing listed',
+            note: 'Rule made returnable. Respondents’ affidavit-in-reply taken on record. Matter listed for final hearing.',
+            nextActions: 'Prepare a compilation of seniority-list precedents for the final hearing.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    matterNumber: 'SAMPLE-COMM-HOLD-01',
+    title: '(Sample) Trident Packaging Pvt Ltd vs. Coastal Distributors — Distribution Dispute (On Hold)',
+    engagementType: 'LITIGATION',
+    matterCategory: 'COMMERCIAL',
+    status: 'ON_HOLD',
+    court: 'Commercial Court, Ahmedabad',
+    state: 'Gujarat',
+    district: 'Ahmedabad',
+    clientName: '(Sample) Trident Packaging Pvt Ltd',
+    opposingPartyName: 'Coastal Distributors',
+    description: `${DISCLAIMER} A commercial suit for termination of a distribution agreement, presently on hold at the client's instructions while settlement talks between the parties are underway.`,
+    proceedings: [
+      {
+        title: 'Commercial Suit No. 29/2025',
+        caseNumber: 'COMM SUIT 29/2025',
+        status: 'PENDING',
+        court: 'Commercial Court, Ahmedabad',
+        judge: "Hon'ble Judge, Commercial Court",
+        stage: 'Proceedings held in abeyance — settlement talks ongoing',
+        proceedingYear: 2025,
+        courtNotes: [
+          {
+            hearingDate: d(-15),
+            nextHearingDate: d(95),
+            courtForumType: 'COMMERCIAL_COURT',
+            stage: 'Proceedings held in abeyance — settlement talks ongoing',
+            note: 'Both parties jointly requested an extended adjournment to pursue settlement talks outside the court. A long date was granted.',
+            nextActions: 'Check in with the client in six weeks on the status of settlement talks.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    matterNumber: 'SAMPLE-STAY-HC-01',
+    title: '(Sample) Devendra Kulkarni vs. Ganpat Rao Estate — Partition Suit (Stayed)',
+    engagementType: 'LITIGATION',
+    matterCategory: 'PROPERTY',
+    status: 'STAYED',
+    court: 'District Civil Court, Kolhapur',
+    state: 'Maharashtra',
+    district: 'Kolhapur',
+    clientName: '(Sample) Devendra Kulkarni',
+    opposingPartyName: 'Ganpat Rao Estate (Legal Heirs)',
+    description: `${DISCLAIMER} A partition suit over ancestral agricultural land, currently stayed by an order of the High Court pending disposal of a connected revision petition.`,
+    proceedings: [
+      {
+        title: 'Special Civil Suit No. 47/2021',
+        caseNumber: 'SCS 47/2021',
+        status: 'PENDING',
+        court: 'District Civil Court, Kolhapur',
+        judge: "Hon'ble Civil Judge (Senior Division), Kolhapur",
+        stage: 'Proceedings stayed by the High Court',
+        proceedingYear: 2021,
+        courtNotes: [
+          {
+            hearingDate: d(-210),
+            nextHearingDate: null,
+            courtForumType: 'CIVIL_COURT',
+            stage: 'Proceedings stayed by the High Court',
+            note: 'Trial court proceedings stayed pursuant to an interim order of the High Court in a connected civil revision application. No further date fixed pending disposal of the revision.',
+            nextActions: 'Track the connected High Court revision for listing and disposal.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    matterNumber: 'SAMPLE-DRAFT-PREFILING-01',
+    title: '(Sample) Kavita Deshpande — Proposed Partnership Dissolution Suit (Pre-Filing)',
+    engagementType: 'LITIGATION',
+    matterCategory: 'COMMERCIAL',
+    status: 'AWAITING_FILING',
+    court: null,
+    state: 'Maharashtra',
+    district: 'Pune',
+    clientName: '(Sample) Kavita Deshpande',
+    opposingPartyName: 'Deshpande & Rane Associates (Partnership Firm)',
+    description: `${DISCLAIMER} A newly engaged matter — the client seeks dissolution of a partnership firm and rendition of accounts. The plaint is still being drafted, so nothing has been filed yet and no court proceeding exists under this Matter.`,
+    matterEvents: [
+      { eventDate: d(-6), description: 'Engagement letter signed for a suit for dissolution of partnership and rendition of accounts.', sourceType: 'MANUAL' },
+      { eventDate: d(-3), description: 'Collected the partnership deed, capital account statements, and correspondence evidencing the breakdown between partners.', sourceType: 'MANUAL' },
+      { eventDate: d(-1), description: 'First draft of the plaint circulated to the client for review before filing.', sourceType: 'MANUAL' },
+    ],
+  },
+  {
+    matterNumber: 'SAMPLE-FAMILY-DISPOSED-01',
+    title: '(Sample) Anjali Rao & Vikram Rao — Mutual Consent Divorce (Concluded)',
+    engagementType: 'LITIGATION',
+    matterCategory: 'FAMILY',
+    status: 'DISPOSED',
+    court: 'Family Court, Pune',
+    state: 'Maharashtra',
+    district: 'Pune',
+    clientName: '(Sample) Anjali Rao',
+    opposingPartyName: 'Vikram Rao',
+    description: `${DISCLAIMER} A mutual consent divorce petition — the decree was pronounced yesterday and the matter now stands concluded.`,
+    proceedings: [
+      {
+        title: 'Family Court Original Petition No. 88/2025',
+        caseNumber: 'OP 88/2025 (HMA S.13B)',
+        status: 'DISPOSED',
+        court: 'Family Court, Pune',
+        judge: "Hon'ble Judge, Family Court, Pune",
+        stage: 'Decree of divorce granted',
+        proceedingYear: 2025,
+        courtNotes: [
+          {
+            hearingDate: d(-60),
+            nextHearingDate: d(-1),
+            courtForumType: 'FAMILY_COURT',
+            stage: 'Second motion recorded',
+            note: 'Both parties reaffirmed consent at the second motion. Matter listed for pronouncement of decree.',
+            nextActions: 'Prepare the certified-copy application in advance for the client.',
+          },
+          {
+            hearingDate: d(-1),
+            nextHearingDate: null,
+            courtForumType: 'FAMILY_COURT',
+            stage: 'Decree of divorce granted',
+            note: 'Decree of divorce by mutual consent pronounced. Matter concluded.',
+            nextActions: null,
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 async function createMatter(client, tenantId, authorUserId, spec) {
@@ -797,6 +1046,18 @@ async function createMatter(client, tenantId, authorUserId, spec) {
 }
 
 async function main() {
+  // Same NODE_ENV convention this codebase already uses to gate every other
+  // production-only/production-forbidden behavior (see schema-check.ts and
+  // the admin manual §2.3) — refuse outright rather than relying on whoever
+  // invokes this script to remember not to point it at a live deployment.
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '[seed-demo-matters] Refusing to run with NODE_ENV=production. This script inserts ' +
+        'clearly-marked sample data and must only ever be run against a development database.'
+    );
+    process.exit(1);
+  }
+
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     console.error('DATABASE_URL is not set. Aborting.');

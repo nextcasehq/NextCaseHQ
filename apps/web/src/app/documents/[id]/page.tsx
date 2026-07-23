@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getDocumentType } from '@/lib/domain/document-type';
+import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
 
 interface DocumentDetail {
   id: string;
@@ -184,22 +185,11 @@ export default function DocumentDetailPage() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        {reviewModeActive ? (
-          <>
-            <span className="text-3xl">👁️</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
-          </>
-        ) : (
-          <>
-            <span className="text-3xl">🔒</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Sign in to view this document.</p>
-            <p className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F]">
-              Phone verification is required to save or access private work.
-            </p>
-          </>
-        )}
+        <AuthOrReviewGate
+          reviewModeActive={reviewModeActive}
+          what="this document"
+          authDescription="Sign in to view this document."
+        />
       </div>
     );
   }
@@ -293,16 +283,11 @@ export default function DocumentDetailPage() {
         </div>
         {uploadError && <p className="text-xs font-semibold text-red-700 mt-2">{uploadError}</p>}
         {showUnavailablePrompt && (
-          <div className="mt-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-xs font-semibold text-[#5C5340]">Function available after production activation.</p>
-            <button
-              onClick={() => setShowUnavailablePrompt(false)}
-              className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
+          <ReviewModeActionNotice
+            action="Editing this document"
+            onDismiss={() => setShowUnavailablePrompt(false)}
+            className="mt-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap"
+          />
         )}
       </header>
 

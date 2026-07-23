@@ -38,17 +38,28 @@ describe('Stage 2 — public-view journeys never link or redirect to the deleted
   });
 
   test('protected-action walls show the required phone-verification message instead of a login link', () => {
+    // cases/[id]/court-note/page.tsx has no Product Review Mode branch at
+    // all (a real, signed-in-only workflow with a single auth wall), so it
+    // still carries the phrase inline. The rest share it via the
+    // AuthOrReviewGate component (components/ReviewModeNotice.tsx) — see
+    // review-mode-messaging.test.ts for direct coverage of that component
+    // and of each of these pages actually rendering it.
+    expect(readSource('app/cases/[id]/court-note/page.tsx')).toContain(
+      'Phone verification is required to save or access private work.'
+    );
     for (const relativePath of [
       'app/cases/page.tsx',
       'app/cases/[id]/page.tsx',
-      'app/cases/[id]/court-note/page.tsx',
       'app/matters/page.tsx',
       'app/matters/[id]/page.tsx',
       'app/documents/[id]/page.tsx',
       'app/search/page.tsx',
     ]) {
-      expect(readSource(relativePath)).toContain('Phone verification is required to save or access private work.');
+      expect(readSource(relativePath)).toMatch(/<AuthOrReviewGate\b/);
     }
+    expect(readSource('components/ReviewModeNotice.tsx')).toContain(
+      'Phone verification is required to save or access private work.'
+    );
   });
 
   test('the landing page search bar and action cards route to real public destinations, not a dead /login route', () => {

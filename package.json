@@ -8,6 +8,7 @@
     "typecheck": "node scripts/typescript_validation.js",
     "db:migrate": "node scripts/db/migrate.js",
     "db:seed:dev-user": "node scripts/db/seed-dev-user.js",
+    "db:seed:demo-matters": "node scripts/db/seed-demo-matters.js",
     "test:start-s3rver": "node scripts/test/start-s3rver.js"
   },
   "devDependencies": {

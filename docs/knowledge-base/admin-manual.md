@@ -101,6 +101,7 @@ The root `package.json` scripts, verbatim:
 | `typecheck` | `node scripts/typescript_validation.js` | Runs `tsc -p <tsconfig> --noEmit` against each mapped project (`apps/web`, `apps/workers`, `packages/country-packs`) and fails if a workspace with a `package.json` isn't mapped or excluded — see §5. |
 | `db:migrate` | `node scripts/db/migrate.js` | Applies `db/schema.sql` (see §4). |
 | `db:seed:dev-user` | `node scripts/db/seed-dev-user.js` | Creates/updates one local login user. Dev convenience only. |
+| `db:seed:demo-matters` | `node scripts/db/seed-demo-matters.js` | Idempotently seeds realistic sample Matters/Proceedings/Court Notes across every court vertical, so the Matter Register and Case Diary have something real to demonstrate. Refuses to run when `NODE_ENV=production`. Run after `db:seed:dev-user`. |
 
 `apps/web/package.json`'s own scripts (what actually runs the Next.js app):
 

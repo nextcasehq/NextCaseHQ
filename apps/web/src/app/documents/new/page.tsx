@@ -9,6 +9,7 @@ import {
   documentTypesByCategory,
   type DocumentCategory,
 } from '@/lib/domain/document-type';
+import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
 
 interface MatterOption {
   id: string;
@@ -168,21 +169,11 @@ function PrepareNewDocumentForm() {
   if (needsAuth) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        {reviewModeActive ? (
-          <>
-            <span className="text-3xl">👁️</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Not Available</h3>
-            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">Function available after production activation.</p>
-          </>
-        ) : (
-          <>
-            <span className="text-3xl">🔒</span>
-            <h3 className="text-base font-bold text-[#4A4130] mt-3">Authentication Required</h3>
-            <p className="text-xs text-[#726B58] mt-1 max-w-sm mx-auto">
-              Sign-in is not yet available in this environment. Preparing a document requires an authenticated session.
-            </p>
-          </>
-        )}
+        <AuthOrReviewGate
+          reviewModeActive={reviewModeActive}
+          what="document preparation"
+          authDescription="Sign-in is not yet available in this environment. Preparing a document requires an authenticated session."
+        />
       </div>
     );
   }
@@ -197,18 +188,11 @@ function PrepareNewDocumentForm() {
       </header>
 
       {showUnavailablePrompt && (
-        <div className="mb-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap">
-          <p className="text-xs font-semibold text-[#5C5340]">
-            Function available after production activation.
-          </p>
-          <button
-            onClick={() => setShowUnavailablePrompt(false)}
-            className="text-xs font-bold text-[#726B58] hover:text-[#6F5624]"
-            aria-label="Dismiss"
-          >
-            ✕
-          </button>
-        </div>
+        <ReviewModeActionNotice
+          action="Draft generation and saving"
+          onDismiss={() => setShowUnavailablePrompt(false)}
+          className="mb-4 p-4 bg-[#FBF6EA] border border-[#C6A253]/40 rounded-xl flex items-center justify-between gap-4 flex-wrap"
+        />
       )}
 
       {error && (
