@@ -723,6 +723,45 @@ $$;
 CREATE INDEX IF NOT EXISTS idx_feedback_tenant_created ON "Feedback"("tenant_id", "created_at");
 CREATE INDEX IF NOT EXISTS idx_feedback_tenant_category ON "Feedback"("tenant_id", "category");
 
+-- 6b. CourtDataReport — "Can't find your court?" advocate-submitted
+-- corrections to the eCourts registry (lib/ecourts-registry/). The
+-- registry's court-establishment/bench/commission lists are only
+-- populated where sourced and verified (see
+-- docs/knowledge-base/CONTRIBUTING_COURT_DATA.md); everything else falls
+-- back to free-text. A report here is a candidate correction, never an
+-- automatic edit to the registry — status moves from OPEN through
+-- REVIEWED to INCORPORATED (folded into a future registry update) or
+-- DISMISSED (not actionable), always by a human reviewing it alongside
+-- a real source, the same standard every existing entry already meets.
+CREATE TABLE IF NOT EXISTS "CourtDataReport" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "user_id" UUID REFERENCES "User"("id") ON DELETE SET NULL,
+    "court_system_id" TEXT,
+    "state" TEXT,
+    "district" TEXT,
+    "court_establishment" TEXT,
+    "court_name" TEXT NOT NULL,
+    "comments" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'OPEN',
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'court_data_report_status_check'
+    ) THEN
+        ALTER TABLE "CourtDataReport" ADD CONSTRAINT court_data_report_status_check
+            CHECK ("status" IN ('OPEN', 'REVIEWED', 'INCORPORATED', 'DISMISSED'));
+    END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_court_data_report_tenant_created ON "CourtDataReport"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_court_data_report_tenant_status ON "CourtDataReport"("tenant_id", "status");
+
 -- 7b-i. MatterPreparationReminder — Seven-Day Case Preparation Workflow
 -- (Product Direction, Milestone 3). Pure idempotency/dedup ledger: exactly
 -- one row per (case_id, hearing_date) that has ever triggered a
@@ -1354,6 +1393,8 @@ ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Feedback" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Feedback" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "CourtDataReport" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "CourtDataReport" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "AiUsageEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AiUsageEvent" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentAccessEvent" ENABLE ROW LEVEL SECURITY;
@@ -1420,6 +1461,10 @@ CREATE POLICY tenant_isolation_policy ON "Notification"
 
 DROP POLICY IF EXISTS tenant_isolation_policy ON "Feedback";
 CREATE POLICY tenant_isolation_policy ON "Feedback"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "CourtDataReport";
+CREATE POLICY tenant_isolation_policy ON "CourtDataReport"
     USING ("tenant_id" = get_active_session_tenant());
 
 DROP POLICY IF EXISTS tenant_isolation_policy ON "Client";

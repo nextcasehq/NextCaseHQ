@@ -199,15 +199,37 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 1.5. /api/health is a liveness/readiness probe for load balancers and
+  // uptime monitors — none of which carry a session cookie or an app-
+  // issued bearer token. Gating it behind either made basic infrastructure
+  // health checks unreachable; found live (a real 401 from a fresh
+  // browser session with no auth attempted) during a final production-
+  // readiness review, alongside the same root cause below.
+  if (pathname.startsWith('/api/health')) {
+    return NextResponse.next();
+  }
+
   // 2. Only intercept /api/* routes (excluding auth, and excluding routes
   // that verify their own request authenticity — see
   // apps/web/src/lib/auth/session.ts and
   // apps/web/src/lib/security/webhook-signature.ts. /api/documents,
   // /api/cases, /api/matters, and /api/clients authorize themselves via the
-  // real session cookie; /api/webhooks authorizes itself via HMAC request
-  // signatures. Gating any of these here too would require a second,
-  // disconnected Bearer-token credential that nothing in the app actually
-  // issues, effectively making the route unreachable.
+  // real session cookie; /api/cron authorizes itself via a CRON_SECRET
+  // bearer token (see api/cron/seven-day-preparation/route.ts) — a
+  // different credential than this gate's own JWT check, so without this
+  // exclusion a correctly-configured cron request was rejected here
+  // before ever reaching that check; /api/webhooks authorizes itself via
+  // HMAC request signatures. Gating any of these here too would require a
+  // second, disconnected Bearer-token credential that nothing in the app
+  // actually issues, effectively making the route unreachable — which is
+  // exactly what had silently happened to /api/feedback and
+  // /api/court-data-reports (added after this allowlist was last updated)
+  // and to /api/cron above: each verified its own session/secret
+  // correctly in isolation (and in every unit test, which calls the route
+  // handler directly and never passes through this file), but every real
+  // HTTP request to it was rejected here first. Found live during a final
+  // production-readiness review — see the same review's report for the
+  // full account.
   const isSelfAuthorizedApiRoute =
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/documents') ||
@@ -220,7 +242,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/notifications') ||
     pathname.startsWith('/api/ai') ||
     pathname.startsWith('/api/billing') ||
-    pathname.startsWith('/api/webhooks');
+    pathname.startsWith('/api/webhooks') ||
+    pathname.startsWith('/api/feedback') ||
+    pathname.startsWith('/api/court-data-reports') ||
+    pathname.startsWith('/api/cron');
   if (!pathname.startsWith('/api/all') && (!pathname.startsWith('/api/') || isSelfAuthorizedApiRoute)) {
     return NextResponse.next();
   }

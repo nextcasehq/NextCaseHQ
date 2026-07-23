@@ -9,6 +9,98 @@ import { composeCourtName } from './compose-court-name';
 const AVAILABLE_COURT_SYSTEMS = COURT_SYSTEMS.filter((cs) => cs.status === 'available');
 
 /**
+ * "Can't find your court?" — lands in a review queue (CourtDataReport),
+ * never an automatic registry edit. Shown whenever the active step has
+ * degraded to free-text (the exact moment an advocate discovers their
+ * court isn't listed), pre-filled with whatever geography was already
+ * selected.
+ */
+function ReportMissingCourt({
+  courtSystemId,
+  selections,
+}: {
+  courtSystemId: string;
+  selections: Record<string, string>;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [courtName, setCourtName] = React.useState('');
+  const [comments, setComments] = React.useState('');
+  const [submitted, setSubmitted] = React.useState(false);
+
+  async function submit() {
+    if (!courtName.trim()) return;
+    const res = await fetch('/api/court-data-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        court_system_id: courtSystemId,
+        state: selections.state ?? null,
+        district: selections.district ?? null,
+        court_establishment: courtName.trim(),
+        court_name: courtName.trim(),
+        comments: comments.trim() || undefined,
+      }),
+    });
+    if (res.ok) setSubmitted(true);
+  }
+
+  if (submitted) {
+    return <p className="text-xs font-semibold text-[#6F5624]">Thanks — this has been sent for review.</p>;
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]"
+      >
+        Can&rsquo;t find your court? Report it →
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-[#E7DFC9] bg-white p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A7A56]">
+        Report a missing or incorrect court
+      </p>
+      <input
+        type="text"
+        value={courtName}
+        onChange={(e) => setCourtName(e.target.value)}
+        placeholder="Court / establishment name"
+        className="w-full rounded-lg border border-[#E7DFC9] bg-[#FBFAF6] px-3 py-2 text-sm font-medium text-[#241E17] focus:border-[#8A6D2F] focus:outline-none"
+      />
+      <textarea
+        value={comments}
+        onChange={(e) => setComments(e.target.value)}
+        placeholder="Optional comments (e.g. address, court type)"
+        rows={2}
+        className="w-full rounded-lg border border-[#E7DFC9] bg-[#FBFAF6] px-3 py-2 text-sm font-medium text-[#241E17] focus:border-[#8A6D2F] focus:outline-none"
+      />
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={!courtName.trim()}
+          onClick={submit}
+          className="rounded-lg bg-[#8A6D2F] px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#6F5624] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * A compact, reusable "find the court" picker for any form that just
  * needs a court/forum name string (Matter creation, Add Proceeding) —
  * not a full eCourts Case Status search like CourtStatusWizard. Walks
@@ -115,15 +207,18 @@ export function CourtPicker({
         </div>
       )}
 
-      {onCancel && (
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]"
-        >
-          Type it manually instead
-        </button>
-      )}
+      <div className="flex items-center justify-between gap-3">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-[10px] font-bold uppercase tracking-wider text-[#B0A588] hover:text-[#8A6D2F]"
+          >
+            Type it manually instead
+          </button>
+        )}
+        <ReportMissingCourt courtSystemId={courtSystemId} selections={selections} />
+      </div>
     </div>
   );
 }
