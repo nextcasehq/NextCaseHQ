@@ -22,10 +22,14 @@ describe('CourtStatusWizard — geography-first, registry-driven, no per-court b
     expect(wizard).toContain('districtCourtsConfig');
   });
 
-  test('never asks the user to pick a Court System first — geography drives the workflow', () => {
-    expect(wizard).not.toContain('Court System');
-    expect(wizard).not.toContain('Select Court');
-    expect(wizard).not.toMatch(/COURT_SYSTEMS/);
+  test('District Courts remains the default flow, with a switcher now that other systems are available', () => {
+    // More than one court system is `status: 'available'` in the registry
+    // today (District Courts, High Courts, Supreme Court, Consumer
+    // Commissions), so a switcher is now warranted — this replaces the
+    // earlier assertion that no such picker existed, from when District
+    // Courts was the only available system.
+    expect(wizard).toContain('AVAILABLE_COURT_SYSTEMS');
+    expect(wizard).toContain("districtCourtsConfig.id");
   });
 
   test('has no switch statement — step rendering is driven by step.kind only', () => {
