@@ -134,16 +134,24 @@ export async function GET(request: NextRequest) {
     // Diary list to show which Matter (and client) a Proceeding belongs to
     // — a standalone Proceeding (matter_id null) simply gets null for both
     // rather than an error, same as every other nullable LEFT JOIN here.
+    // latest_hearing_outcome (Case Diary "daily diary" restructuring) is
+    // the most recent Court Note's structured outcome — used client-side to
+    // bucket a Proceeding into Adjourned Hearings vs. Completed Hearings for
+    // today; a Proceeding with no Court Notes yet simply gets null, same as
+    // every other nullable LEFT JOIN LATERAL here.
     const [rows, countRows] = await Promise.all([
-      db.execute<LegalCaseRow & { matter_title: string | null; client_name: string | null }>(
+      db.execute<LegalCaseRow & { matter_title: string | null; client_name: string | null; latest_hearing_outcome: string | null }>(
         session.tenantId,
         `SELECT lc.id, lc.tenant_id, lc.title, lc.case_number, lc.country_code, lc.court_pack_id,
                 lc.law_pack_id, lc.procedure_pack_id, lc.state_metadata, lc.status, lc.court, lc.judge,
                 lc.stage, lc.hearing_date, lc.notes, lc.matter_id, lc.created_at, lc.updated_at,
-                m.title AS matter_title, c.name AS client_name
+                m.title AS matter_title, c.name AS client_name, latest_note.hearing_outcome AS latest_hearing_outcome
          FROM "LegalCase" lc
          LEFT JOIN "Matter" m ON m.id = lc.matter_id
          LEFT JOIN "Client" c ON c.id = m.client_id
+         LEFT JOIN LATERAL (
+           SELECT hearing_outcome FROM "CourtNote" WHERE case_id = lc.id ORDER BY created_at DESC LIMIT 1
+         ) latest_note ON true
          ${statusFilter}
          ORDER BY lc.created_at DESC
          LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,

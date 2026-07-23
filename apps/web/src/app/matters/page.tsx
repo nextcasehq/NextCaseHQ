@@ -7,6 +7,7 @@ import EmptyState from '@/components/EmptyState';
 import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
 import CourtBadge from '@/components/CourtBadge';
+import { courtForumColorFor } from '@/lib/domain/court-forum-colors';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { COURT_FORUM_TYPES, COURT_FORUM_LABELS, type CourtForumType } from '@/lib/domain/court-note';
 import { COURT_FORUM_COLORS, classifyCourtForumType } from '@/lib/domain/court-forum-colors';
@@ -97,7 +98,7 @@ function MattersChamberContent() {
       setMatters(data.matters);
       if (data.review_mode) setIsReviewMode(true);
     } catch {
-      setLoadError('Unable to reach the matter workspace service.');
+      setLoadError('Unable to reach the matter register service.');
     } finally {
       setIsLoading(false);
     }
@@ -223,7 +224,7 @@ function MattersChamberContent() {
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-black uppercase tracking-tight text-[#111111]">
-              Matter Workspace
+              Matter Register
             </h1>
           </div>
           <p className="text-xs font-semibold text-[#726B58] uppercase tracking-widest mt-1">
@@ -526,60 +527,71 @@ function MattersChamberContent() {
           <span className="w-8 h-8 border-4 border-[#8A6D2F] border-t-transparent rounded-full animate-spin"></span>
         </div>
       ) : filteredMatters.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
-          {filteredMatters.map((matter) => (
-            <div
-              key={matter.id}
-              className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm hover:border-[#E7DFC9] hover:shadow transition-all group flex flex-col"
-            >
-              <div className="flex justify-between items-start gap-4 mb-3">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
-                    {matter.matter_number || matter.id.slice(0, 8)}
-                  </span>
-                  <span className="ml-2 text-[10px] font-bold text-[#726B58] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
-                    {matter.engagement_type.replace('_', ' ')}
-                  </span>
+        <div className="flex flex-col gap-3 animate-fadeIn">
+          {filteredMatters.map((matter) => {
+            const courtColor = courtForumColorFor(matter.court);
+            return (
+              <div
+                key={matter.id}
+                style={{ borderLeftColor: courtColor.border }}
+                className="bg-white border border-[#E7DFC9]/80 border-l-4 rounded-2xl shadow-sm hover:border-[#E7DFC9] hover:shadow transition-all group"
+              >
+                {/* Horizontal strip — every field in one row (wraps to a
+                    compact stack below md) instead of a tall box, so many
+                    Matters scan in the same vertical space a handful of
+                    card-grid boxes used to take. The left edge is
+                    court-category coloured (same palette as CourtBadge) so
+                    an advocate can tell forums apart down the whole list
+                    without reading each badge individually. */}
+                <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 px-5 py-4">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
+                      {matter.matter_number || matter.id.slice(0, 8)}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap ${
+                      matter.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border border-green-200' :
+                      matter.status === 'ON_HOLD' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                      matter.status === 'CLOSED' ? 'bg-[#F4EEE0] text-[#5C5340] border border-[#E7DFC9]' :
+                      'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                      {matter.status}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 md:w-64 md:shrink-0">
+                    <h2 className="font-bold text-sm text-[#111111] group-hover:text-[#8A6D2F] transition-colors truncate">
+                      {matter.title}
+                    </h2>
+                    <p className="text-[10px] text-[#726B58] font-bold uppercase tracking-wider truncate">
+                      Client: {matter.client_name || 'Not yet linked'}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs md:flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-[#726B58] border border-[#E7DFC9] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
+                      {matter.engagement_type.replace('_', ' ')}
+                    </span>
+                    {matter.court ? <CourtBadge court={matter.court} /> : <span className="text-[10px] text-[#B0A588] font-semibold">No court set</span>}
+                    <span className="text-[#6F5624] font-medium truncate max-w-[220px]">
+                      {matter.practice_area || 'No practice area set.'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0 md:ml-auto">
+                    <div className="text-[10px] font-mono text-[#726B58] uppercase tracking-widest whitespace-nowrap">
+                      Opened: <span className="font-sans font-bold text-[#5C5340]">{new Date(matter.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <Link
+                      href={`/matters/${matter.id}`}
+                      className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624] flex items-center gap-1 whitespace-nowrap"
+                    >
+                      Open Workspace →
+                    </Link>
+                  </div>
                 </div>
-                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                  matter.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border border-green-200' :
-                  matter.status === 'ON_HOLD' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-                  matter.status === 'CLOSED' ? 'bg-[#F4EEE0] text-[#5C5340] border border-[#E7DFC9]' :
-                  'bg-red-50 text-red-700 border border-red-200'
-                }`}>
-                  {matter.status}
-                </span>
               </div>
-
-              <h2 className="font-bold text-base text-[#111111] group-hover:text-[#8A6D2F] transition-colors mb-1">
-                {matter.title}
-              </h2>
-              <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider mb-2">
-                Client: {matter.client_name || 'Not yet linked'}
-              </p>
-              {matter.court && (
-                <div className="mb-3">
-                  <CourtBadge court={matter.court} />
-                </div>
-              )}
-
-              <p className="text-xs text-[#6F5624] leading-relaxed font-medium mb-4 flex-1">
-                {matter.practice_area || 'No practice area set.'}
-              </p>
-
-              <div className="border-t border-[#F4EEE0] pt-4 flex items-center justify-between mt-auto">
-                <div className="text-[10px] font-mono text-[#726B58] uppercase tracking-widest">
-                  Opened: <span className="font-sans font-bold text-[#5C5340]">{new Date(matter.created_at).toLocaleDateString()}</span>
-                </div>
-                <Link
-                  href={`/matters/${matter.id}`}
-                  className="text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624] flex items-center gap-1"
-                >
-                  Open Workspace →
-                </Link>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <EmptyState

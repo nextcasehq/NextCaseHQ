@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
+import { PrimaryAppNav } from '@/components/PrimaryAppNav';
 
 interface NotificationItem {
   id: string;
@@ -180,17 +181,7 @@ export default function MattersLayout({
             <Link href="/dashboard" className="text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1 flex-none">
               <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
             </Link>
-            {/* Matter switcher placeholder — Phase A reserves the affordance
-                only; switching between recently-open Matters is Phase B+. */}
-            <button
-              type="button"
-              disabled
-              className="hidden md:flex items-center gap-1.5 ml-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#B0A588] border border-[#F4EEE0] rounded-lg cursor-default"
-              title="Matter switcher — coming soon"
-            >
-              Matter Workspace
-              <span className="text-[8px]">▾</span>
-            </button>
+            <PrimaryAppNav active="matters" />
           </div>
 
           <div className="flex items-center gap-4 md:gap-6">

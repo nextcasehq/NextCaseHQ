@@ -352,7 +352,7 @@ export default function CaseWorkspaceDetailsPage() {
           <h2 className="text-lg font-bold mt-2">Case Workspace Not Found</h2>
           <p className="text-xs text-[#726B58] mt-1">This Case ID does not exist or you lack multi-tenant RLS clearance.</p>
           <Link href="/cases" className="mt-4 text-xs font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline">
-            Back to Case Workspace
+            Back to Case Diary
           </Link>
         </div>
       </div>
@@ -366,7 +366,7 @@ export default function CaseWorkspaceDetailsPage() {
         {/* Back Link */}
         <div className="mb-6">
           <Link href="/cases" className="text-xs font-bold uppercase tracking-wider text-[#726B58] hover:text-[#8A6D2F] transition-colors">
-            ← Back to Case Workspace Chamber
+            ← Back to Case Diary
           </Link>
         </div>
 
