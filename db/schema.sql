@@ -682,6 +682,47 @@ CREATE TABLE IF NOT EXISTS "Notification" (
     "created_at" TIMESTAMPTZ DEFAULT now()
 );
 
+-- 7c. Feedback Centre — bug reports, feature requests, usability/AI/
+-- documentation feedback, and general suggestions submitted from within
+-- the app. category classifies the submission; status is the only
+-- mutable field (an admin triaging feedback), the original submission
+-- content itself is never rewritten by the API (enforced at the route
+-- layer, same convention as MatterTask's status-only mutability).
+-- page_url/user_agent are optional context captured client-side, never
+-- required — feedback submitted from a generic "Send Feedback" entry
+-- point has no page context to attach.
+CREATE TABLE IF NOT EXISTS "Feedback" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "user_id" UUID REFERENCES "User"("id") ON DELETE SET NULL,
+    "category" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "page_url" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'OPEN',
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'feedback_category_check'
+    ) THEN
+        ALTER TABLE "Feedback" ADD CONSTRAINT feedback_category_check
+            CHECK ("category" IN ('BUG', 'FEATURE_REQUEST', 'USABILITY', 'AI_FEEDBACK', 'DOCUMENTATION', 'GENERAL'));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'feedback_status_check'
+    ) THEN
+        ALTER TABLE "Feedback" ADD CONSTRAINT feedback_status_check
+            CHECK ("status" IN ('OPEN', 'REVIEWED', 'RESOLVED', 'DISMISSED'));
+    END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_feedback_tenant_created ON "Feedback"("tenant_id", "created_at");
+CREATE INDEX IF NOT EXISTS idx_feedback_tenant_category ON "Feedback"("tenant_id", "category");
+
 -- 7b-i. MatterPreparationReminder — Seven-Day Case Preparation Workflow
 -- (Product Direction, Milestone 3). Pure idempotency/dedup ledger: exactly
 -- one row per (case_id, hearing_date) that has ever triggered a
@@ -1311,6 +1352,8 @@ ALTER TABLE "WalletTransactionRecord" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "WalletTransactionRecord" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "Feedback" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Feedback" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "AiUsageEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AiUsageEvent" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentAccessEvent" ENABLE ROW LEVEL SECURITY;
@@ -1373,6 +1416,10 @@ CREATE POLICY tenant_isolation_policy ON "WalletTransactionRecord"
 
 DROP POLICY IF EXISTS tenant_isolation_policy ON "Notification";
 CREATE POLICY tenant_isolation_policy ON "Notification"
+    USING ("tenant_id" = get_active_session_tenant());
+
+DROP POLICY IF EXISTS tenant_isolation_policy ON "Feedback";
+CREATE POLICY tenant_isolation_policy ON "Feedback"
     USING ("tenant_id" = get_active_session_tenant());
 
 DROP POLICY IF EXISTS tenant_isolation_policy ON "Client";

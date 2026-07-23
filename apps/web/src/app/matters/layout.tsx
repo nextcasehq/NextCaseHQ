@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 
 interface NotificationItem {
   id: string;
@@ -321,6 +322,7 @@ export default function MattersLayout({
           </div>
         )}
       </div>
+      <FeedbackWidget />
     </div>
   );
 }

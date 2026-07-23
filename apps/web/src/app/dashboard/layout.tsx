@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
 import { AiCreditsTopBarControl } from '@/components/ai-credits/credits-popover';
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 
 interface NotificationItem {
   id: string;
@@ -331,6 +332,7 @@ export default function DashboardLayout({
           </div>
         )}
       </main>
+      <FeedbackWidget />
     </div>
   );
 }
