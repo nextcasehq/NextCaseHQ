@@ -157,7 +157,7 @@ export default function MattersLayout({
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden h-full">
+      <div className="flex-1 flex flex-col overflow-hidden h-full relative">
         {/* Top Bar */}
         <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between z-10 flex-none">
           <div className="flex items-center gap-3 min-w-0">
@@ -232,82 +232,94 @@ export default function MattersLayout({
           </div>
         </header>
 
-        {/* Dynamic Route Content */}
-        <main className="flex-1 overflow-auto bg-[#FDFBF7] h-[calc(100vh-64px)] w-full relative isolate">
+        {/* Dynamic Route Content — no <main> here: the page's one <main>
+            landmark comes from the root layout (app/layout.tsx), which
+            already wraps every route's children in <main>. */}
+        <div className="flex-1 overflow-auto bg-[#FDFBF7] h-[calc(100vh-64px)] w-full relative isolate">
           {children}
+        </div>
 
-          {/* Sliding Notifications Drawer — reused verbatim from dashboard/layout.tsx */}
-          {isNotificationsOpen && (
-            <div className="absolute top-0 right-0 h-full w-80 bg-white border-l border-[#F4EEE0] shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
-              <div className="p-6 border-b border-[#F4EEE0] flex justify-between items-center bg-[#FBF8F1]/50">
-                <h3 className="text-xs font-black uppercase tracking-widest text-[#3A3222]">Timeline & Notifications</h3>
-                <button
-                  onClick={() => setIsNotificationsOpen(false)}
-                  className="text-xs font-bold text-[#B0A588] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {notifications.length === 0 && (
-                  <div className="text-center py-10">
-                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
-                      <span className="text-sm">🔔</span>
-                    </div>
-                    <p className="text-xs text-[#B0A588]">No notifications yet.</p>
+        {/* Sliding Notifications Drawer — a true sibling of the content
+            area above, not nested inside its `isolate` stacking context.
+            Nesting it there previously trapped the drawer's z-30 beneath
+            the fixed Matter Navigator/backdrop (both z-20/z-30, outside
+            that isolate) whenever the off-canvas nav opened on top of an
+            already-open drawer, covering its own close button. z-40 here
+            keeps it unambiguously above both regardless of open order;
+            top-16/bottom-0 (in place of top-0/h-full) account for it now
+            sitting alongside the header rather than only below it. */}
+        {isNotificationsOpen && (
+          <div className="absolute top-16 right-0 bottom-0 w-80 bg-white border-l border-[#F4EEE0] shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-200">
+            <div className="p-6 border-b border-[#F4EEE0] flex justify-between items-center bg-[#FBF8F1]/50">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#3A3222]">Timeline & Notifications</h3>
+              <button
+                onClick={() => setIsNotificationsOpen(false)}
+                className="text-xs font-bold text-[#B0A588] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {notifications.length === 0 && (
+                <div className="text-center py-10">
+                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EA] border border-[#E7DFC9]">
+                    <span className="text-sm">🔔</span>
                   </div>
-                )}
-                {notifications.map((notif) => (
-                  <button
-                    key={notif.id}
-                    onClick={() => !notif.read_at && markAsRead(notif.id)}
-                    className={`w-full text-left p-4 bg-white border rounded-xl hover:border-[#F1E9D3] transition-all shadow-xs ${
-                      notif.read_at ? 'border-[#F4EEE0] opacity-60' : 'border-[#E7DFC9]'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[9px] font-mono font-bold text-[#8A6D2F] bg-[#FBF6EA] px-1.5 py-0.5 rounded">
-                        {notif.type}
-                      </span>
-                      <span className="text-[9px] font-mono text-[#B0A588]">{relativeTime(notif.created_at)}</span>
-                    </div>
-                    <p className="text-xs font-bold text-[#241E17] leading-relaxed font-sans">{notif.title}</p>
-                    {notif.message && (
-                      <p className="text-xs text-[#4A4130] leading-relaxed font-sans mt-0.5">{notif.message}</p>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="p-4 border-t border-[#F4EEE0] bg-[#FBF8F1]/30 text-center">
-                <p className="text-[10px] text-[#B0A588] font-mono">NEXTCASE SECURITY TIMELINE</p>
-              </div>
-            </div>
-          )}
-
-          {/* Context Drawer — collapsed by default, empty in Phase A.
-              Citations/AI assistance/Related Cases wiring is Phase B. */}
-          {activeMatterId && isContextDrawerOpen && (
-            <div className="absolute top-0 right-0 h-full w-80 bg-white border-l border-[#F4EEE0] shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
-              <div className="p-6 border-b border-[#F4EEE0] flex justify-between items-center bg-[#FBF8F1]/50">
-                <h3 className="text-xs font-black uppercase tracking-widest text-[#3A3222]">Context</h3>
-                <button
-                  onClick={() => setIsContextDrawerOpen(false)}
-                  className="text-xs font-bold text-[#B0A588] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="text-center py-10 bg-[#FBF8F1]/50 border border-dashed border-[#E7DFC9] rounded-xl">
-                  <p className="text-xs font-semibold text-[#8A7A56]">Not yet available.</p>
-                  <p className="text-[10px] text-[#B0A588] mt-1 max-w-xs mx-auto">
-                    Citations, AI assistance, and related cases for this Matter are planned for a future milestone.
-                  </p>
+                  <p className="text-xs text-[#B0A588]">No notifications yet.</p>
                 </div>
+              )}
+              {notifications.map((notif) => (
+                <button
+                  key={notif.id}
+                  onClick={() => !notif.read_at && markAsRead(notif.id)}
+                  className={`w-full text-left p-4 bg-white border rounded-xl hover:border-[#F1E9D3] transition-all shadow-xs ${
+                    notif.read_at ? 'border-[#F4EEE0] opacity-60' : 'border-[#E7DFC9]'
+                  }`}
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[9px] font-mono font-bold text-[#8A6D2F] bg-[#FBF6EA] px-1.5 py-0.5 rounded">
+                      {notif.type}
+                    </span>
+                    <span className="text-[9px] font-mono text-[#B0A588]">{relativeTime(notif.created_at)}</span>
+                  </div>
+                  <p className="text-xs font-bold text-[#241E17] leading-relaxed font-sans">{notif.title}</p>
+                  {notif.message && (
+                    <p className="text-xs text-[#4A4130] leading-relaxed font-sans mt-0.5">{notif.message}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="p-4 border-t border-[#F4EEE0] bg-[#FBF8F1]/30 text-center">
+              <p className="text-[10px] text-[#B0A588] font-mono">NEXTCASE SECURITY TIMELINE</p>
+            </div>
+          </div>
+        )}
+
+        {/* Context Drawer — collapsed by default, empty in Phase A.
+            Citations/AI assistance/Related Cases wiring is Phase B.
+            Same sibling-of-content-area placement as the notifications
+            drawer above, and for the same reason. */}
+        {activeMatterId && isContextDrawerOpen && (
+          <div className="absolute top-16 right-0 bottom-0 w-80 bg-white border-l border-[#F4EEE0] shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-200">
+            <div className="p-6 border-b border-[#F4EEE0] flex justify-between items-center bg-[#FBF8F1]/50">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#3A3222]">Context</h3>
+              <button
+                onClick={() => setIsContextDrawerOpen(false)}
+                className="text-xs font-bold text-[#B0A588] hover:text-[#3A3222] cursor-pointer bg-transparent border-none outline-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="text-center py-10 bg-[#FBF8F1]/50 border border-dashed border-[#E7DFC9] rounded-xl">
+                <p className="text-xs font-semibold text-[#8A7A56]">Not yet available.</p>
+                <p className="text-[10px] text-[#B0A588] mt-1 max-w-xs mx-auto">
+                  Citations, AI assistance, and related cases for this Matter are planned for a future milestone.
+                </p>
               </div>
             </div>
-          )}
-        </main>
+          </div>
+        )}
       </div>
     </div>
   );

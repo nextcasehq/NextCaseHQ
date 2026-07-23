@@ -58,6 +58,31 @@ describe('proceedingsSource', () => {
     expect(items[0].render()).toContain('Writ Petition');
   });
 
+  test('renders the Proceeding\'s next hearing date when one is set', async () => {
+    const matterId = await createMatter(TENANT_A);
+    await db.execute(
+      TENANT_A,
+      `INSERT INTO "LegalCase" (tenant_id, title, country_code, matter_id, hearing_date) VALUES ($1, $2, $3, $4, $5)`,
+      [TENANT_A, 'Writ Petition', 'IN', matterId, '2026-03-15']
+    );
+    const items = await proceedingsSource.fetch(TENANT_A, matterId);
+    expect(items).toHaveLength(1);
+    expect(items[0].render()).toContain('next hearing 2026-03-15');
+  });
+
+  test('omits "next hearing" when the Proceeding has no hearing_date', async () => {
+    const matterId = await createMatter(TENANT_A);
+    await db.execute(TENANT_A, `INSERT INTO "LegalCase" (tenant_id, title, country_code, matter_id) VALUES ($1, $2, $3, $4)`, [
+      TENANT_A,
+      'Writ Petition',
+      'IN',
+      matterId,
+    ]);
+    const items = await proceedingsSource.fetch(TENANT_A, matterId);
+    expect(items).toHaveLength(1);
+    expect(items[0].render()).not.toContain('next hearing');
+  });
+
   test('returns an empty array for a matter with no linked proceedings — a valid, honest state', async () => {
     const matterId = await createMatter(TENANT_A);
     const items = await proceedingsSource.fetch(TENANT_A, matterId);
