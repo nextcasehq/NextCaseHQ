@@ -5,6 +5,12 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AuthOrReviewGate } from '@/components/ReviewModeNotice';
 import { getDocumentType } from '@/lib/domain/document-type';
+import { HEARING_OUTCOME_LABELS, type HearingOutcome } from '@/lib/domain/court-note';
+import {
+  CERTIFIED_COPY_STATUSES,
+  CERTIFIED_COPY_STATUS_LABELS,
+  type CertifiedCopyStatus,
+} from '@/lib/domain/court-order';
 
 interface LegalCase {
   id: string;
@@ -24,9 +30,20 @@ interface CourtNote {
   next_hearing_date: string | null;
   court_forum_display: string;
   stage: string;
+  hearing_outcome: HearingOutcome;
   note: string;
   next_actions: string | null;
   created_at: string;
+}
+
+interface CourtOrder {
+  id: string;
+  court_note_id: string | null;
+  order_date: string;
+  summary: string;
+  document_id: string | null;
+  certified_copy_required: boolean;
+  certified_copy_status: CertifiedCopyStatus;
 }
 
 interface ParentMatter {
@@ -68,6 +85,20 @@ export default function CaseWorkspaceDetailsPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [courtNotes, setCourtNotes] = useState<CourtNote[]>([]);
   const [caseDocuments, setCaseDocuments] = useState<CaseDocument[]>([]);
+
+  // Court Orders — first-class records, not another free-text field (Case
+  // Diary Phase 1 closure). orders is refetched after every create/patch
+  // rather than optimistically merged, same pattern as fetchCase/
+  // fetchCourtNotes elsewhere on this page.
+  const [orders, setOrders] = useState<CourtOrder[]>([]);
+  const [showRecordOrder, setShowRecordOrder] = useState(false);
+  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [orderSummary, setOrderSummary] = useState('');
+  const [orderCourtNoteId, setOrderCourtNoteId] = useState('');
+  const [orderCertifiedRequired, setOrderCertifiedRequired] = useState(false);
+  const [orderFile, setOrderFile] = useState<File | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   // Parent Matter linkage — a Proceeding may belong to a Matter (the usual
   // case) or stand alone. Either state is honest and shown plainly; there
@@ -137,6 +168,85 @@ export default function CaseWorkspaceDetailsPage() {
       cancelled = true;
     };
   }, [id]);
+
+  const fetchOrders = useCallback(() => {
+    fetch(`/api/cases/${id}/orders`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setOrders(data.orders);
+      })
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const handleRecordOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderDate || !orderSummary.trim() || isSavingOrder) return;
+    setIsSavingOrder(true);
+    setOrderError(null);
+    try {
+      let documentId: string | null = null;
+      if (orderFile) {
+        const headers: Record<string, string> = {
+          'x-tenant-key-version': 'v1',
+          'x-file-name': orderFile.name,
+          'x-case-id': id,
+        };
+        if (parentMatter) headers['x-matter-id'] = parentMatter.id;
+        const uploadRes = await fetch('/api/documents/upload', {
+          method: 'POST',
+          headers,
+          body: await orderFile.arrayBuffer(),
+        });
+        if (!uploadRes.ok) {
+          const body = await uploadRes.json().catch(() => null);
+          setOrderError(body?.message || 'Could not upload the order copy. Please try again.');
+          return;
+        }
+        const uploadBody = await uploadRes.json();
+        documentId = uploadBody.id;
+      }
+
+      const res = await fetch(`/api/cases/${id}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_date: orderDate,
+          summary: orderSummary.trim(),
+          court_note_id: orderCourtNoteId || null,
+          certified_copy_required: orderCertifiedRequired,
+          document_id: documentId,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setOrderError(body?.message || 'Could not record the order. Please try again.');
+        return;
+      }
+      setShowRecordOrder(false);
+      setOrderSummary('');
+      setOrderCourtNoteId('');
+      setOrderCertifiedRequired(false);
+      setOrderFile(null);
+      fetchOrders();
+    } catch {
+      setOrderError('Network error — the order was not recorded.');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleAdvanceCertifiedCopy = async (orderId: string, status: CertifiedCopyStatus) => {
+    const res = await fetch(`/api/cases/${id}/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ certified_copy_status: status }),
+    });
+    if (res.ok) fetchOrders();
+  };
 
   useEffect(() => {
     if (!cCase?.matter_id) {
@@ -386,10 +496,19 @@ export default function CaseWorkspaceDetailsPage() {
                 <div className="space-y-4">
                   {courtNotes.map((cn) => (
                     <div key={cn.id} className="border-l-2 border-[#F4EEE0] pl-4">
-                      <div className="flex flex-wrap items-baseline gap-x-2">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                         <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
                         <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{cn.stage}</span>
                         <span className="text-[10px] text-[#726B58]">· {cn.court_forum_display}</span>
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                            cn.hearing_outcome === 'CONDUCTED' || cn.hearing_outcome === 'ADJOURNED'
+                              ? 'bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9]'
+                              : 'bg-green-50 text-green-700 border border-green-200'
+                          }`}
+                        >
+                          {HEARING_OUTCOME_LABELS[cn.hearing_outcome]}
+                        </span>
                       </div>
                       <p className="text-xs text-[#3A3222] mt-1">{cn.note}</p>
                       {cn.next_actions && (
@@ -397,6 +516,153 @@ export default function CaseWorkspaceDetailsPage() {
                       )}
                       {cn.next_hearing_date && (
                         <p className="text-[10px] text-[#726B58] mt-1">Next hearing: {cn.next_hearing_date}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Court Orders — first-class records (Case Diary Phase 1
+                closure), not another free-text field. Connected to the
+                hearing they arose from via court_note_id, with an optional
+                uploaded copy and an explicit certified-copy requirement. */}
+            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Court Orders</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowRecordOrder((v) => !v)}
+                  className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
+                >
+                  {showRecordOrder ? 'Close' : '+ Record Order'}
+                </button>
+              </div>
+
+              {showRecordOrder && (
+                <form onSubmit={handleRecordOrder} className="mb-5 p-4 bg-[#FBF8F1]/50 border border-[#F4EEE0] rounded-xl space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="order-date" className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                        Order Date *
+                      </label>
+                      <input
+                        id="order-date"
+                        type="date"
+                        required
+                        value={orderDate}
+                        onChange={(e) => setOrderDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="order-hearing" className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                        From Hearing (optional)
+                      </label>
+                      <select
+                        id="order-hearing"
+                        value={orderCourtNoteId}
+                        onChange={(e) => setOrderCourtNoteId(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
+                      >
+                        <option value="">Not tied to a specific hearing</option>
+                        {courtNotes.map((cn) => (
+                          <option key={cn.id} value={cn.id}>
+                            {cn.hearing_date} — {cn.stage}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="order-summary" className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                      What Did the Order Say? *
+                    </label>
+                    <textarea
+                      id="order-summary"
+                      required
+                      value={orderSummary}
+                      onChange={(e) => setOrderSummary(e.target.value)}
+                      placeholder="e.g. Interim stay granted for four weeks."
+                      rows={2}
+                      className="w-full px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-medium text-[#3A3222]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="order-file" className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                      Upload Order Copy (optional)
+                    </label>
+                    <input
+                      id="order-file"
+                      type="file"
+                      onChange={(e) => setOrderFile(e.target.files?.[0] ?? null)}
+                      className="w-full text-xs font-medium text-[#3A3222] file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border file:border-[#E7DFC9] file:bg-white file:text-[10px] file:font-bold file:uppercase file:tracking-wider file:text-[#8A6D2F]"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-[#3A3222]">
+                    <input
+                      type="checkbox"
+                      checked={orderCertifiedRequired}
+                      onChange={(e) => setOrderCertifiedRequired(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    A certified copy is required for this order
+                  </label>
+                  {orderError && (
+                    <p role="alert" className="text-[10px] font-bold text-red-600">
+                      {orderError}
+                    </p>
+                  )}
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={!orderDate || !orderSummary.trim() || isSavingOrder}
+                      className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold uppercase rounded-lg"
+                    >
+                      {isSavingOrder ? 'Saving…' : 'Record Order'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {orders.length === 0 ? (
+                <p className="text-xs font-semibold text-[#6F5624]">No orders recorded yet for this Proceeding.</p>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map((order) => (
+                    <div key={order.id} className="border-l-2 border-[#F4EEE0] pl-4">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{order.order_date}</span>
+                        {order.certified_copy_required && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9] uppercase tracking-wider">
+                            Certified Copy: {CERTIFIED_COPY_STATUS_LABELS[order.certified_copy_status]}
+                          </span>
+                        )}
+                        {order.document_id && (
+                          <Link
+                            href={`/documents/${order.document_id}`}
+                            className="text-[9px] font-bold text-[#8A6D2F] uppercase tracking-wider hover:underline"
+                          >
+                            View Copy →
+                          </Link>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#3A3222] mt-1">{order.summary}</p>
+                      {order.certified_copy_required && order.certified_copy_status !== 'RECEIVED' && (
+                        <label className="mt-1.5 flex items-center gap-2">
+                          <span className="text-[9px] font-bold text-[#726B58] uppercase tracking-widest">Update status:</span>
+                          <select
+                            value={order.certified_copy_status}
+                            onChange={(e) => handleAdvanceCertifiedCopy(order.id, e.target.value as CertifiedCopyStatus)}
+                            className="px-2 py-1 bg-white border border-[#E7DFC9] rounded text-[10px] font-semibold text-[#3A3222] outline-none focus:border-[#8A6D2F]"
+                          >
+                            {CERTIFIED_COPY_STATUSES.filter((s) => s !== 'NOT_REQUIRED').map((s) => (
+                              <option key={s} value={s}>
+                                {CERTIFIED_COPY_STATUS_LABELS[s]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       )}
                     </div>
                   ))}

@@ -60,6 +60,64 @@ export const COURT_NOTE_VERIFICATION_STATUSES = [
 export type CourtNoteVerificationStatus = (typeof COURT_NOTE_VERIFICATION_STATUSES)[number];
 
 /**
+ * Case Diary Phase 1 closure: what happened at a hearing, as structured
+ * data an advocate can rely on and the Proceeding's status can be derived
+ * from — never something only inferable by reading the free-text note.
+ */
+export const HEARING_OUTCOMES = [
+  'CONDUCTED',
+  'ADJOURNED',
+  'DISPOSED',
+  'DISMISSED',
+  'WITHDRAWN',
+  'SETTLED',
+  'RESERVED_FOR_ORDERS',
+  'JUDGMENT_PRONOUNCED',
+] as const;
+export type HearingOutcome = (typeof HEARING_OUTCOMES)[number];
+
+export const HEARING_OUTCOME_LABELS: Record<HearingOutcome, string> = {
+  CONDUCTED: 'Hearing Conducted',
+  ADJOURNED: 'Adjourned',
+  DISPOSED: 'Disposed',
+  DISMISSED: 'Dismissed',
+  WITHDRAWN: 'Withdrawn',
+  SETTLED: 'Settled',
+  RESERVED_FOR_ORDERS: 'Reserved for Orders',
+  JUDGMENT_PRONOUNCED: 'Judgment Pronounced',
+};
+
+// Outcomes that conclude this Proceeding at this forum (an appeal, if any,
+// is always a separate, new Proceeding — see relationship_to_prior). Used
+// to decide whether the Proceeding's own status should move to DISPOSED;
+// it does NOT close the parent Matter, which may have other open
+// Proceedings and is only ever closed by an explicit, guarded Matter
+// Closure action.
+export const TERMINAL_HEARING_OUTCOMES: readonly HearingOutcome[] = [
+  'DISPOSED',
+  'DISMISSED',
+  'WITHDRAWN',
+  'SETTLED',
+  'JUDGMENT_PRONOUNCED',
+];
+
+export function isTerminalHearingOutcome(outcome: HearingOutcome): boolean {
+  return TERMINAL_HEARING_OUTCOMES.includes(outcome);
+}
+
+/**
+ * Maps a hearing outcome onto LegalCase.status's existing four-value enum
+ * (PENDING/HEARING/DISPOSED/APPEAL) rather than widening that enum — the
+ * precise reason a Proceeding concluded (dismissed vs. withdrawn vs.
+ * settled vs. judgment) stays fully recorded on the immutable CourtNote row
+ * itself; the coarser Proceeding-wide status just needs to correctly land
+ * on DISPOSED for any of them.
+ */
+export function legalCaseStatusForOutcome(outcome: HearingOutcome): 'PENDING' | 'HEARING' | 'DISPOSED' | 'APPEAL' {
+  return isTerminalHearingOutcome(outcome) ? 'DISPOSED' : 'HEARING';
+}
+
+/**
  * The one string every future reader (list views, search, templates) should
  * show — never lossy for 'OTHER', never needs a caller-side CASE expression.
  */

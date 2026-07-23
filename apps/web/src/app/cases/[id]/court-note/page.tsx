@@ -3,7 +3,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { COURT_FORUM_TYPES, COURT_FORUM_LABELS, type CourtForumType } from '@/lib/domain/court-note';
+import {
+  COURT_FORUM_TYPES,
+  COURT_FORUM_LABELS,
+  HEARING_OUTCOMES,
+  HEARING_OUTCOME_LABELS,
+  type CourtForumType,
+  type HearingOutcome,
+} from '@/lib/domain/court-note';
 
 const STAGE_SUGGESTIONS = [
   'Admission',
@@ -103,6 +110,7 @@ export default function CourtNotePage() {
   const [courtForumType, setCourtForumType] = useState<CourtForumType>('HIGH_COURT');
   const [courtForumOther, setCourtForumOther] = useState('');
   const [stage, setStage] = useState('');
+  const [hearingOutcome, setHearingOutcome] = useState<HearingOutcome>('CONDUCTED');
   const [note, setNote] = useState('');
   const [nextActions, setNextActions] = useState('');
   const [inputMethod, setInputMethod] = useState<'MANUAL' | 'HYBRID'>('MANUAL');
@@ -161,6 +169,7 @@ export default function CourtNotePage() {
           court_forum_type: courtForumType,
           court_forum_other: courtForumType === 'OTHER' ? courtForumOther.trim() : null,
           stage: stage.trim(),
+          hearing_outcome: hearingOutcome,
           note: note.trim(),
           next_actions: nextActions.trim() || null,
           input_method: inputMethod,
@@ -290,6 +299,24 @@ export default function CourtNotePage() {
                 <option key={s} value={s} />
               ))}
             </datalist>
+          </div>
+
+          <div>
+            <label htmlFor="hearing-outcome" className="block text-[11px] font-bold text-[#726B58] uppercase tracking-widest mb-1.5">
+              What Happened *
+            </label>
+            <select
+              id="hearing-outcome"
+              value={hearingOutcome}
+              onChange={(e) => setHearingOutcome(e.target.value as HearingOutcome)}
+              className="w-full min-h-[52px] px-4 bg-white border border-[#E7DFC9] rounded-xl outline-none focus:border-[#8A6D2F] text-base font-semibold text-[#3A3222]"
+            >
+              {HEARING_OUTCOMES.map((outcome) => (
+                <option key={outcome} value={outcome}>
+                  {HEARING_OUTCOME_LABELS[outcome]}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

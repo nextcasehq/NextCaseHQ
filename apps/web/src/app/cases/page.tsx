@@ -6,7 +6,14 @@ import BrandBackground from '@/components/BrandBackground';
 import EmptyState from '@/components/EmptyState';
 import { AuthOrReviewGate } from '@/components/ReviewModeNotice';
 import CourtBadge from '@/components/CourtBadge';
-import { COURT_FORUM_TYPES, COURT_FORUM_LABELS, type CourtForumType } from '@/lib/domain/court-note';
+import {
+  COURT_FORUM_TYPES,
+  COURT_FORUM_LABELS,
+  HEARING_OUTCOMES,
+  HEARING_OUTCOME_LABELS,
+  type CourtForumType,
+  type HearingOutcome,
+} from '@/lib/domain/court-note';
 import { classifyCourtForumType } from '@/lib/domain/court-forum-colors';
 
 function todayISO(): string {
@@ -65,6 +72,7 @@ function CasesChamberContent() {
   // duplicate entry, satisfying "the diary feeds the matter."
   const [activeHearingCaseId, setActiveHearingCaseId] = useState<string | null>(null);
   const [hearingStage, setHearingStage] = useState('');
+  const [hearingOutcome, setHearingOutcome] = useState<HearingOutcome>('CONDUCTED');
   const [hearingNextDate, setHearingNextDate] = useState('');
   const [hearingNote, setHearingNote] = useState('');
   const [hearingCourtForumType, setHearingCourtForumType] = useState<CourtForumType>('OTHER');
@@ -113,6 +121,7 @@ function CasesChamberContent() {
   const openHearingForm = (c: LegalCase) => {
     setActiveHearingCaseId(c.id);
     setHearingStage(c.stage || '');
+    setHearingOutcome('CONDUCTED');
     setHearingNextDate('');
     setHearingNote('');
     setHearingCourtForumType(classifyCourtForumType(c.court));
@@ -145,6 +154,7 @@ function CasesChamberContent() {
           court_forum_type: hearingCourtForumType,
           court_forum_other: hearingCourtForumType === 'OTHER' ? hearingCourtForumOther.trim() : null,
           stage: hearingStage.trim(),
+          hearing_outcome: hearingOutcome,
           note: hearingNote.trim(),
           next_actions: hearingNextActions.trim() || null,
         }),
@@ -328,6 +338,23 @@ function CasesChamberContent() {
                       placeholder="e.g. Arguments"
                       className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
                     />
+                  </div>
+                  <div>
+                    <label htmlFor={`hearing-outcome-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">
+                      What Happened *
+                    </label>
+                    <select
+                      id={`hearing-outcome-${c.id}`}
+                      value={hearingOutcome}
+                      onChange={(e) => setHearingOutcome(e.target.value as HearingOutcome)}
+                      className="w-full px-3 py-2 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-xs font-semibold text-[#3A3222]"
+                    >
+                      {HEARING_OUTCOMES.map((outcome) => (
+                        <option key={outcome} value={outcome}>
+                          {HEARING_OUTCOME_LABELS[outcome]}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label htmlFor={`hearing-next-date-${c.id}`} className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">

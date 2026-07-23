@@ -1373,6 +1373,74 @@ BEGIN
 END
 $$;
 
+-- 9n. CourtNote — hearing_outcome. Case Diary Phase 1 closure: what
+-- happened at a hearing (conducted / adjourned / disposed / dismissed /
+-- withdrawn / settled / reserved for orders / judgment pronounced) was
+-- previously only ever inferable from the free-text note, never structured
+-- data an advocate could rely on or a query could filter by. NOT NULL with
+-- a DEFAULT so this additive column backfills every pre-existing row as
+-- 'CONDUCTED' (the neutral, always-true-for-a-past-hearing default)
+-- without a table rewrite; the API layer requires every NEW submission to
+-- choose one explicitly (see POST /api/cases/[id]/court-notes) rather than
+-- silently falling back to the default going forward.
+ALTER TABLE "CourtNote" ADD COLUMN IF NOT EXISTS "hearing_outcome" TEXT NOT NULL DEFAULT 'CONDUCTED';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'courtnote_hearing_outcome_check'
+    ) THEN
+        ALTER TABLE "CourtNote" ADD CONSTRAINT courtnote_hearing_outcome_check
+            CHECK ("hearing_outcome" IN (
+                'CONDUCTED', 'ADJOURNED', 'DISPOSED', 'DISMISSED', 'WITHDRAWN',
+                'SETTLED', 'RESERVED_FOR_ORDERS', 'JUDGMENT_PRONOUNCED'
+            ));
+    END IF;
+END
+$$;
+
+-- 9o. CourtOrder — court orders as first-class records (Case Diary Phase 1
+-- closure), not another free-text field. court_note_id links an order back
+-- to the specific hearing it issued from (nullable: an advocate may record
+-- an order received outside a hearing, e.g. by post, with no Court Note of
+-- its own); matter_id is denormalized from LegalCase.matter_id at insert
+-- time, same rationale as CourtNote.matter_id. document_id points at the
+-- real DocumentEnvelope created via the existing POST /api/documents/upload
+-- pipeline when a scanned/photographed order copy is attached — no separate
+-- storage path. Unlike CourtNote this is NOT append-only: certified_copy_
+-- status is expected to change over time as the advocate applies for and
+-- later receives a certified copy, so UPDATE stays granted (the API layer,
+-- not a DB grant, restricts which columns a PATCH may touch).
+CREATE TABLE IF NOT EXISTS "CourtOrder" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+    "case_id" UUID NOT NULL REFERENCES "LegalCase"("id"),
+    "matter_id" UUID REFERENCES "Matter"("id"),
+    "court_note_id" UUID REFERENCES "CourtNote"("id"),
+    "author_user_id" UUID NOT NULL REFERENCES "User"("id"),
+    "order_date" TEXT NOT NULL,
+    "summary" TEXT NOT NULL,
+    "document_id" UUID REFERENCES "DocumentEnvelope"("id"),
+    "certified_copy_required" BOOLEAN NOT NULL DEFAULT false,
+    "certified_copy_status" TEXT NOT NULL DEFAULT 'NOT_REQUIRED',
+    "created_at" TIMESTAMPTZ DEFAULT now(),
+    "updated_at" TIMESTAMPTZ DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'courtorder_certified_copy_status_check'
+    ) THEN
+        ALTER TABLE "CourtOrder" ADD CONSTRAINT courtorder_certified_copy_status_check
+            CHECK ("certified_copy_status" IN ('NOT_REQUIRED', 'PENDING', 'APPLIED_FOR', 'RECEIVED'));
+    END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_courtorder_case ON "CourtOrder"("case_id");
+CREATE INDEX IF NOT EXISTS idx_courtorder_matter ON "CourtOrder"("matter_id");
+
 -- Activation of RLS
 -- FORCE is required in addition to ENABLE: without it, Postgres exempts the
 -- table owner from RLS policies, and the application's runtime role is
@@ -1431,6 +1499,8 @@ ALTER TABLE "MatterAuditEvent" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "MatterAuditEvent" FORCE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentDraft" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "DocumentDraft" FORCE ROW LEVEL SECURITY;
+ALTER TABLE "CourtOrder" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "CourtOrder" FORCE ROW LEVEL SECURITY;
 
 -- Security Isolation Policies
 -- (dropped and recreated so this script is safe to re-run against an
@@ -1539,6 +1609,10 @@ DROP POLICY IF EXISTS tenant_isolation_policy ON "DocumentDraft";
 CREATE POLICY tenant_isolation_policy ON "DocumentDraft"
     USING ("tenant_id" = get_active_session_tenant());
 
+DROP POLICY IF EXISTS tenant_isolation_policy ON "CourtOrder";
+CREATE POLICY tenant_isolation_policy ON "CourtOrder"
+    USING ("tenant_id" = get_active_session_tenant());
+
 -- High-performance Target Indexes
 CREATE INDEX IF NOT EXISTS idx_user_tenant ON "User"("tenant_id");
 CREATE INDEX IF NOT EXISTS idx_legalcase_tenant_state ON "LegalCase"("tenant_id", "country_code");
@@ -1636,6 +1710,12 @@ REVOKE UPDATE, DELETE ON "CourtNote" FROM nextcase_app;
 -- a hearing has been reminded-for, that fact never changes (Product
 -- Direction, Milestone 3).
 REVOKE UPDATE, DELETE ON "MatterPreparationReminder" FROM nextcase_app;
+
+-- CourtOrder must never disappear once recorded (same rule as CourtNote),
+-- but unlike CourtNote it IS mutable: certified_copy_status legitimately
+-- changes as the advocate applies for and later receives a certified copy
+-- (see PATCH /api/cases/[id]/orders/[orderId]). Only DELETE is revoked.
+REVOKE DELETE ON "CourtOrder" FROM nextcase_app;
 
 -- MatterClosureRecord, MatterReopeningRecord, and MatterAuditEvent are the
 -- same kind of append-only ledger (Production Matter Register Foundation):

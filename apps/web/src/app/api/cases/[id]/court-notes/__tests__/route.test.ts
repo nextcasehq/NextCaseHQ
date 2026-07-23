@@ -36,6 +36,7 @@ const VALID_PAYLOAD = {
   next_hearing_date: '2026-03-15',
   court_forum_type: 'HIGH_COURT',
   stage: 'Arguments',
+  hearing_outcome: 'CONDUCTED',
   note: 'Matter argued in part; adjourned for continuation.',
   next_actions: 'Prepare rejoinder written submissions.',
 };
@@ -614,5 +615,56 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
     expect(proceedingItem?.render()).toContain('next hearing 2026-03-15');
     const chronologyItem = items.find((i) => i.sourceType === 'CHRONOLOGY_ENTRY');
     expect(chronologyItem?.render()).toContain('Next hearing: 2026-03-15');
+  });
+
+  describe('hearing_outcome — structured, first-class (Case Diary Phase 1 closure)', () => {
+    test('rejects a Court Note with no hearing_outcome', async () => {
+      const caseId = await createCase(TENANT_A);
+      const { hearing_outcome: _omit, ...payloadWithNoOutcome } = VALID_PAYLOAD as typeof VALID_PAYLOAD & {
+        hearing_outcome?: string;
+      };
+      const res = await POST(
+        buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, payloadWithNoOutcome),
+        routeParams(caseId)
+      );
+      expect(res.status).toBe(400);
+    });
+
+    test.each([
+      ['CONDUCTED', 'HEARING'],
+      ['ADJOURNED', 'HEARING'],
+      ['RESERVED_FOR_ORDERS', 'HEARING'],
+      ['DISPOSED', 'DISPOSED'],
+      ['DISMISSED', 'DISPOSED'],
+      ['WITHDRAWN', 'DISPOSED'],
+      ['SETTLED', 'DISPOSED'],
+      ['JUDGMENT_PRONOUNCED', 'DISPOSED'],
+    ])('hearing_outcome=%s moves the Proceeding to status=%s', async (outcome, expectedStatus) => {
+      const caseId = await createCase(TENANT_A);
+      const res = await POST(
+        buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, { ...VALID_PAYLOAD, hearing_outcome: outcome }),
+        routeParams(caseId)
+      );
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.court_note.hearing_outcome).toBe(outcome);
+
+      const caseRows = await db.execute<{ status: string }>(TENANT_A, `SELECT status FROM "LegalCase" WHERE id = $1`, [caseId]);
+      expect(caseRows[0].status).toBe(expectedStatus);
+    });
+
+    test('a terminal outcome on one Proceeding does not close the parent Matter', async () => {
+      const matterId = await createMatter(TENANT_A);
+      const caseId = await createCase(TENANT_A, matterId);
+      await setCurrentProceeding(TENANT_A, matterId, caseId);
+
+      await POST(
+        buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, { ...VALID_PAYLOAD, hearing_outcome: 'DISPOSED' }),
+        routeParams(caseId)
+      );
+
+      const matterRows = await db.execute<{ status: string }>(TENANT_A, `SELECT status FROM "Matter" WHERE id = $1`, [matterId]);
+      expect(matterRows[0].status).toBe('ACTIVE');
+    });
   });
 });

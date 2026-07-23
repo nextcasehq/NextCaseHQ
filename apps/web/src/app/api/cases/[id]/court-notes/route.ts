@@ -10,6 +10,9 @@ import {
   COURT_NOTE_INPUT_METHODS,
   COURT_NOTE_SOURCES,
   COURT_NOTE_VERIFICATION_STATUSES,
+  HEARING_OUTCOMES,
+  HEARING_OUTCOME_LABELS,
+  legalCaseStatusForOutcome,
   resolveCourtForumDisplay,
 } from '@/lib/domain/court-note';
 
@@ -50,6 +53,7 @@ const CourtForumTypeSchema = z.enum(COURT_FORUM_TYPES);
 const InputMethodSchema = z.enum(COURT_NOTE_INPUT_METHODS);
 const SourceSchema = z.enum(COURT_NOTE_SOURCES);
 const VerificationStatusSchema = z.enum(COURT_NOTE_VERIFICATION_STATUSES);
+const HearingOutcomeSchema = z.enum(HEARING_OUTCOMES);
 
 interface CourtNoteRow {
   id: string;
@@ -63,6 +67,7 @@ interface CourtNoteRow {
   court_forum_other: string | null;
   court_forum_display: string;
   stage: string;
+  hearing_outcome: string;
   note: string;
   next_actions: string | null;
   input_method: string;
@@ -76,8 +81,8 @@ interface CourtNoteRow {
 }
 
 const COURT_NOTE_COLUMNS = `id, tenant_id, case_id, matter_id, author_user_id, hearing_date, next_hearing_date,
-                            court_forum_type, court_forum_other, court_forum_display, stage, note, next_actions,
-                            input_method, source, verification_status, confirmed_by, confirmed_at,
+                            court_forum_type, court_forum_other, court_forum_display, stage, hearing_outcome, note,
+                            next_actions, input_method, source, verification_status, confirmed_by, confirmed_at,
                             previous_hearing_date, previous_stage, created_at`;
 
 const CreateCourtNoteSchema = z
@@ -87,6 +92,10 @@ const CreateCourtNoteSchema = z
     court_forum_type: CourtForumTypeSchema,
     court_forum_other: z.string().max(300).nullable().optional(),
     stage: z.string().min(1).max(300),
+    // Required, no default: every new Court Note must explicitly state what
+    // happened (the DB column's DEFAULT 'CONDUCTED' exists only to backfill
+    // pre-existing rows, never to let a new submission skip this).
+    hearing_outcome: HearingOutcomeSchema,
     note: z.string().min(1).max(10000),
     next_actions: z.string().max(5000).nullable().optional(),
     input_method: InputMethodSchema.optional().default('MANUAL'),
@@ -246,6 +255,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       latest.hearing_date === input.hearing_date &&
       (latest.next_hearing_date ?? null) === (input.next_hearing_date ?? null) &&
       latest.stage === input.stage &&
+      latest.hearing_outcome === input.hearing_outcome &&
       latest.court_forum_display === courtForumDisplay &&
       latest.note === input.note
     ) {
@@ -258,6 +268,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const eventDescriptionParts = [
       `Court Note — ${input.stage} (${courtForumDisplay}): ${input.note}`,
     ];
+    if (input.hearing_outcome !== 'CONDUCTED') {
+      eventDescriptionParts.push(`Outcome: ${HEARING_OUTCOME_LABELS[input.hearing_outcome]}.`);
+    }
     if (input.next_hearing_date) {
       eventDescriptionParts.push(`Next hearing: ${input.next_hearing_date}`);
     }
@@ -265,6 +278,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       eventDescriptionParts.push(`Next: ${input.next_actions.trim()}`);
     }
     const eventDescription = eventDescriptionParts.join(' ');
+    // Terminal outcomes (disposed/dismissed/withdrawn/settled/judgment
+    // pronounced) conclude this Proceeding at this forum — reflected on
+    // LegalCase.status alone, never on the parent Matter's own status,
+    // which stays an explicit, guarded Matter Closure action.
+    const legalCaseStatus = legalCaseStatusForOutcome(input.hearing_outcome);
 
     // Single transaction: insert the immutable Court Note, refresh the
     // Proceeding's current hearing_date/stage/court, and — only when the
@@ -280,10 +298,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
        inserted_note AS (
          INSERT INTO "CourtNote" (
            tenant_id, case_id, matter_id, author_user_id, hearing_date, next_hearing_date,
-           court_forum_type, court_forum_other, court_forum_display, stage, note, next_actions, input_method,
-           source, verification_status, confirmed_by, confirmed_at, previous_hearing_date, previous_stage
+           court_forum_type, court_forum_other, court_forum_display, stage, hearing_outcome, note, next_actions,
+           input_method, source, verification_status, confirmed_by, confirmed_at, previous_hearing_date, previous_stage
          )
-         SELECT $2, target_case.id, target_case.matter_id, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+         SELECT $2, target_case.id, target_case.matter_id, $3, $4, $5, $6, $7, $8, $9, $18, $10, $11, $12,
                 $14, $15, $3, now(), $16, $17
          FROM target_case
          RETURNING ${COURT_NOTE_COLUMNS}
@@ -300,8 +318,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
          -- that has now already happened. The hearing that just occurred is
          -- never lost: it's permanently preserved on this same CourtNote row
          -- (hearing_date/previous_hearing_date/previous_stage above).
+         -- $19 is the Proceeding-wide status derived from hearing_outcome
+         -- (legalCaseStatusForOutcome) — DISPOSED for any terminal outcome,
+         -- HEARING otherwise; never touches the parent Matter's own status.
          UPDATE "LegalCase"
-         SET hearing_date = $5, stage = $9, court = $8, updated_at = now()
+         SET hearing_date = $5, stage = $9, court = $8, status = $19, updated_at = now()
          WHERE id = (SELECT id FROM target_case)
          RETURNING id
        ),
@@ -352,6 +373,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         verificationStatus,
         caseRows[0].hearing_date,
         caseRows[0].stage,
+        input.hearing_outcome,
+        legalCaseStatus,
       ]
     );
 
