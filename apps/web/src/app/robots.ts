@@ -23,7 +23,8 @@ export default function robots(): MetadataRoute.Robots {
         '/contact',
         '/privacy',
         '/terms',
-        '/help'
+        '/help',
+        '/legal-resources'
       ],
       disallow: [
         '/_next/',
