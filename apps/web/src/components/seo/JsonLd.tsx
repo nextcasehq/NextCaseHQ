@@ -24,10 +24,6 @@ export default function JsonLd({ type, data = {} }: JsonLdProps) {
       'name': 'NextCaseHQ',
       'url': baseUrl,
       'logo': `${baseUrl}/assets/logo.png`,
-      'sameAs': [
-        'https://twitter.com',
-        'https://linkedin.com'
-      ],
       ...data
     },
     SoftwareApplication: {
@@ -38,8 +34,8 @@ export default function JsonLd({ type, data = {} }: JsonLdProps) {
       'applicationCategory': 'BusinessApplication, LegalTech',
       'offers': {
         '@type': 'Offer',
-        'price': '0',
-        'priceCurrency': 'INR'
+        'price': '49',
+        'priceCurrency': 'USD'
       },
       ...data
     },
