@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
+import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
 import MatterClosurePanel from './MatterClosurePanel';
@@ -185,6 +186,7 @@ export default function MatterDetailsChamberPage() {
   const [proceedingCourt, setProceedingCourt] = useState('');
   const [proceedingPriorId, setProceedingPriorId] = useState('');
   const [proceedingRelationship, setProceedingRelationship] = useState('');
+  const [showProceedingCourtPicker, setShowProceedingCourtPicker] = useState(false);
 
   const [showEventForm, setShowEventForm] = useState(false);
   const [eventDate, setEventDate] = useState('');
@@ -883,13 +885,35 @@ export default function MatterDetailsChamberPage() {
                     <option value="US">US (FRCP Compliant)</option>
                     <option value="UK">UK (CPR Compliant)</option>
                   </select>
-                  <input
-                    type="text"
-                    value={proceedingCourt}
-                    onChange={(e) => setProceedingCourt(e.target.value)}
-                    placeholder="Court / Forum"
-                    className="w-full px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium md:col-span-2"
-                  />
+                  <div className="md:col-span-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={proceedingCourt}
+                        onChange={(e) => setProceedingCourt(e.target.value)}
+                        placeholder="Court / Forum"
+                        className="flex-1 px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowProceedingCourtPicker((v) => !v)}
+                        className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:text-[#6F5624]"
+                      >
+                        {showProceedingCourtPicker ? 'Close' : 'Find court →'}
+                      </button>
+                    </div>
+                    {showProceedingCourtPicker && (
+                      <div className="mt-3">
+                        <CourtPicker
+                          onSelect={(name) => {
+                            setProceedingCourt(name);
+                            setShowProceedingCourtPicker(false);
+                          }}
+                          onCancel={() => setShowProceedingCourtPicker(false)}
+                        />
+                      </div>
+                    )}
+                  </div>
                   {proceedings.length > 0 && (
                     <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-[#E7DFC9]/60 mt-1">
                       <div className="md:col-span-2">
