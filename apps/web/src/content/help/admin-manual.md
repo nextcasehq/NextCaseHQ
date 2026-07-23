@@ -28,10 +28,13 @@ law firms, built as a **pnpm/Turborepo monorepo**:
 - **`apps/workers`** — a minimal TypeScript scaffold (`tsc` build, no
   runtime dependencies of consequence). It is not a running background-job
   service today; nothing in `apps/web` currently depends on it at runtime.
-- **`packages/*`** — shared workspace packages (`country-packs`, `crypto`,
-  `ndl`, `observability`, `workflow-engine`, `ai-kernel`). Some are consumed
-  by `apps/web` (`@nextcase/country-packs`, `@nextcase/ndl`); others are
-  scaffolding not wired into the running app.
+- **`packages/*`** — shared workspace packages: `country-packs` and `ndl`,
+  both consumed by `apps/web` (`@nextcase/country-packs`, `@nextcase/ndl`).
+  A number of unused scaffold packages (`ai-kernel`, `ai-registry`,
+  `crypto`, `event-bus`, `legal-kernel`, `messaging`, `observability`,
+  `prompt-library`, `qa`, `search-engine`, `workflow-engine`,
+  `design-system-ndl`) were removed from the workspace as part of release
+  cleanup — none were ever imported by the running app.
 
 The system's real infrastructure dependencies are:
 
