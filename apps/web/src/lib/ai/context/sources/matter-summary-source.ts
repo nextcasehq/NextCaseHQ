@@ -12,6 +12,8 @@ interface MatterSummaryRow {
   opposing_party_name: string | null;
   court: string | null;
   description: string | null;
+  current_stage: string | null;
+  next_hearing_date: string | null;
 }
 
 function renderMatterSummary(row: MatterSummaryRow): string {
@@ -20,6 +22,13 @@ function renderMatterSummary(row: MatterSummaryRow): string {
   if (row.matter_number) lines.push(`Matter number: ${row.matter_number}`);
   lines.push(`Engagement type: ${row.engagement_type}`);
   lines.push(`Status: ${row.status}`);
+  // Kept in sync with the Matter's current Proceeding by
+  // /api/cases/[id]/court-notes on every Court Note save — this is the
+  // Digital Case File's live litigation state, not a point-in-time snapshot,
+  // so AI answers about "where does this matter stand" reflect the latest
+  // hearing rather than only what's in the chronology/proceedings text.
+  if (row.current_stage) lines.push(`Current stage: ${row.current_stage}`);
+  if (row.next_hearing_date) lines.push(`Next hearing: ${row.next_hearing_date}`);
   if (row.practice_area) lines.push(`Practice area: ${row.practice_area}`);
   if (row.client_name) lines.push(`Client: ${row.client_name}`);
   if (row.opposing_party_name) lines.push(`Opposing party: ${row.opposing_party_name}`);
@@ -42,7 +51,8 @@ export const matterSummarySource: ContextSource = {
     const rows = await db.execute<MatterSummaryRow>(
       tenantId,
       `SELECT m.title, m.matter_number, m.engagement_type, m.practice_area, m.status,
-              c.name AS client_name, m.opposing_party_name, m.court, m.description
+              c.name AS client_name, m.opposing_party_name, m.court, m.description,
+              m.current_stage, m.next_hearing_date::text
        FROM "Matter" m LEFT JOIN "Client" c ON c.id = m.client_id
        WHERE m.id = $1`,
       [matterId]

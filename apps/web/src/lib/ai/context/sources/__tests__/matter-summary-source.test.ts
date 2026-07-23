@@ -59,6 +59,28 @@ describe('matterSummarySource', () => {
     expect(items[0].render()).toContain('Client: Acme Corp');
   });
 
+  test('includes current_stage and next_hearing_date when set (the Matter\'s live litigation state)', async () => {
+    const rows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title, current_stage, next_hearing_date) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [TENANT_A, 'Matter With a Live Stage', 'Plaintiff Evidence', '2026-08-28']
+    );
+    const items = await matterSummarySource.fetch(TENANT_A, rows[0].id);
+    expect(items[0].render()).toContain('Current stage: Plaintiff Evidence');
+    expect(items[0].render()).toContain('Next hearing: 2026-08-28');
+  });
+
+  test('omits Current stage / Next hearing lines when neither is set', async () => {
+    const rows = await db.execute<{ id: string }>(
+      TENANT_A,
+      `INSERT INTO "Matter" (tenant_id, title) VALUES ($1, $2) RETURNING id`,
+      [TENANT_A, 'Matter With No Stage Yet']
+    );
+    const items = await matterSummarySource.fetch(TENANT_A, rows[0].id);
+    expect(items[0].render()).not.toContain('Current stage:');
+    expect(items[0].render()).not.toContain('Next hearing:');
+  });
+
   test('returns an empty array for a matter belonging to another tenant (RLS, not a leak)', async () => {
     const rows = await db.execute<{ id: string }>(
       TENANT_B,

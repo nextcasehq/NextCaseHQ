@@ -5,6 +5,7 @@ import Link from 'next/link';
 import BrandBackground from '@/components/BrandBackground';
 import EmptyState from '@/components/EmptyState';
 import { AuthOrReviewGate } from '@/components/ReviewModeNotice';
+import CourtBadge from '@/components/CourtBadge';
 
 interface LegalCase {
   id: string;
@@ -339,9 +340,13 @@ function CasesChamberContent() {
                 </div>
 
                 <div className="space-y-1.5 text-xs text-[#6F5624] font-medium">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-[9px] text-[#726B58] uppercase font-bold tracking-wider">Forum:</span>
-                    <span className="text-[#4A4130] text-right truncate max-w-[70%] font-semibold">{c.court || 'N/A'}</span>
+                    {c.court ? (
+                      <CourtBadge court={c.court} />
+                    ) : (
+                      <span className="text-[#4A4130] text-right font-semibold">N/A</span>
+                    )}
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[9px] text-[#726B58] uppercase font-bold tracking-wider">Judge:</span>

@@ -6,6 +6,7 @@ import BrandBackground from '@/components/BrandBackground';
 import EmptyState from '@/components/EmptyState';
 import { CourtPicker } from '@/components/ecourts/CourtPicker';
 import { AuthOrReviewGate, ReviewModeActionNotice } from '@/components/ReviewModeNotice';
+import CourtBadge from '@/components/CourtBadge';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 
 interface Matter {
@@ -482,9 +483,14 @@ function MattersChamberContent() {
               <h2 className="font-bold text-base text-[#111111] group-hover:text-[#8A6D2F] transition-colors mb-1">
                 {matter.title}
               </h2>
-              <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider mb-3">
+              <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider mb-2">
                 Client: {matter.client_name || 'Not yet linked'}
               </p>
+              {matter.court && (
+                <div className="mb-3">
+                  <CourtBadge court={matter.court} />
+                </div>
+              )}
 
               <p className="text-xs text-[#6F5624] leading-relaxed font-medium mb-4 flex-1">
                 {matter.practice_area || 'No practice area set.'}

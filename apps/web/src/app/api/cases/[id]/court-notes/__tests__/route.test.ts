@@ -91,6 +91,22 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
     return rows[0].id;
   }
 
+  async function setCurrentProceeding(tenantId: string, matterId: string, caseId: string): Promise<void> {
+    await db.execute(tenantId, `UPDATE "Matter" SET current_proceeding_id = $2 WHERE id = $1`, [matterId, caseId]);
+  }
+
+  async function readMatterHeader(
+    tenantId: string,
+    matterId: string
+  ): Promise<{ current_stage: string | null; next_hearing_date: string | null }> {
+    const rows = await db.execute<{ current_stage: string | null; next_hearing_date: string | null }>(
+      tenantId,
+      `SELECT current_stage, next_hearing_date::text FROM "Matter" WHERE id = $1`,
+      [matterId]
+    );
+    return rows[0];
+  }
+
   test('POST rejects with no session (401)', async () => {
     const caseId = await createCase(TENANT_A);
     const res = await POST(buildRequest('POST', {}, VALID_PAYLOAD), routeParams(caseId));
@@ -355,6 +371,80 @@ describe('GET/POST /api/cases/[id]/court-notes — Court Note Quick Entry Founda
     );
     expect(events).toHaveLength(1);
     expect(events[0].description).not.toContain('Next hearing:');
+  });
+
+  test('POST on the Matter\'s current Proceeding refreshes Matter.current_stage/next_hearing_date', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    await setCurrentProceeding(TENANT_A, matterId, caseId);
+
+    const before = await readMatterHeader(TENANT_A, matterId);
+    expect(before.current_stage).toBeNull();
+    expect(before.next_hearing_date).toBeNull();
+
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+
+    const after = await readMatterHeader(TENANT_A, matterId);
+    expect(after.current_stage).toBe('Arguments');
+    expect(after.next_hearing_date).toBe('2026-03-15');
+  });
+
+  test('POST on a Proceeding that is NOT the Matter\'s current_proceeding_id leaves Matter.current_stage/next_hearing_date untouched', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const currentCaseId = await createCase(TENANT_A, matterId);
+    const priorCaseId = await createCase(TENANT_A, matterId);
+    await setCurrentProceeding(TENANT_A, matterId, currentCaseId);
+    // Seed a real current_stage/next_hearing_date on the Matter first, via
+    // its actual current Proceeding, so we can prove a note on the *other*
+    // (non-current) Proceeding doesn't overwrite it with stale text.
+    await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(currentCaseId));
+    const before = await readMatterHeader(TENANT_A, matterId);
+    expect(before).toMatchObject({ current_stage: 'Arguments', next_hearing_date: '2026-03-15' });
+
+    const res = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { ...VALID_PAYLOAD, stage: 'Superseded Stage', next_hearing_date: '2099-01-01' }
+      ),
+      routeParams(priorCaseId)
+    );
+    expect(res.status).toBe(201);
+
+    const after = await readMatterHeader(TENANT_A, matterId);
+    expect(after).toMatchObject({ current_stage: 'Arguments', next_hearing_date: '2026-03-15' });
+  });
+
+  test('POST with no next_hearing_date clears Matter.next_hearing_date, not just the Proceeding\'s', async () => {
+    const matterId = await createMatter(TENANT_A);
+    const caseId = await createCase(TENANT_A, matterId);
+    await setCurrentProceeding(TENANT_A, matterId, caseId);
+    await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+
+    const { next_hearing_date: _omit, ...payloadWithNoNextHearing } = VALID_PAYLOAD as typeof VALID_PAYLOAD & {
+      next_hearing_date?: string;
+    };
+    const res = await POST(
+      buildRequest(
+        'POST',
+        { cookie: await sessionCookieHeader(TENANT_A) },
+        { ...payloadWithNoNextHearing, hearing_date: '2026-03-15', stage: 'Disposed', note: 'Petition disposed of.' }
+      ),
+      routeParams(caseId)
+    );
+    expect(res.status).toBe(201);
+
+    const after = await readMatterHeader(TENANT_A, matterId);
+    expect(after).toMatchObject({ current_stage: 'Disposed', next_hearing_date: null });
+  });
+
+  test('POST on a Proceeding with no Matter never attempts a Matter update (no current_proceeding_id to match)', async () => {
+    const caseId = await createCase(TENANT_A);
+    const res = await POST(buildRequest('POST', { cookie: await sessionCookieHeader(TENANT_A) }, VALID_PAYLOAD), routeParams(caseId));
+    expect(res.status).toBe(201);
+    // No assertion target (no Matter exists) — this only proves the route
+    // doesn't throw when target_case.matter_id is NULL.
   });
 
   test('Court Notes are not visible from another tenant session (RLS)', async () => {
