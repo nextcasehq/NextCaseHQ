@@ -110,3 +110,20 @@ html, body {
     content: '';
   }
 }
+
+/* Help Centre / manual article rendering — minimal, self-contained styling
+   for marked()'s output, no typography plugin dependency. */
+.help-article h1 { font-size: 1.75rem; font-weight: 900; color: #111111; margin: 0 0 1rem; }
+.help-article h2 { font-size: 1.25rem; font-weight: 900; color: #111111; margin: 2rem 0 0.75rem; }
+.help-article h3 { font-size: 1rem; font-weight: 800; color: #3A3222; margin: 1.5rem 0 0.5rem; }
+.help-article h4 { font-size: 0.875rem; font-weight: 700; color: #3A3222; margin: 1.25rem 0 0.5rem; }
+.help-article p { font-size: 0.875rem; line-height: 1.7; color: #4A4130; margin: 0 0 1rem; }
+.help-article ul, .help-article ol { margin: 0 0 1rem 1.25rem; font-size: 0.875rem; color: #4A4130; }
+.help-article li { margin-bottom: 0.35rem; line-height: 1.6; }
+.help-article a { color: #8A6D2F; text-decoration: underline; }
+.help-article strong { color: #3A3222; font-weight: 700; }
+.help-article code { background: #FBF6EA; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.8em; }
+.help-article hr { border: none; border-top: 1px solid #E7DFC9; margin: 2rem 0; }
+.help-article table { width: 100%; border-collapse: collapse; margin: 0 0 1rem; font-size: 0.8rem; }
+.help-article th, .help-article td { border: 1px solid #E7DFC9; padding: 0.5rem 0.75rem; text-align: left; }
+.help-article th { background: #FBF8F1; font-weight: 700; color: #3A3222; }

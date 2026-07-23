@@ -10,7 +10,7 @@ import React from 'react';
  * corresponding Q&A or article content the schema describes.
  */
 interface JsonLdProps {
-  type: 'Organization' | 'SoftwareApplication' | 'WebSite' | 'LegalService' | 'FAQPage' | 'Article';
+  type: 'Organization' | 'SoftwareApplication' | 'WebSite' | 'LegalService' | 'FAQPage' | 'Article' | 'BreadcrumbList' | 'WebPage' | 'TechArticle';
   data?: Record<string, any>;
 }
 
@@ -65,6 +65,22 @@ export default function JsonLd({ type, data = {} }: JsonLdProps) {
     Article: {
       '@context': 'https://schema.org',
       '@type': 'Article',
+      ...data
+    },
+    BreadcrumbList: {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      ...data
+    },
+    WebPage: {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      'url': baseUrl,
+      ...data
+    },
+    TechArticle: {
+      '@context': 'https://schema.org',
+      '@type': 'TechArticle',
       ...data
     }
   };
