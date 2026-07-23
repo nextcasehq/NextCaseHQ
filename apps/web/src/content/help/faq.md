@@ -116,7 +116,7 @@ A: Stage is a free-form field tracking where the case currently stands procedura
 A: The matter_id field on a Proceeding is nullable, so a Proceeding can technically exist without a Matter link, though pairing a Proceeding with its Matter is the normal setup.
 
 **Q: Can I link an appeal to the original suit it arises from?**
-A: Not yet. There's no parent/child relationship between Proceedings today — an appeal is not formally linked to the suit it appeals. This is a known future enhancement, not something currently built.
+A: Yes. When you add a new Proceeding as a "Further Proceeding" of an existing one — an appeal, revision, review, execution, and several other relationship types are supported — NextCaseHQ records the link back to the Proceeding it continues from. The original Proceeding is never edited or replaced; the appeal is a new Proceeding row carrying a reference back to it, so the full chain (trial → appeal → execution, for example) stays intact under the same Matter.
 
 **Q: Where do I see the court-assigned case number?**
 A: On the Proceeding, in the case_number field — distinct from the firm's internal matter_number on the parent Matter.

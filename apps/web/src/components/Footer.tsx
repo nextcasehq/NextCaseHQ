@@ -18,7 +18,7 @@ export const Footer = () => {
             NextCaseHQ
           </span>
           <span className="text-xs font-sans text-[#111111]/60">
-            © {new Date().getFullYear()} NextCaseHQ. All rights reserved. Zero-Knowledge. Infinite Context.
+            © {new Date().getFullYear()} NextCaseHQ. All rights reserved. Secure by Design. Infinite Context.
           </span>
         </div>
 

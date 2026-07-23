@@ -39,7 +39,24 @@ interface Proceeding {
   court: string | null;
   stage: string | null;
   hearing_date: string | null;
+  relationship_to_prior: string | null;
+  prior_proceeding_id: string | null;
 }
+
+const PROCEEDING_RELATIONSHIP_LABELS: Record<string, string> = {
+  APPEAL: 'Appeal',
+  REVISION: 'Revision',
+  REVIEW: 'Review',
+  WRIT: 'Writ',
+  SLP: 'Special Leave Petition',
+  EXECUTION: 'Execution',
+  COMPLIANCE: 'Compliance',
+  REMAND: 'Remand',
+  RESTORATION: 'Restoration',
+  RECALL: 'Recall',
+  CONNECTED_PROCEEDING: 'Connected Proceeding',
+  OTHER: 'Other',
+};
 
 interface MatterEvent {
   id: string;
@@ -166,6 +183,8 @@ export default function MatterDetailsChamberPage() {
   const [proceedingTitle, setProceedingTitle] = useState('');
   const [proceedingCountryCode, setProceedingCountryCode] = useState('IN');
   const [proceedingCourt, setProceedingCourt] = useState('');
+  const [proceedingPriorId, setProceedingPriorId] = useState('');
+  const [proceedingRelationship, setProceedingRelationship] = useState('');
 
   const [showEventForm, setShowEventForm] = useState(false);
   const [eventDate, setEventDate] = useState('');
@@ -195,10 +214,10 @@ export default function MatterDetailsChamberPage() {
   }, [id]);
 
   const fetchProceedings = useCallback(async () => {
-    const res = await fetch(`/api/cases?matter_id=${id}`);
+    const res = await fetch(`/api/matters/${id}/proceedings`);
     if (!res.ok) return;
     const data = await res.json();
-    setProceedings(data.cases);
+    setProceedings(data.proceedings);
   }, [id]);
 
   const fetchEvents = useCallback(async () => {
@@ -314,19 +333,22 @@ export default function MatterDetailsChamberPage() {
       setShowUnavailablePrompt(true);
       return;
     }
-    const res = await fetch('/api/cases', {
+    const res = await fetch(`/api/matters/${id}/proceedings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: proceedingTitle,
         country_code: proceedingCountryCode,
         court: proceedingCourt || undefined,
-        matter_id: id,
+        prior_proceeding_id: proceedingPriorId || undefined,
+        relationship_to_prior: proceedingPriorId ? proceedingRelationship || undefined : undefined,
       }),
     });
     if (!res.ok) return;
     setProceedingTitle('');
     setProceedingCourt('');
+    setProceedingPriorId('');
+    setProceedingRelationship('');
     setShowProceedingForm(false);
     fetchProceedings();
   };
@@ -868,6 +890,43 @@ export default function MatterDetailsChamberPage() {
                     placeholder="Court / Forum"
                     className="w-full px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium md:col-span-2"
                   />
+                  {proceedings.length > 0 && (
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-[#E7DFC9]/60 mt-1">
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A7A56] mb-1">
+                          This continues an earlier Proceeding (optional)
+                        </label>
+                        <select
+                          value={proceedingPriorId}
+                          onChange={(e) => {
+                            setProceedingPriorId(e.target.value);
+                            if (!e.target.value) setProceedingRelationship('');
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium"
+                        >
+                          <option value="">None — a standalone Proceeding</option>
+                          {proceedings.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.title}{p.case_number ? ` (${p.case_number})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {proceedingPriorId && (
+                        <select
+                          required
+                          value={proceedingRelationship}
+                          onChange={(e) => setProceedingRelationship(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium md:col-span-2"
+                        >
+                          <option value="">Select relationship *</option>
+                          {Object.entries(PROCEEDING_RELATIONSHIP_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
                   <div className="md:col-span-2 flex justify-end">
                     <button type="submit" className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase rounded-lg">
                       Create
@@ -892,6 +951,12 @@ export default function MatterDetailsChamberPage() {
                         </div>
                         <h3 className="font-bold text-sm text-[#3A3222]">{c.title}</h3>
                         <p className="text-xs text-[#726B58] font-mono mt-1">Status: {c.status}</p>
+                        {c.relationship_to_prior && c.prior_proceeding_id && (
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] mt-1.5">
+                            ↳ {PROCEEDING_RELATIONSHIP_LABELS[c.relationship_to_prior] || c.relationship_to_prior} of{' '}
+                            {proceedings.find((p) => p.id === c.prior_proceeding_id)?.title || 'an earlier Proceeding'}
+                          </p>
+                        )}
                       </div>
                       <Link
                         href={`/cases/${c.id}`}

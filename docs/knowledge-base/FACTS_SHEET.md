@@ -29,9 +29,14 @@ provider connected yet.
   reference. Fields: title, case_number, country_code, court, judge, stage,
   status (PENDING, HEARING, DISPOSED, APPEAL), hearing_date (the *next*
   scheduled hearing — see Court Note below), notes, matter_id (nullable FK).
-  No parent/child link between Proceedings exists yet (an appeal is not
-  formally linked to the suit it appeals — flagged as a future enhancement,
-  not built).
+  A Proceeding can be formally linked to the one before it via
+  prior_proceeding_id + relationship_to_prior (APPEAL, REVISION, REVIEW,
+  WRIT, SLP, EXECUTION, COMPLIANCE, REMAND, RESTORATION, RECALL,
+  CONNECTED_PROCEEDING, OTHER) — creating a "Further Proceeding"
+  (`POST /api/matters/[id]/proceedings` with those fields set) never
+  mutates the prior one; it adds a new row preserving the chain back to
+  it, so trial → appeal → revision → execution stays intact and
+  sequenced under the same Matter.
 - **Court Note ("Case Diary")** — an immutable, append-only record of one
   hearing. Fields: hearing_date, next_hearing_date, court_forum_type (fixed
   list: Supreme Court, High Court, Civil Court, Criminal Court, Family Court,
@@ -116,8 +121,6 @@ provider connected yet.
 - No real legal-research/citation database (Judgment Research has zero
   connected provider).
 - No collaborative/multi-user simultaneous editing in the Document Creator.
-- No parent/child link between Proceedings (appeal/execution relationships
-  are not modeled).
 - No free-standing task creation independent of a Court Note.
 - No real payment collection (Stripe abstraction exists at the library
   level; nothing in the app charges a real card yet).
