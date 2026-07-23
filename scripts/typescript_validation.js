@@ -16,19 +16,7 @@ const startTime = Date.now();
 const projectMappings = {
   'apps/web': 'apps/web/tsconfig.json',
   'apps/workers': 'apps/workers/tsconfig.json',
-  'packages/ai-kernel': 'packages/ai-kernel/tsconfig.json',
-  'packages/ai-registry': 'packages/ai-registry/tsconfig.json',
-  'packages/country-packs': 'packages/country-packs/tsconfig.json',
-  'packages/crypto': 'packages/crypto/tsconfig.json',
-  'packages/design-system-ndl': 'packages/design-system-ndl/tsconfig.json',
-  'packages/event-bus': 'packages/event-bus/tsconfig.json',
-  'packages/legal-kernel': 'packages/legal-kernel/tsconfig.json',
-  'packages/messaging': 'packages/messaging/tsconfig.json',
-  'packages/observability': 'packages/observability/tsconfig.json',
-  'packages/prompt-library': 'packages/prompt-library/tsconfig.json',
-  'packages/qa': 'packages/qa/tsconfig.json',
-  'packages/search-engine': 'packages/search-engine/tsconfig.json',
-  'packages/workflow-engine': 'packages/workflow-engine/tsconfig.json'
+  'packages/country-packs': 'packages/country-packs/tsconfig.json'
 };
 
 // Explicit non-TS packages
