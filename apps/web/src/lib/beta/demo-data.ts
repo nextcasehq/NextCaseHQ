@@ -76,10 +76,21 @@ const DEMO_PROCEEDING = {
   id: 'deadbeef-0000-4000-8000-000000000001',
   title: 'Acme Textiles Pvt. Ltd. v. R96 Global Traders',
   case_number: 'DEMO-CS-001/2026',
+  country_code: 'IN',
   status: 'HEARING',
   court: 'Demo Commercial Court',
+  judge: null,
   stage: 'Discovery',
   hearing_date: '2026-08-10',
+  notes: null,
+  // The Case Diary bare list (matchPublicPreviewRoute's '/api/cases' branch
+  // below) needs these Matter-linkage/daily-bucket fields too — the real
+  // GET /api/cases route always returns them via LEFT JOIN, so this fixture
+  // must carry the same shape or the unauthenticated Case Diary would
+  // render differently from every authenticated one.
+  matter_id: DEMO_MATTER_ID,
+  updated_at: '2026-07-01T00:00:00.000Z',
+  latest_hearing_outcome: null,
 };
 
 const DEMO_EVENT = {
@@ -200,6 +211,37 @@ export function matchPublicPreviewRoute(pathname: string, searchParams: URLSearc
     };
   }
 
+  // Case Diary (bare list, no matter_id filter) — without this, an
+  // unauthenticated visit to /cases hits the real, database-backed
+  // GET /api/cases, which always 401s for a request with no session
+  // cookie, which in turn shows the "Preview Mode — Sign-In Unavailable"
+  // wall (AuthOrReviewGate) even though beta-status above already told the
+  // page Product Review Mode is active. Matching /api/matters below, this
+  // lets an unauthenticated visitor see one real, correctly-shaped
+  // Proceeding instead of a dead end. The matter-scoped case
+  // (?matter_id=DEMO_MATTER_ID, used by the Matter Workspace's own case
+  // list) stays with the opt-in matchProductReviewRoute below — only the
+  // bare list is handled here.
+  if (pathname === '/api/cases' && !searchParams.get('matter_id')) {
+    const statusFilter = searchParams.get('status');
+    const matchesFilter = !statusFilter || statusFilter === 'ALL' || statusFilter === DEMO_PROCEEDING.status;
+    return {
+      cases: matchesFilter
+        ? [
+            {
+              ...DEMO_PROCEEDING,
+              matter_title: DEMO_MATTER.title,
+              client_name: DEMO_MATTER.client_name,
+            },
+          ]
+        : [],
+      total: matchesFilter ? 1 : 0,
+      limit: 50,
+      offset: 0,
+      review_mode: true,
+    };
+  }
+
   // Demo search — a separate, synthetic search path for the always-public
   // Legal Search interface. The real Search Service (lib/search/
   // search-service.ts) is completely unchanged and still requires a real
@@ -299,6 +341,9 @@ export function matchProductReviewRoute(
   }
   if (pathname === `/api/matters/${DEMO_MATTER_ID}/participants`) {
     return { participants: [DEMO_PARTICIPANT] };
+  }
+  if (pathname === `/api/matters/${DEMO_MATTER_ID}/proceedings`) {
+    return { proceedings: [DEMO_PROCEEDING] };
   }
   if (pathname === `/api/matters/${DEMO_MATTER_ID}/court-notes`) {
     return { court_notes: [DEMO_COURT_NOTE] };
