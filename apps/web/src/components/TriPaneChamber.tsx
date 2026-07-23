@@ -137,7 +137,18 @@ export const TriPaneChamber = () => {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-white font-sans text-[#241E17]">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-white font-sans text-[#241E17]">
+      {/* Every exhibit, dialogue turn, and citation below is illustrative
+          sample content (see the "Sample data" state above) — never a real
+          case record. This banner is the one place that fact is visible to
+          the person actually using the screen, not just to a future reader
+          of the source. */}
+      <div role="note" className="flex-none px-4 py-2 bg-[#FBF6EA] border-b border-[#E7DFC9] text-center">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#8A6D2F]">
+          Sample data — the evidence, dialogue, and citations shown here are illustrative, not real case records
+        </p>
+      </div>
+      <div className="flex flex-1 w-full overflow-hidden">
 
       {/* ──────────────────────────────────────────────────────────────────
           LEFT PANEL (25%): EVIDENCE LEDGER / CHRONOS TIMELINE / GRAPH
@@ -562,6 +573,8 @@ export const TriPaneChamber = () => {
         </div>
       </section>
 
+      </div>
+
       {/* Mobile Tab Bar Selector (Visible on viewports < 768px) */}
       <div className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-white border-t border-[#E7DFC9] flex items-center justify-around z-50">
         <button
@@ -589,3 +602,4 @@ export const TriPaneChamber = () => {
     </div>
   );
 };
+
