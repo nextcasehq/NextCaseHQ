@@ -11,6 +11,17 @@
  *    set an env var, so these specific, narrow, read-only responses are
  *    unconditional.
  *
+ *    One deliberate exception lives inside this "always on" function: the
+ *    realistic, multi-Proceeding Case Diary dataset (getCaseDiaryDemoCases
+ *    and its /api/cases/[id] sub-resource branches below) is individually
+ *    gated on isProductReviewModeEnabled() at each call site, so a
+ *    deployment that never sets PRODUCT_REVIEW_MODE keeps seeing exactly
+ *    the original single-Proceeding fallback this branch always returned —
+ *    the richer dataset only replaces it for an operator-initiated review
+ *    session, never by default. Disable it the same way as the rest of
+ *    Product Review Mode: unset PRODUCT_REVIEW_MODE (or set it to anything
+ *    other than the exact string "true").
+ *
  * 2. `matchProductReviewRoute` — Product Review Mode proper. Opt-in only
  *    (PRODUCT_REVIEW_MODE=true; secure-by-default, off otherwise), lets an
  *    operator additionally expose the Ask AI Action Card, AI Credits &
@@ -159,6 +170,303 @@ const DEMO_DOCUMENT = {
 };
 
 /**
+ * Case Diary review dataset — a realistic multi-Proceeding litigation diary
+ * for an unauthenticated reviewer, gated behind PRODUCT_REVIEW_MODE (see
+ * the file-header exception note above). Every date is computed relative
+ * to "now" at call time, never a hardcoded literal, so "Today's Hearings" /
+ * "Adjourned Hearings" / "Completed Hearings" / "Upcoming Hearings" (the
+ * Case Diary's own daily-bucket logic, apps/web/src/app/cases/page.tsx's
+ * bucketFor) stay accurate no matter when the review session happens.
+ * Seven Proceedings across seven different courts/forums, deliberately
+ * covering every bucket the Case Diary can show plus one older, disposed
+ * Proceeding that only surfaces through "All Proceedings" — the same
+ * spread of stages and outcomes a genuinely active litigation practice
+ * would show, not one lonely fixture.
+ */
+function isoDate(offsetDays: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+function isoTimestamp(offsetDays: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  d.setUTCHours(10, 30, 0, 0);
+  return d.toISOString();
+}
+
+interface DemoCaseDiaryProceeding {
+  id: string;
+  title: string;
+  case_number: string;
+  country_code: 'IN';
+  status: 'PENDING' | 'HEARING' | 'DISPOSED' | 'APPEAL';
+  court: string;
+  judge: string | null;
+  stage: string;
+  hearing_date: string | null;
+  notes: string | null;
+  matter_id: null;
+  matter_title: null;
+  client_name: null;
+  updated_at: string;
+  latest_hearing_outcome: string | null;
+}
+
+function getCaseDiaryDemoCases(): DemoCaseDiaryProceeding[] {
+  return [
+    {
+      id: 'deadbeef-0001-4000-8000-000000000001',
+      title: 'State vs. Ramesh Yadav — Bail Application',
+      case_number: 'BA-2201/2026',
+      country_code: 'IN',
+      status: 'HEARING',
+      court: 'Sessions Court, Delhi',
+      judge: 'Hon’ble Additional Sessions Judge',
+      stage: 'Arguments on Bail',
+      hearing_date: isoDate(0),
+      notes: null,
+      matter_id: null,
+      matter_title: null,
+      client_name: null,
+      updated_at: isoTimestamp(-6),
+      latest_hearing_outcome: 'CONDUCTED',
+    },
+    {
+      id: 'deadbeef-0001-4000-8000-000000000002',
+      title: 'Priya Nair vs. Nair — Divorce & Maintenance',
+      case_number: 'MC-118/2025',
+      country_code: 'IN',
+      status: 'HEARING',
+      court: 'Family Court, Bengaluru',
+      judge: null,
+      stage: 'Evidence',
+      hearing_date: isoDate(14),
+      notes: null,
+      matter_id: null,
+      matter_title: null,
+      client_name: null,
+      updated_at: isoTimestamp(0),
+      latest_hearing_outcome: 'ADJOURNED',
+    },
+    {
+      id: 'deadbeef-0001-4000-8000-000000000003',
+      title: 'Orion Freight Carriers vs. Continental Shipping Co. — Commercial Suit',
+      case_number: 'COMM-77/2024',
+      country_code: 'IN',
+      status: 'DISPOSED',
+      court: 'Commercial Court, Mumbai',
+      judge: null,
+      stage: 'Judgment',
+      hearing_date: null,
+      notes: null,
+      matter_id: null,
+      matter_title: null,
+      client_name: null,
+      updated_at: isoTimestamp(0),
+      latest_hearing_outcome: 'JUDGMENT_PRONOUNCED',
+    },
+    {
+      id: 'deadbeef-0001-4000-8000-000000000004',
+      title: 'Sunita Rathore vs. National Insurance Co. Ltd. — MACT Claim Petition',
+      case_number: 'MACT-231/2025',
+      country_code: 'IN',
+      status: 'HEARING',
+      court: 'Motor Accident Claims Tribunal, Nagpur',
+      judge: null,
+      stage: 'Cross-Examination',
+      hearing_date: isoDate(5),
+      notes: null,
+      matter_id: null,
+      matter_title: null,
+      client_name: null,
+      updated_at: isoTimestamp(-20),
+      latest_hearing_outcome: 'CONDUCTED',
+    },
+    {
+      id: 'deadbeef-0001-4000-8000-000000000005',
+      title: 'Bharti Textile Mills vs. State of Maharashtra — Revision Petition',
+      case_number: 'REV-58/2026',
+      country_code: 'IN',
+      status: 'PENDING',
+      court: 'Revenue Court, Nashik',
+      judge: null,
+      stage: 'Admission',
+      hearing_date: isoDate(21),
+      notes: null,
+      matter_id: null,
+      matter_title: null,
+      client_name: null,
+      updated_at: isoTimestamp(-45),
+      latest_hearing_outcome: null,
+    },
+    {
+      id: 'deadbeef-0001-4000-8000-000000000006',
+      title: 'Meera Krishnan vs. Union of India — Special Leave Petition',
+      case_number: 'SLP(C)-9987/2026',
+      country_code: 'IN',
+      status: 'HEARING',
+      court: 'Supreme Court of India',
+      judge: null,
+      stage: 'Notice Issued',
+      hearing_date: isoDate(30),
+      notes: null,
+      matter_id: null,
+      matter_title: null,
+      client_name: null,
+      updated_at: isoTimestamp(-10),
+      latest_hearing_outcome: 'CONDUCTED',
+    },
+    {
+      id: 'deadbeef-0001-4000-8000-000000000007',
+      title: 'State vs. Suresh Chandra — Cheque Dishonour Complaint',
+      case_number: 'NI-Act-345/2025',
+      country_code: 'IN',
+      status: 'DISPOSED',
+      court: 'Magistrate Court, Pune',
+      judge: null,
+      stage: 'Disposed',
+      hearing_date: null,
+      notes: null,
+      matter_id: null,
+      matter_title: null,
+      client_name: null,
+      updated_at: isoTimestamp(-60),
+      latest_hearing_outcome: 'DISMISSED',
+    },
+  ];
+}
+
+/** Court Notes per demo Proceeding — one to two per case, giving each an
+ * actual hearing history instead of an empty "no notes yet" state when
+ * opened. Keyed by the Proceeding id above. */
+function getCaseDiaryDemoCourtNotes(caseId: string) {
+  const notesById: Record<string, unknown[]> = {
+    'deadbeef-0001-4000-8000-000000000001': [
+      {
+        id: 'deadbeef-0002-4000-8000-000000000001',
+        hearing_date: isoDate(-6),
+        next_hearing_date: isoDate(0),
+        court_forum_display: 'Sessions Court, Delhi',
+        stage: 'Arguments on Bail',
+        hearing_outcome: 'CONDUCTED',
+        note: 'Bail application taken up. Prosecution sought time to file reply. Matter adjourned for arguments.',
+        next_actions: 'Prepare rejoinder to prosecution’s reply before next hearing.',
+        created_at: isoTimestamp(-6),
+      },
+    ],
+    'deadbeef-0001-4000-8000-000000000002': [
+      {
+        id: 'deadbeef-0002-4000-8000-000000000002',
+        hearing_date: isoDate(0),
+        next_hearing_date: isoDate(14),
+        court_forum_display: 'Family Court, Bengaluru',
+        stage: 'Evidence',
+        hearing_outcome: 'ADJOURNED',
+        note: 'Respondent sought additional time to file evidence affidavit. Court granted one adjournment.',
+        next_actions: 'File rejoinder affidavit before the next date.',
+        created_at: isoTimestamp(0),
+      },
+      {
+        id: 'deadbeef-0002-4000-8000-000000000009',
+        hearing_date: isoDate(-30),
+        next_hearing_date: isoDate(0),
+        court_forum_display: 'Family Court, Bengaluru',
+        stage: 'Evidence',
+        hearing_outcome: 'CONDUCTED',
+        note: 'Petitioner’s evidence recorded in part. Cross-examination to continue on next date.',
+        next_actions: null,
+        created_at: isoTimestamp(-30),
+      },
+    ],
+    'deadbeef-0001-4000-8000-000000000003': [
+      {
+        id: 'deadbeef-0002-4000-8000-000000000003',
+        hearing_date: isoDate(0),
+        next_hearing_date: null,
+        court_forum_display: 'Commercial Court, Mumbai',
+        stage: 'Judgment',
+        hearing_outcome: 'JUDGMENT_PRONOUNCED',
+        note: 'Judgment pronounced in favour of the plaintiff. Damages of Rs. 18,50,000 awarded with interest.',
+        next_actions: 'Apply for certified copy of judgment for execution proceedings.',
+        created_at: isoTimestamp(0),
+      },
+    ],
+    'deadbeef-0001-4000-8000-000000000004': [
+      {
+        id: 'deadbeef-0002-4000-8000-000000000004',
+        hearing_date: isoDate(-20),
+        next_hearing_date: isoDate(5),
+        court_forum_display: 'Motor Accident Claims Tribunal, Nagpur',
+        stage: 'Cross-Examination',
+        hearing_outcome: 'CONDUCTED',
+        note: 'Claimant’s cross-examination partly recorded. Insurer’s counsel to continue on next date.',
+        next_actions: 'Summon treating doctor as next witness.',
+        created_at: isoTimestamp(-20),
+      },
+    ],
+    'deadbeef-0001-4000-8000-000000000006': [
+      {
+        id: 'deadbeef-0002-4000-8000-000000000006',
+        hearing_date: isoDate(-10),
+        next_hearing_date: isoDate(30),
+        court_forum_display: 'Supreme Court of India',
+        stage: 'Notice Issued',
+        hearing_outcome: 'CONDUCTED',
+        note: 'Notice issued to respondents. Matter listed for final hearing in eight weeks.',
+        next_actions: 'Prepare compilation of documents for final hearing.',
+        created_at: isoTimestamp(-10),
+      },
+    ],
+    'deadbeef-0001-4000-8000-000000000007': [
+      {
+        id: 'deadbeef-0002-4000-8000-000000000007',
+        hearing_date: isoDate(-60),
+        next_hearing_date: null,
+        court_forum_display: 'Magistrate Court, Pune',
+        stage: 'Disposed',
+        hearing_outcome: 'DISMISSED',
+        note: 'Complaint dismissed for non-prosecution — complainant absent without justification.',
+        next_actions: null,
+        created_at: isoTimestamp(-60),
+      },
+    ],
+  };
+  return notesById[caseId];
+}
+
+/** Court Orders per demo Proceeding — only where a real order would exist
+ * (a concluded/judgment-stage matter), matching the app's own rule that
+ * Court Orders are certified-record entries, not every hearing note. */
+function getCaseDiaryDemoOrders(caseId: string) {
+  const ordersById: Record<string, unknown[]> = {
+    'deadbeef-0001-4000-8000-000000000003': [
+      {
+        id: 'deadbeef-0003-4000-8000-000000000003',
+        court_note_id: 'deadbeef-0002-4000-8000-000000000003',
+        order_date: isoDate(0),
+        summary: 'Judgment: suit decreed in favour of plaintiff for Rs. 18,50,000 with interest at 9% p.a. and costs.',
+        document_id: null,
+        certified_copy_required: true,
+        certified_copy_status: 'PENDING',
+      },
+    ],
+    'deadbeef-0001-4000-8000-000000000007': [
+      {
+        id: 'deadbeef-0003-4000-8000-000000000007',
+        court_note_id: 'deadbeef-0002-4000-8000-000000000007',
+        order_date: isoDate(-60),
+        summary: 'Complaint dismissed for non-prosecution under Section 256 CrPC.',
+        document_id: null,
+        certified_copy_required: false,
+        certified_copy_status: 'NOT_REQUIRED',
+      },
+    ],
+  };
+  return ordersById[caseId];
+}
+
+/**
  * ALWAYS ON — never gated by PRODUCT_REVIEW_MODE. The fixed, minimal set
  * of synthetic GET responses the approved public-view allowlist actually
  * needs to function:
@@ -222,8 +530,21 @@ export function matchPublicPreviewRoute(pathname: string, searchParams: URLSearc
   // (?matter_id=DEMO_MATTER_ID, used by the Matter Workspace's own case
   // list) stays with the opt-in matchProductReviewRoute below — only the
   // bare list is handled here.
+  //
+  // When PRODUCT_REVIEW_MODE is explicitly on, this branch instead serves
+  // the fuller, realistic getCaseDiaryDemoCases() dataset (see above) so a
+  // manual review session sees a genuine daily diary — every bucket
+  // (today/adjourned/completed/upcoming), several courts, an older
+  // disposed Proceeding — instead of one lonely fixture. A deployment that
+  // never sets the flag keeps exactly the original single-Proceeding
+  // fallback below, unchanged.
   if (pathname === '/api/cases' && !searchParams.get('matter_id')) {
     const statusFilter = searchParams.get('status');
+    if (isProductReviewModeEnabled()) {
+      const all = getCaseDiaryDemoCases();
+      const matches = !statusFilter || statusFilter === 'ALL' ? all : all.filter((c) => c.status === statusFilter);
+      return { cases: matches, total: matches.length, limit: 100, offset: 0, review_mode: true };
+    }
     const matchesFilter = !statusFilter || statusFilter === 'ALL' || statusFilter === DEMO_PROCEEDING.status;
     return {
       cases: matchesFilter
@@ -240,6 +561,34 @@ export function matchPublicPreviewRoute(pathname: string, searchParams: URLSearc
       offset: 0,
       review_mode: true,
     };
+  }
+
+  // Case Diary — single Proceeding detail + its Court Notes/Orders
+  // sub-resources, opt-in (PRODUCT_REVIEW_MODE) only: without these, "Open
+  // Proceeding" from the richer Case Diary list above would hit the real,
+  // database-backed routes and 401, landing back on the Preview Mode wall
+  // — exactly the dead end this whole dataset exists to avoid. Each only
+  // matches an id that's actually in getCaseDiaryDemoCases(), so this is a
+  // no-op (falls through, undefined) for any other id, including the
+  // separate DEMO_PROCEEDING/DEMO_MATTER_ID fixture above.
+  if (isProductReviewModeEnabled()) {
+    const caseDetailMatch = pathname.match(/^\/api\/cases\/([0-9a-f-]{36})$/i);
+    if (caseDetailMatch) {
+      const found = getCaseDiaryDemoCases().find((c) => c.id === caseDetailMatch[1]);
+      if (found) return { case: found };
+    }
+
+    const courtNotesMatch = pathname.match(/^\/api\/cases\/([0-9a-f-]{36})\/court-notes$/i);
+    if (courtNotesMatch) {
+      const notes = getCaseDiaryDemoCourtNotes(courtNotesMatch[1]);
+      if (notes) return { court_notes: notes };
+    }
+
+    const ordersMatch = pathname.match(/^\/api\/cases\/([0-9a-f-]{36})\/orders$/i);
+    if (ordersMatch) {
+      const orders = getCaseDiaryDemoOrders(ordersMatch[1]);
+      if (orders) return { orders };
+    }
   }
 
   // Demo search — a separate, synthetic search path for the always-public
