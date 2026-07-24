@@ -58,6 +58,16 @@ function updatedAgoLabel(updatedAt: string): string {
   return `Updated ${days}d ago`;
 }
 
+/** Register-scanning improvement (Phase 2 refinement, section 5): an ACTIVE
+ * matter with no urgency signal and no update in 30+ days is easy to forget
+ * about entirely. Deliberately scoped to ACTIVE only — an ON_HOLD or CLOSED
+ * matter going quiet is expected, not a signal. */
+function staleDaysFor(status: MatterStatus, urgencyLevel: RowUrgency, updatedAt: string): number | null {
+  if (status !== 'ACTIVE' || urgencyLevel) return null;
+  const days = Math.floor((Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+  return days > 30 ? days : null;
+}
+
 interface Client {
   id: string;
   name: string;
@@ -563,11 +573,14 @@ function MattersChamberContent() {
           {filteredMatters.map((matter) => {
             const courtColor = courtForumColorFor(matter.court);
             const urgency = rowUrgency(matter.next_hearing_date);
+            const staleDays = staleDaysFor(matter.status, urgency.level, matter.updated_at);
             return (
               <div
                 key={matter.id}
                 style={{ borderLeftColor: courtColor.border }}
-                className="bg-white border border-[#E7DFC9]/80 border-l-4 rounded-2xl shadow-sm hover:border-[#E7DFC9] hover:shadow transition-all group"
+                className={`bg-white border border-[#E7DFC9]/80 border-l-4 rounded-2xl shadow-sm hover:border-[#E7DFC9] hover:shadow hover:opacity-100 transition-all group ${
+                  staleDays ? 'opacity-60' : ''
+                }`}
               >
                 {/* Horizontal strip — every field in one row (wraps to a
                     compact stack below md) instead of a tall box, so many
@@ -599,6 +612,11 @@ function MattersChamberContent() {
                         'bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9]'
                       }`}>
                         {urgency.level !== 'SOON' && '⚠ '}{urgency.label}
+                      </span>
+                    )}
+                    {staleDays && (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap tracking-wide bg-[#F4EEE0] text-[#B0A588] border border-[#E7DFC9]">
+                        INACTIVE {staleDays}D
                       </span>
                     )}
                   </div>

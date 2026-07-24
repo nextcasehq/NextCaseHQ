@@ -22,6 +22,7 @@ interface MatterCourtNoteRow {
   next_hearing_date: string | null;
   court_forum_display: string;
   stage: string;
+  hearing_outcome: string;
   note: string;
   next_actions: string | null;
   created_at: string;
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const rows = await db.execute<MatterCourtNoteRow>(
       session.tenantId,
       `SELECT cn.id, cn.case_id, lc.title AS case_title, cn.hearing_date, cn.next_hearing_date,
-              cn.court_forum_display, cn.stage, cn.note, cn.next_actions, cn.created_at
+              cn.court_forum_display, cn.stage, cn.hearing_outcome, cn.note, cn.next_actions, cn.created_at
        FROM "CourtNote" cn
        JOIN "LegalCase" lc ON lc.id = cn.case_id
        WHERE cn.matter_id = $1

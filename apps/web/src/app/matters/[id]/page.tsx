@@ -11,6 +11,7 @@ import LitigationJourney from '@/components/LitigationJourney';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
 import { CERTIFIED_COPY_STATUS_LABELS, type CertifiedCopyStatus } from '@/lib/domain/court-order';
+import { HEARING_OUTCOME_LABELS, isTerminalHearingOutcome, type HearingOutcome } from '@/lib/domain/court-note';
 import MatterClosurePanel from './MatterClosurePanel';
 
 interface Matter {
@@ -88,6 +89,7 @@ interface MatterCourtNote {
   next_hearing_date: string | null;
   court_forum_display: string;
   stage: string;
+  hearing_outcome: HearingOutcome;
   note: string;
   next_actions: string | null;
 }
@@ -603,13 +605,10 @@ export default function MatterDetailsChamberPage() {
               CLIENT: <span className="text-[#5C5340] font-sans">{matter.client_name || 'Not yet linked'}</span>
               {matter.court && <> · COURT: <span className="text-[#5C5340] font-sans">{matter.court}</span></>}
             </p>
-            {health && (health.stage || health.next_hearing_date) && (
-              <p className="text-xs text-[#726B58] font-bold uppercase tracking-wider">
-                {health.stage && <>STAGE: <span className="text-[#8A6D2F] font-sans">{health.stage}</span></>}
-                {health.stage && health.next_hearing_date && ' · '}
-                {health.next_hearing_date && <>NEXT HEARING: <span className="text-[#8A6D2F] font-sans font-mono">{health.next_hearing_date}</span></>}
-              </p>
-            )}
+            {/* Stage/Next Hearing deliberately not repeated here — the
+                At a Glance strip immediately below is the one place that
+                answers it, so identity stays pure identity (Phase 2
+                refinement: first-screen review). */}
           </div>
 
           <button
@@ -638,67 +637,53 @@ export default function MatterDetailsChamberPage() {
           />
         )}
 
-        <LitigationJourney
-          engagementType={matter.engagement_type}
-          matterCategory={matter.matter_category}
-          currentStage={matter.current_stage}
-        />
-
-        {/* Command Center — Search Experience + Action Cards (Product
-            Direction, Phase A). The search field submits to the existing,
-            already-shipped GET /search page (backed by GET /api/search),
-            matter-scoped exactly like the "Search this Matter" link it
-            replaces — no new backend surface. Action Cards are real
-            navigational shortcuts to already-existing routes, not fabricated
-            functionality; workflow-stage-aware prioritization is Phase B. */}
-        <div className="mb-8">
-          <form
-            action="/search"
-            method="get"
-            className="relative flex items-center bg-white border border-[#E7DFC9] rounded-xl shadow-sm focus-within:border-[#8A6D2F] transition-all"
-          >
-            <input type="hidden" name="matter_id" value={id} />
-            <input
-              type="text"
-              name="q"
-              placeholder="Search cases, Acts, Sections, judgments, or ask AI about your matter..."
-              className="w-full bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-[#726B58] px-5 py-4 md:py-5"
-            />
-            <button
-              type="submit"
-              aria-label="Search"
-              className="flex-none pr-4 md:pr-5 text-[#8A6D2F] hover:text-[#6F5624] bg-transparent border-none outline-none cursor-pointer"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </form>
-
-          <div className="mt-3 flex flex-wrap gap-2.5">
-            {/* Action Cards navigate for real — Product Review Mode requires
-                every Action Card destination to be directly inspectable
-                (route by route), not intercepted here. Each destination
-                page (ai-chamber, documents/new, draft-builder) guards its
-                own real write/AI actions at the point of use instead. */}
-            {[
-              { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note` },
-              // Mislabeled "Upload Documents" until now — this destination
-              // (Category → Type → Facts → AI-generate → Save) has no file
-              // picker at all; it's the AI-drafting flow, matter-scoped.
-              { label: '🤖 AI-Draft a Document', href: `/documents/new?matter_id=${id}` },
-              { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
-              { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
-            ].map((card) => (
-              <Link
-                key={card.label}
-                href={card.href}
-                className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
-              >
-                {card.label}
-              </Link>
-            ))}
+        {/* At a Glance — the five questions an advocate should be able to
+            answer without scrolling (Phase 2 refinement): what matter is
+            this (Identity, above), what's next hearing, what's urgent,
+            what happened most recently, and is there a court order to
+            know about. Pure re-presentation of data already fetched for
+            Matter Health / Matter Activity / Court Orders below — nothing
+            new is computed or stored here, this is prioritisation, not
+            new content. */}
+        <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-5 shadow-sm mb-8 grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <div>
+            <span className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">Next Hearing</span>
+            <span className="text-sm font-bold font-mono text-[#3A3222]">{health?.next_hearing_date || 'Not scheduled'}</span>
           </div>
+          <a href="#activity" className="block hover:opacity-80 transition-opacity">
+            <span className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">Urgent Actions</span>
+            {activityCounts.ACTION === 0 ? (
+              <span className="text-sm font-bold text-[#3A3222]">None pending</span>
+            ) : (
+              <span className="text-sm font-bold text-[#8A6D2F]">
+                {activityCounts.ACTION} pending — {activityItems.find((i) => i.type === 'ACTION')?.task?.action_text}
+              </span>
+            )}
+          </a>
+          <a href="#activity" className="block hover:opacity-80 transition-opacity">
+            <span className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">Latest Activity</span>
+            {activityItems.length === 0 ? (
+              <span className="text-sm font-bold text-[#3A3222]">Nothing recorded yet</span>
+            ) : (
+              <span className="text-sm font-semibold text-[#3A3222] line-clamp-2">
+                {activityItems[0].type === 'HEARING' && activityItems[0].courtNote?.note}
+                {activityItems[0].type === 'ORDER' && activityItems[0].order?.summary}
+                {activityItems[0].type === 'ACTION' && activityItems[0].task?.action_text}
+                {activityItems[0].type === 'MILESTONE' && activityItems[0].event?.description}
+                <span className="text-[#B0A588] font-normal"> ({activityItems[0].date})</span>
+              </span>
+            )}
+          </a>
+          <a href="#orders" className="block hover:opacity-80 transition-opacity">
+            <span className="block text-[9px] font-bold text-[#726B58] uppercase tracking-widest mb-1">Latest Court Order</span>
+            {matterOrders.length === 0 ? (
+              <span className="text-sm font-bold text-[#3A3222]">None recorded</span>
+            ) : (
+              <span className="text-sm font-semibold text-[#3A3222] line-clamp-2">
+                {matterOrders[0].summary} <span className="text-[#B0A588] font-normal">({matterOrders[0].order_date})</span>
+              </span>
+            )}
+          </a>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -877,6 +862,72 @@ export default function MatterDetailsChamberPage() {
               )}
             </div>
 
+            {/* Litigation Journey and Command Center — repositioned below
+                the At a Glance strip and Court Orders (Phase 2
+                refinement). Neither answers one of the five first-screen
+                questions directly, so per the reviewed hierarchy they
+                belong in "everything else," not ahead of Next Hearing /
+                Urgent Actions / Latest Activity / Latest Court Order. */}
+            <LitigationJourney
+              engagementType={matter.engagement_type}
+              matterCategory={matter.matter_category}
+              currentStage={matter.current_stage}
+            />
+
+            {/* Command Center — Search Experience + Action Cards (Product
+                Direction, Phase A). The search field submits to the existing,
+                already-shipped GET /search page (backed by GET /api/search),
+                matter-scoped exactly like the "Search this Matter" link it
+                replaces — no new backend surface. Action Cards are real
+                navigational shortcuts to already-existing routes, not fabricated
+                functionality; workflow-stage-aware prioritization is Phase B. */}
+            <div>
+              <form
+                action="/search"
+                method="get"
+                className="relative flex items-center bg-white border border-[#E7DFC9] rounded-xl shadow-sm focus-within:border-[#8A6D2F] transition-all"
+              >
+                <input type="hidden" name="matter_id" value={id} />
+                <input
+                  type="text"
+                  name="q"
+                  placeholder="Search cases, Acts, Sections, judgments, or ask AI about your matter..."
+                  className="w-full bg-transparent border-none outline-none text-[#111111] text-sm md:text-base font-medium placeholder-[#726B58] px-5 py-4 md:py-5"
+                />
+                <button
+                  type="submit"
+                  aria-label="Search"
+                  className="flex-none pr-4 md:pr-5 text-[#8A6D2F] hover:text-[#6F5624] bg-transparent border-none outline-none cursor-pointer"
+                >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </form>
+
+              <div className="mt-3 flex flex-wrap gap-2.5">
+                {/* Action Cards navigate for real — Product Review Mode requires
+                    every Action Card destination to be directly inspectable
+                    (route by route), not intercepted here. Each destination
+                    page (ai-chamber, documents/new, draft-builder) guards its
+                    own real write/AI actions at the point of use instead. */}
+                {[
+                  { label: '🔍 Search this Matter', href: `/search?matter_id=${id}&type=document,proceeding,court_note` },
+                  { label: '🤖 AI-Draft a Document', href: `/documents/new?matter_id=${id}` },
+                  { label: '⚡ Ask AI', href: '/dashboard/ai-chamber' },
+                  { label: '✍️ Draft Document', href: '/dashboard/draft-builder' },
+                ].map((card) => (
+                  <Link
+                    key={card.label}
+                    href={card.href}
+                    className="px-4 py-2 bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs rounded-lg transition-all whitespace-nowrap"
+                  >
+                    {card.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
             {isEditing ? (
               <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Edit Matter</h2>
@@ -962,24 +1013,12 @@ export default function MatterDetailsChamberPage() {
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">OPPOSING COUNSEL</span>
                     <span className="text-sm font-bold text-[#3A3222]">{matter.opposing_counsel || 'N/A'}</span>
                   </div>
-                  <div>
-                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">NEXT HEARING</span>
-                    <span className="text-sm font-mono font-bold text-[#3A3222]">{health?.next_hearing_date || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">LATEST ORDER</span>
-                    {matterOrders.length > 0 ? (
-                      <span className="text-sm font-bold text-[#3A3222]">
-                        {matterOrders[0].order_date} <span className="font-normal text-[#726B58]">— {matterOrders[0].proceeding_title}</span>
-                      </span>
-                    ) : (
-                      <span className="text-sm font-bold text-[#3A3222]">N/A</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">PENDING TASKS</span>
-                    <span className="text-sm font-bold text-[#3A3222]">{activityCounts.ACTION}</span>
-                  </div>
+                  {/* Next Hearing / Latest Order / Pending Tasks / Latest
+                      Activity deliberately removed from here (Phase 2
+                      refinement pass) — the At a Glance strip above the
+                      fold now answers all four, and repeating them here
+                      was exactly the duplication section 2 of the review
+                      asked to resolve, not new content to prioritise. */}
                   <div>
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">OPENED</span>
                     <span className="text-xs font-mono text-[#5C5340]">{new Date(matter.opened_at).toLocaleDateString()}</span>
@@ -989,16 +1028,6 @@ export default function MatterDetailsChamberPage() {
                     <span className="text-xs font-mono text-[#5C5340]">{new Date(matter.updated_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-                {activityItems.length > 0 && (
-                  <p className="text-xs text-[#6F5624] border-t border-[#F4EEE0] pt-4">
-                    <span className="font-bold text-[#4A4130] uppercase tracking-widest text-[10px]">Latest activity: </span>
-                    {activityItems[0].type === 'HEARING' && activityItems[0].courtNote?.note}
-                    {activityItems[0].type === 'ORDER' && activityItems[0].order?.summary}
-                    {activityItems[0].type === 'ACTION' && activityItems[0].task?.action_text}
-                    {activityItems[0].type === 'MILESTONE' && activityItems[0].event?.description}
-                    {' '}({activityItems[0].date})
-                  </p>
-                )}
               </div>
             )}
 
@@ -1274,13 +1303,33 @@ export default function MatterDetailsChamberPage() {
                 <ol className="relative border-l border-[#E7DFC9] ml-2 space-y-5">
                   {filteredActivity.map((item) => (
                     <li key={item.key} className="ml-4">
-                      <div className="absolute w-2 h-2 bg-[#8A6D2F] rounded-full -ml-[21px] mt-1.5"></div>
+                      {/* Marker colour is the "stand out naturally" signal
+                          (Phase 2 refinement, section 3): a hearing that
+                          concludes the Proceeding gets a red marker, every
+                          other entry keeps the neutral house colour — no
+                          extra chrome needed to see which rows matter. */}
+                      <div className={`absolute w-2 h-2 rounded-full -ml-[21px] mt-1.5 ${
+                        item.type === 'HEARING' && item.courtNote && isTerminalHearingOutcome(item.courtNote.hearing_outcome)
+                          ? 'bg-red-600'
+                          : 'bg-[#8A6D2F]'
+                      }`}></div>
 
                       {item.type === 'HEARING' && item.courtNote && (
                         <>
                           <div className="flex flex-wrap items-baseline gap-x-2">
                             <span className="text-[10px] font-mono font-bold text-[#8A6D2F]">{item.courtNote.hearing_date}</span>
                             <span className="text-[9px] font-bold uppercase tracking-wider text-[#726B58] border border-[#E7DFC9] rounded px-1.5 py-0.5">Hearing</span>
+                            {isTerminalHearingOutcome(item.courtNote.hearing_outcome) ? (
+                              <span className="text-[9px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200 rounded px-1.5 py-0.5">
+                                {HEARING_OUTCOME_LABELS[item.courtNote.hearing_outcome]}
+                              </span>
+                            ) : item.courtNote.hearing_outcome === 'RESERVED_FOR_ORDERS' ? (
+                              <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                                Reserved for Orders
+                              </span>
+                            ) : item.courtNote.hearing_outcome === 'ADJOURNED' ? (
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-[#B0A588]">Adjourned</span>
+                            ) : null}
                             <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{item.courtNote.stage}</span>
                             <CourtBadge court={item.courtNote.court_forum_display} />
                             <Link href={`/cases/${item.courtNote.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">

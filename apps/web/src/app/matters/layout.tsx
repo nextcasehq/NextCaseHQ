@@ -27,11 +27,16 @@ function relativeTime(isoTimestamp: string): string {
   return `${days}d ago`;
 }
 
+// Ordered to match the Matter Workspace's actual physical section order
+// (Phase 2 refinement pass) — Matter Health and Court Orders now sit above
+// Litigation Journey and the Overview/Edit panel on the page itself, so the
+// Navigator follows the same order rather than an earlier, since-reshuffled
+// sequence.
 const NAVIGATOR_SECTIONS = [
-  { label: 'Overview', href: '#overview' },
-  { label: 'Litigation Journey', href: '#journey' },
   { label: 'Matter Health', href: '#health' },
   { label: 'Court Orders', href: '#orders' },
+  { label: 'Litigation Journey', href: '#journey' },
+  { label: 'Overview', href: '#overview' },
   { label: 'Matter Notes', href: '#notes' },
   { label: 'Proceedings', href: '#proceedings' },
   { label: 'Activity', href: '#activity' },
