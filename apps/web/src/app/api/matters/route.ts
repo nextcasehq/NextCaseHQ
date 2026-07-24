@@ -59,12 +59,18 @@ interface MatterRow {
   updated_by_user_id: string | null;
 }
 
+// next_hearing_date is cast to text — it's a DATE column, and node-pg
+// round-trips DATE as a JS Date object, which JSON-serializes as a full
+// UTC timestamp (e.g. "2026-08-10T00:00:00.000Z") rather than the plain
+// YYYY-MM-DD the UI works in. Same footgun CourtNote.hearing_date/
+// next_hearing_date were deliberately made TEXT to avoid (see schema.sql)
+// — this column just wasn't caught at the time.
 const MATTER_COLUMNS = `m.id, m.tenant_id, m.title, m.matter_number, m.engagement_type, m.practice_area,
                         m.status, m.client_id, m.opposing_party_name, m.opposing_counsel, m.court,
                         m.bench, m.judge, m.description, m.opened_at, m.closed_at, m.created_at,
                         m.updated_at, c.name AS client_name, m.advocate_reference_number, m.matter_category,
                         m.state, m.district, m.court_establishment, m.case_type, m.filing_number,
-                        m.matter_year, m.cnr_number, m.current_stage, m.next_hearing_date,
+                        m.matter_year, m.cnr_number, m.current_stage, m.next_hearing_date::text AS next_hearing_date,
                         m.current_proceeding_id, m.created_by_user_id, m.updated_by_user_id`;
 const MATTER_FROM = `"Matter" m LEFT JOIN "Client" c ON c.id = m.client_id`;
 

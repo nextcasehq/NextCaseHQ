@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import BrandBackground from '@/components/BrandBackground';
@@ -10,6 +10,7 @@ import CourtBadge from '@/components/CourtBadge';
 import LitigationJourney from '@/components/LitigationJourney';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
+import { CERTIFIED_COPY_STATUS_LABELS, type CertifiedCopyStatus } from '@/lib/domain/court-order';
 import MatterClosurePanel from './MatterClosurePanel';
 
 interface Matter {
@@ -130,6 +131,36 @@ interface MatterDocument {
   updated_at: string;
 }
 
+/** One Court Order, tagged with which Proceeding it came from — the tag is
+ * what makes this view useful on a multi-proceeding Matter (trial court +
+ * appeal, say), where the same list without it would be ambiguous. */
+interface MatterOrder {
+  id: string;
+  case_id: string;
+  proceeding_title: string;
+  order_date: string;
+  summary: string;
+  document_id: string | null;
+  certified_copy_required: boolean;
+  certified_copy_status: CertifiedCopyStatus;
+}
+
+type ActivityType = 'HEARING' | 'ORDER' | 'ACTION' | 'MILESTONE';
+
+/** The single merged, chronological feed Matter Activity renders — built
+ * client-side from data already fetched for this page (Court Notes, Court
+ * Orders, Pending Actions, manual Timeline entries). No new backend route:
+ * this is a presentation-layer merge of four existing lists into one. */
+interface ActivityItem {
+  type: ActivityType;
+  date: string;
+  key: string;
+  courtNote?: MatterCourtNote;
+  order?: MatterOrder;
+  task?: MatterTaskItem;
+  event?: MatterEvent;
+}
+
 interface PreparationItem {
   case_id: string;
   case_title: string;
@@ -184,7 +215,8 @@ export default function MatterDetailsChamberPage() {
   const [health, setHealth] = useState<MatterHealth | null>(null);
   const [preparationItems, setPreparationItems] = useState<PreparationItem[]>([]);
   const [matterDocuments, setMatterDocuments] = useState<MatterDocument[]>([]);
-  const [showFullCourtNoteHistory, setShowFullCourtNoteHistory] = useState(false);
+  const [matterOrders, setMatterOrders] = useState<MatterOrder[]>([]);
+  const [activityFilter, setActivityFilter] = useState<'ALL' | ActivityType>('ALL');
   const [needsAuth, setNeedsAuth] = useState(false);
   const [showUnavailablePrompt, setShowUnavailablePrompt] = useState(false);
   // Only ever set true by a successful, unauthenticated GET /api/beta-status
@@ -207,6 +239,14 @@ export default function MatterDetailsChamberPage() {
   const [proceedingPriorId, setProceedingPriorId] = useState('');
   const [proceedingRelationship, setProceedingRelationship] = useState('');
   const [showProceedingCourtPicker, setShowProceedingCourtPicker] = useState(false);
+
+  // Matter Notes — an informal scratchpad, deliberately separate from the
+  // formal Overview description and from any court record (same rule the
+  // Proceeding-level Private Scratchpad already follows). UI-structure pass
+  // only: persisted to localStorage per browser for now rather than a new
+  // Matter.notes column — see the note above handleSaveMatterNotes.
+  const [matterNotes, setMatterNotes] = useState('');
+  const [matterNotesSaved, setMatterNotesSaved] = useState(false);
 
   const [showEventForm, setShowEventForm] = useState(false);
   const [eventDate, setEventDate] = useState('');
@@ -292,6 +332,53 @@ export default function MatterDetailsChamberPage() {
     setMatterDocuments(data.documents);
   }, [id]);
 
+  // Court Orders are a Proceeding-level record (GET /api/cases/[id]/orders)
+  // — there is no matter-scoped orders endpoint. This aggregates them by
+  // fetching every linked Proceeding's orders in parallel and merging by
+  // date, so the Matter Workspace can show them without a new backend
+  // route. Depends on `proceedings` rather than running once on `id`,
+  // since it needs that list to know which Proceedings to ask.
+  const fetchMatterOrders = useCallback(async (proceedingList: Proceeding[]) => {
+    if (proceedingList.length === 0) {
+      setMatterOrders([]);
+      return;
+    }
+    const results = await Promise.all(
+      proceedingList.map(async (p) => {
+        const res = await fetch(`/api/cases/${p.id}/orders`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data.orders as Array<Omit<MatterOrder, 'proceeding_title'>>).map((o) => ({
+          ...o,
+          proceeding_title: p.title,
+        }));
+      })
+    );
+    const merged = results.flat().sort((a, b) => (a.order_date < b.order_date ? 1 : -1));
+    setMatterOrders(merged);
+  }, []);
+
+  useEffect(() => {
+    fetchMatterOrders(proceedings);
+  }, [proceedings, fetchMatterOrders]);
+
+  // Matter Notes — loaded from localStorage per-Matter. This is a UI-
+  // structure pass, not full persistence: Matter has no `notes` column
+  // today (only the formal `description`), and adding one is a schema
+  // change that belongs in the follow-up implementation pass once this
+  // layout itself is approved. localStorage keeps the interaction real to
+  // evaluate (typing, saving, the confirmation) without that migration.
+  useEffect(() => {
+    const stored = window.localStorage.getItem(`nextcasehq:matter-notes:${id}`);
+    if (stored) setMatterNotes(stored);
+  }, [id]);
+
+  const handleSaveMatterNotes = () => {
+    window.localStorage.setItem(`nextcasehq:matter-notes:${id}`, matterNotes);
+    setMatterNotesSaved(true);
+    setTimeout(() => setMatterNotesSaved(false), 2000);
+  };
+
   const handleTaskStatusChange = async (taskId: string, status: 'COMPLETED' | 'DISMISSED' | 'PENDING') => {
     if (matter?.is_demo) {
       setShowUnavailablePrompt(true);
@@ -329,6 +416,41 @@ export default function MatterDetailsChamberPage() {
     fetchPreparation,
     fetchMatterDocuments,
   ]);
+
+  // Matter Activity — one merged, chronological feed instead of the three
+  // separate cards (Recent Court Note / Pending Actions / Timeline) this
+  // replaces. Stage-change and next-hearing-change rows the layout
+  // proposal sketched are deferred (they'd need a diff across consecutive
+  // Court Notes, not built yet) — each Court Note entry below already
+  // shows its own next_hearing_date inline, so that information isn't
+  // lost, just not broken out as its own row yet. Manual Timeline entries
+  // are included; HEARING-sourced MatterEvents are deliberately excluded
+  // here since matterCourtNotes already covers the same hearings with
+  // richer detail — including both would show every hearing twice.
+  const activityItems = useMemo<ActivityItem[]>(() => {
+    const items: ActivityItem[] = [
+      ...matterCourtNotes.map((cn) => ({ type: 'HEARING' as const, date: cn.hearing_date, key: `note-${cn.id}`, courtNote: cn })),
+      ...matterOrders.map((o) => ({ type: 'ORDER' as const, date: o.order_date, key: `order-${o.id}`, order: o })),
+      ...matterTasks
+        .filter((t) => t.status === 'PENDING')
+        .map((t) => ({ type: 'ACTION' as const, date: t.hearing_date, key: `task-${t.id}`, task: t })),
+      ...events
+        .filter((e) => e.source_type === 'MANUAL')
+        .map((e) => ({ type: 'MILESTONE' as const, date: e.event_date, key: `event-${e.id}`, event: e })),
+    ];
+    return items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  }, [matterCourtNotes, matterOrders, matterTasks, events]);
+
+  const filteredActivity = useMemo(
+    () => (activityFilter === 'ALL' ? activityItems : activityItems.filter((i) => i.type === activityFilter)),
+    [activityItems, activityFilter]
+  );
+
+  const activityCounts = useMemo(() => {
+    const counts: Record<ActivityType, number> = { HEARING: 0, ORDER: 0, ACTION: 0, MILESTONE: 0 };
+    activityItems.forEach((i) => { counts[i.type] += 1; });
+    return counts;
+  }, [activityItems]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -693,97 +815,65 @@ export default function MatterDetailsChamberPage() {
               </div>
             )}
 
-            {/* Recent Court Note — latest only; full aggregated history is
-                progressive disclosure, not shown immediately */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Recent Court Note</h2>
-              {matterCourtNotes.length === 0 ? (
-                <p className="text-xs font-semibold text-[#6F5624]">No Court Notes recorded yet for this matter.</p>
-              ) : (
-                <>
-                  <div className="border-l-2 border-[#F4EEE0] pl-4">
-                    <div className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{matterCourtNotes[0].hearing_date}</span>
-                      <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{matterCourtNotes[0].stage}</span>
-                      <CourtBadge court={matterCourtNotes[0].court_forum_display} />
-                      <Link href={`/cases/${matterCourtNotes[0].case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
-                        {matterCourtNotes[0].case_title}
-                      </Link>
-                    </div>
-                    <p className="text-xs text-[#3A3222] mt-1">{matterCourtNotes[0].note}</p>
-                    {matterCourtNotes[0].next_actions && (
-                      <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {matterCourtNotes[0].next_actions}</p>
-                    )}
-                  </div>
-
-                  {matterCourtNotes.length > 1 && (
-                    <>
-                      <button
-                        onClick={() => setShowFullCourtNoteHistory(!showFullCourtNoteHistory)}
-                        className="mt-4 text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] hover:underline"
-                      >
-                        {showFullCourtNoteHistory ? 'Hide full history' : `View full history (${matterCourtNotes.length}) →`}
-                      </button>
-                      {showFullCourtNoteHistory && (
-                        <div className="space-y-4 mt-4 pt-4 border-t border-[#F4EEE0]">
-                          {matterCourtNotes.slice(1).map((cn) => (
-                            <div key={cn.id} className="border-l-2 border-[#F4EEE0] pl-4">
-                              <div className="flex flex-wrap items-baseline gap-x-2">
-                                <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{cn.hearing_date}</span>
-                                <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{cn.stage}</span>
-                                <CourtBadge court={cn.court_forum_display} />
-                                <Link href={`/cases/${cn.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
-                                  {cn.case_title}
-                                </Link>
-                              </div>
-                              <p className="text-xs text-[#3A3222] mt-1">{cn.note}</p>
-                              {cn.next_actions && (
-                                <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {cn.next_actions}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
+            {/* Court Orders — the biggest gap identified in the Phase 2
+                architectural review: orders were previously visible only
+                inside each individual Proceeding's own Case Workspace, one
+                at a time. This aggregates every linked Proceeding's orders
+                (see fetchMatterOrders above) so a Matter with, say, a trial
+                court Proceeding and an Appeal shows both forums' orders
+                in one place — the Proceeding tag on each row makes clear
+                which forum issued it. Deliberately read-only here: advancing
+                certified-copy status or attaching a copy still happens on
+                the Proceeding's own Case Workspace (linked below) rather
+                than duplicating that write path in two places. */}
+            <div id="orders" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Court Orders</h2>
+                  {matterOrders.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9]">
+                      {matterOrders.length}
+                    </span>
                   )}
-                </>
-              )}
-            </div>
-
-            {/* Pending Actions — structured, derived from Court Notes */}
-            <div className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58] mb-4">Pending Actions</h2>
-              {matterTasks.filter((t) => t.status === 'PENDING').length === 0 ? (
-                <p className="text-xs font-semibold text-[#6F5624]">No pending actions.</p>
+                </div>
+                {proceedings.length > 1 && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#B0A588]">
+                    Across {proceedings.length} Proceedings
+                  </span>
+                )}
+              </div>
+              {matterOrders.length === 0 ? (
+                <p className="text-xs font-semibold text-[#6F5624]">No orders recorded yet for this matter.</p>
               ) : (
-                <ul className="space-y-3">
-                  {matterTasks
-                    .filter((task) => task.status === 'PENDING')
-                    .map((task) => (
-                      <li key={task.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-[#FBF8F1]/50 border-[#F4EEE0]">
-                        <div>
-                          <p className="text-sm font-medium text-[#3A3222]">☐ {task.action_text}</p>
-                          <span className="text-[10px] text-[#726B58]">
-                            {task.hearing_date && <>Due: {task.hearing_date} · </>}Source: {task.case_title}
+                <div className="space-y-4">
+                  {matterOrders.map((order) => (
+                    <div key={order.id} className="border-l-2 border-[#F4EEE0] pl-4">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span className="text-[9px] font-mono font-bold text-[#8A6D2F]">{order.order_date}</span>
+                        <Link
+                          href={`/cases/${order.case_id}`}
+                          className="text-[9px] font-bold uppercase tracking-wider bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9] px-2 py-0.5 rounded-full hover:bg-[#F4EEE0]"
+                        >
+                          {order.proceeding_title}
+                        </Link>
+                        {order.certified_copy_required && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9] uppercase tracking-wider">
+                            Certified Copy: {CERTIFIED_COPY_STATUS_LABELS[order.certified_copy_status]}
                           </span>
-                        </div>
-                        <div className="flex gap-2 flex-none">
-                          <button
-                            onClick={() => handleTaskStatusChange(task.id, 'COMPLETED')}
-                            className="text-[10px] font-bold uppercase text-[#8A6D2F] hover:underline"
-                          >
-                            Complete
-                          </button>
+                        )}
+                        {order.document_id && (
                           <Link
-                            href={`/cases/${task.case_id}`}
-                            className="text-[10px] font-bold uppercase text-[#726B58] hover:underline"
+                            href={`/documents/${order.document_id}`}
+                            className="text-[9px] font-bold text-[#8A6D2F] uppercase tracking-wider hover:underline"
                           >
-                            View Source Note
+                            View Copy →
                           </Link>
-                        </div>
-                      </li>
-                    ))}
-                </ul>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#3A3222] mt-1">{order.summary}</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -856,7 +946,7 @@ export default function MatterDetailsChamberPage() {
                     {matter.description || 'No description provided.'}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-6 border-t border-[#F4EEE0] pt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 border-t border-[#F4EEE0] pt-6">
                   <div>
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">PRACTICE AREA</span>
                     <span className="text-sm font-bold text-[#3A3222]">{matter.practice_area || 'N/A'}</span>
@@ -864,6 +954,31 @@ export default function MatterDetailsChamberPage() {
                   <div>
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">OPPOSING PARTY</span>
                     <span className="text-sm font-bold text-[#3A3222]">{matter.opposing_party_name || 'N/A'}</span>
+                  </div>
+                  <div>
+                    {/* Captured on the Matter creation form since the very
+                        first version of this page, but never displayed
+                        anywhere until now (Phase 2 review, priority 3). */}
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">OPPOSING COUNSEL</span>
+                    <span className="text-sm font-bold text-[#3A3222]">{matter.opposing_counsel || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">NEXT HEARING</span>
+                    <span className="text-sm font-mono font-bold text-[#3A3222]">{health?.next_hearing_date || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">LATEST ORDER</span>
+                    {matterOrders.length > 0 ? (
+                      <span className="text-sm font-bold text-[#3A3222]">
+                        {matterOrders[0].order_date} <span className="font-normal text-[#726B58]">— {matterOrders[0].proceeding_title}</span>
+                      </span>
+                    ) : (
+                      <span className="text-sm font-bold text-[#3A3222]">N/A</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">PENDING TASKS</span>
+                    <span className="text-sm font-bold text-[#3A3222]">{activityCounts.ACTION}</span>
                   </div>
                   <div>
                     <span className="block text-[10px] font-bold text-[#726B58] uppercase tracking-widest">OPENED</span>
@@ -874,8 +989,48 @@ export default function MatterDetailsChamberPage() {
                     <span className="text-xs font-mono text-[#5C5340]">{new Date(matter.updated_at).toLocaleDateString()}</span>
                   </div>
                 </div>
+                {activityItems.length > 0 && (
+                  <p className="text-xs text-[#6F5624] border-t border-[#F4EEE0] pt-4">
+                    <span className="font-bold text-[#4A4130] uppercase tracking-widest text-[10px]">Latest activity: </span>
+                    {activityItems[0].type === 'HEARING' && activityItems[0].courtNote?.note}
+                    {activityItems[0].type === 'ORDER' && activityItems[0].order?.summary}
+                    {activityItems[0].type === 'ACTION' && activityItems[0].task?.action_text}
+                    {activityItems[0].type === 'MILESTONE' && activityItems[0].event?.description}
+                    {' '}({activityItems[0].date})
+                  </p>
+                )}
               </div>
             )}
+
+            {/* Matter Notes — informal working memory, deliberately
+                separate from the formal Overview description above and
+                from any court record (Court Notes, Court Orders). Same
+                separation rule the Proceeding-level Private Scratchpad
+                already follows on the Case Workspace page. */}
+            <div id="notes" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
+              <div className="flex justify-between items-center mb-1">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Matter Notes</h2>
+                {matterNotesSaved && <span className="text-xs text-green-800 font-bold font-sans">✓ Saved</span>}
+              </div>
+              <p className="text-[10px] text-[#B0A588] font-semibold mb-3">
+                Informal working notes only — not part of the Overview description or any court record.
+              </p>
+              <textarea
+                value={matterNotes}
+                onChange={(e) => setMatterNotes(e.target.value)}
+                placeholder="Working notes, reminders, or context for this matter..."
+                rows={5}
+                className="w-full p-4 bg-[#FBF8F1] border border-[#E7DFC9] rounded-lg outline-none focus:border-[#8A6D2F] text-sm font-medium font-mono text-[#3A3222]"
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={handleSaveMatterNotes}
+                  className="px-4 py-2 bg-[#8A6D2F] hover:bg-[#6F5624] text-white text-xs font-bold uppercase rounded-lg"
+                >
+                  Save Notes
+                </button>
+              </div>
+            </div>
 
             {/* Proceedings Section */}
             <div id="proceedings" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
@@ -1012,7 +1167,16 @@ export default function MatterDetailsChamberPage() {
                           {c.court ? <CourtBadge court={c.court} /> : <span className="text-xs font-bold text-[#6F5624]">N/A</span>}
                         </div>
                         <h3 className="font-bold text-sm text-[#3A3222]">{c.title}</h3>
-                        <p className="text-xs text-[#726B58] font-mono mt-1">Status: {c.status}</p>
+                        {/* Stage/next-hearing/status all shown here, not
+                            just in the row's own Proceeding page — a
+                            multi-proceeding Matter (trial + appeal) needs
+                            to stay understandable without a click, per the
+                            Phase 2 review's priority 4. */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-1">
+                          <span className="text-xs text-[#726B58] font-mono">Status: {c.status}</span>
+                          {c.stage && <span className="text-xs text-[#726B58] font-mono">Stage: {c.stage}</span>}
+                          <span className="text-xs text-[#726B58] font-mono">Next hearing: {c.hearing_date || 'Not scheduled'}</span>
+                        </div>
                         {c.relationship_to_prior && c.prior_proceeding_id && (
                           <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A6D2F] mt-1.5">
                             ↳ {PROCEEDING_RELATIONSHIP_LABELS[c.relationship_to_prior] || c.relationship_to_prior} of{' '}
@@ -1037,14 +1201,15 @@ export default function MatterDetailsChamberPage() {
               )}
             </div>
 
-            {/* Matter Timeline — unified chronology: Court Note-generated
-                events (read-only, source_type='HEARING') alongside manual
-                entries (source_type='MANUAL'), same table/list since
-                Milestone 1 — this section only renames and repositions it,
-                the "Add Entry" capability is unchanged. */}
-            <div id="timeline" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
-              <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#F4EEE0]">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Matter Timeline</h2>
+            {/* Matter Activity — replaces the previous Recent Court Note,
+                Pending Actions, and Matter Timeline cards with one merged,
+                chronological stream (Phase 2 architectural review, priority
+                0). Filter chips narrow the same list; they never split it
+                back into separate views. "Add Entry" (manual milestones)
+                is unchanged from the old Timeline card. */}
+            <div id="activity" className="bg-white border border-[#E7DFC9]/80 rounded-xl p-6 shadow-sm scroll-mt-6">
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-[#F4EEE0]">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#726B58]">Matter Activity</h2>
                 <button
                   onClick={() => setShowEventForm(!showEventForm)}
                   className="bg-[#FBF8F1] hover:bg-[#F4EEE0] border border-[#E7DFC9] text-[#8A6D2F] hover:text-[#6F5624] font-bold text-xs px-4 py-2 rounded-lg transition-all uppercase tracking-wider"
@@ -1076,28 +1241,115 @@ export default function MatterDetailsChamberPage() {
                 </form>
               )}
 
-              {events.length > 0 ? (
+              <div className="flex flex-wrap gap-2 mb-5">
+                {([
+                  ['ALL', `All (${activityItems.length})`],
+                  ['HEARING', `Hearings (${activityCounts.HEARING})`],
+                  ['ORDER', `Orders (${activityCounts.ORDER})`],
+                  ['ACTION', `Actions (${activityCounts.ACTION})`],
+                  ['MILESTONE', `Milestones (${activityCounts.MILESTONE})`],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setActivityFilter(value)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border transition-all ${
+                      activityFilter === value
+                        ? 'bg-[#111111] border-[#111111] text-white'
+                        : 'bg-white hover:bg-[#FBF8F1] border-[#E7DFC9] text-[#5C5340]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {filteredActivity.length === 0 ? (
+                <div className="text-center py-10 bg-[#FBF8F1]/50 border border-[#F4EEE0] rounded-xl">
+                  <p className="text-xs font-semibold text-[#6F5624]">
+                    {activityItems.length === 0 ? 'No activity recorded yet for this matter.' : 'Nothing of this type yet.'}
+                  </p>
+                  <p className="text-[10px] text-[#726B58] mt-0.5">Hearings, orders, and actions will appear here as they happen.</p>
+                </div>
+              ) : (
                 <ol className="relative border-l border-[#E7DFC9] ml-2 space-y-5">
-                  {events.map((ev) => (
-                    <li key={ev.id} className="ml-4">
+                  {filteredActivity.map((item) => (
+                    <li key={item.key} className="ml-4">
                       <div className="absolute w-2 h-2 bg-[#8A6D2F] rounded-full -ml-[21px] mt-1.5"></div>
-                      <span className="text-[10px] font-mono font-bold text-[#8A6D2F]">
-                        {new Date(ev.event_date).toLocaleDateString()}
-                      </span>
-                      {ev.source_type === 'HEARING' && (
-                        <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-[#726B58] border border-[#E7DFC9] rounded px-1.5 py-0.5">
-                          Court Note
-                        </span>
+
+                      {item.type === 'HEARING' && item.courtNote && (
+                        <>
+                          <div className="flex flex-wrap items-baseline gap-x-2">
+                            <span className="text-[10px] font-mono font-bold text-[#8A6D2F]">{item.courtNote.hearing_date}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[#726B58] border border-[#E7DFC9] rounded px-1.5 py-0.5">Hearing</span>
+                            <span className="text-[10px] font-bold text-[#726B58] uppercase tracking-wider">{item.courtNote.stage}</span>
+                            <CourtBadge court={item.courtNote.court_forum_display} />
+                            <Link href={`/cases/${item.courtNote.case_id}`} className="text-[10px] font-bold text-[#8A6D2F] hover:underline">
+                              {item.courtNote.case_title}
+                            </Link>
+                          </div>
+                          <p className="text-sm text-[#3A3222] font-medium mt-0.5">{item.courtNote.note}</p>
+                          {item.courtNote.next_actions && (
+                            <p className="text-xs text-[#8A6D2F] font-semibold mt-1">Next: {item.courtNote.next_actions}</p>
+                          )}
+                          {item.courtNote.next_hearing_date && (
+                            <p className="text-[10px] text-[#726B58] mt-1">Next hearing: {item.courtNote.next_hearing_date}</p>
+                          )}
+                        </>
                       )}
-                      <p className="text-sm text-[#3A3222] font-medium">{ev.description}</p>
+
+                      {item.type === 'ORDER' && item.order && (
+                        <>
+                          <div className="flex flex-wrap items-baseline gap-x-2">
+                            <span className="text-[10px] font-mono font-bold text-[#8A6D2F]">{item.order.order_date}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[#726B58] border border-[#E7DFC9] rounded px-1.5 py-0.5">Order</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9] px-1.5 py-0.5 rounded-full">
+                              {item.order.proceeding_title}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[#3A3222] font-medium mt-0.5">{item.order.summary}</p>
+                          {item.order.certified_copy_required && (
+                            <p className="text-[10px] text-[#726B58] mt-1">
+                              Certified copy: {CERTIFIED_COPY_STATUS_LABELS[item.order.certified_copy_status]}
+                            </p>
+                          )}
+                        </>
+                      )}
+
+                      {item.type === 'ACTION' && item.task && (
+                        <>
+                          <div className="flex flex-wrap items-baseline gap-x-2">
+                            <span className="text-[10px] font-mono font-bold text-[#8A6D2F]">{item.task.hearing_date}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[#726B58] border border-[#E7DFC9] rounded px-1.5 py-0.5">Action</span>
+                          </div>
+                          <p className="text-sm text-[#3A3222] font-medium mt-0.5">☐ {item.task.action_text}</p>
+                          <div className="flex gap-3 mt-1.5">
+                            <button
+                              onClick={() => handleTaskStatusChange(item.task!.id, 'COMPLETED')}
+                              className="text-[10px] font-bold uppercase text-[#8A6D2F] hover:underline"
+                            >
+                              Complete
+                            </button>
+                            <Link href={`/cases/${item.task.case_id}`} className="text-[10px] font-bold uppercase text-[#726B58] hover:underline">
+                              View Source Note
+                            </Link>
+                          </div>
+                        </>
+                      )}
+
+                      {item.type === 'MILESTONE' && item.event && (
+                        <>
+                          <span className="text-[10px] font-mono font-bold text-[#8A6D2F]">
+                            {new Date(item.event.event_date).toLocaleDateString()}
+                          </span>
+                          <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-[#726B58] border border-[#E7DFC9] rounded px-1.5 py-0.5">
+                            Milestone
+                          </span>
+                          <p className="text-sm text-[#3A3222] font-medium mt-0.5">{item.event.description}</p>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ol>
-              ) : (
-                <div className="text-center py-10 bg-[#FBF8F1]/50 border border-[#F4EEE0] rounded-xl">
-                  <p className="text-xs font-semibold text-[#6F5624]">No chronology entries yet.</p>
-                  <p className="text-[10px] text-[#726B58] mt-0.5">Add the first entry to start this matter&apos;s timeline.</p>
-                </div>
               )}
             </div>
 

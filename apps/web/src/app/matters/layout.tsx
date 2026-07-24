@@ -31,8 +31,10 @@ const NAVIGATOR_SECTIONS = [
   { label: 'Overview', href: '#overview' },
   { label: 'Litigation Journey', href: '#journey' },
   { label: 'Matter Health', href: '#health' },
+  { label: 'Court Orders', href: '#orders' },
+  { label: 'Matter Notes', href: '#notes' },
   { label: 'Proceedings', href: '#proceedings' },
-  { label: 'Timeline', href: '#timeline' },
+  { label: 'Activity', href: '#activity' },
   { label: 'Documents', href: '#documents' },
   { label: 'Team', href: '#team' },
 ];
@@ -129,9 +131,15 @@ export default function MattersLayout({
         `}
       >
         <div className="h-16 px-6 border-b border-[#F4EEE0] flex items-center justify-between flex-none">
-          <span className="text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1">
+          {/* Wordmark only below lg — at lg+ this aside sits statically
+              beside the real page header (which already shows it), so
+              repeating it here would just be clutter. Below lg the aside
+              is a full-height overlay that covers the real header's own
+              logo, so it needs its own. */}
+          <span className="lg:hidden text-lg font-black tracking-tight text-[#241E17] flex items-center gap-1">
             <span>NextCase</span><span className="text-[#8A6D2F]">HQ</span>
           </span>
+          <span className="hidden lg:block text-xs font-black uppercase tracking-widest text-[#B0A588]">Matter</span>
           <button
             type="button"
             onClick={() => setIsMobileNavOpen(false)}
@@ -191,8 +199,8 @@ export default function MattersLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden h-full relative">
         {/* Top Bar */}
-        <header className="h-16 border-b border-[#F4EEE0] bg-white px-4 md:px-8 flex items-center justify-between z-10 flex-none">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="h-16 border-b border-[#F4EEE0] bg-white px-2 md:px-8 flex items-center justify-between z-10 flex-none">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
@@ -211,7 +219,7 @@ export default function MattersLayout({
             <PrimaryAppNav active="matters" />
           </div>
 
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-3 md:gap-6">
             {activeMatterId && (
               <button
                 type="button"

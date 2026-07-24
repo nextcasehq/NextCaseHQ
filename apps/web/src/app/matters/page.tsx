@@ -24,6 +24,38 @@ interface Matter {
   opposing_party_name: string | null;
   court: string | null;
   created_at: string;
+  next_hearing_date: string | null;
+  updated_at: string;
+}
+
+type RowUrgency = 'OVERDUE' | 'TODAY' | 'SOON' | null;
+
+/** Pure display computation off next_hearing_date — no new data, matches
+ * the Phase 2 Register-as-decision-dashboard mandate. Deliberately silent
+ * (returns null) once a matter is more than a week out: the point is to
+ * flag what needs attention, not to reassure about everything that doesn't. */
+function rowUrgency(nextHearingDate: string | null): { level: RowUrgency; label: string } {
+  if (!nextHearingDate) return { level: null, label: '' };
+  const target = new Date(`${nextHearingDate}T00:00:00Z`);
+  if (Number.isNaN(target.getTime())) return { level: null, label: '' };
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const diffDays = Math.round((target.getTime() - todayUtc.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return { level: 'OVERDUE', label: `OVERDUE ${Math.abs(diffDays)}D` };
+  if (diffDays === 0) return { level: 'TODAY', label: 'HEARING TODAY' };
+  if (diffDays <= 7) return { level: 'SOON', label: `DUE IN ${diffDays}D` };
+  return { level: null, label: '' };
+}
+
+/** Compact "Updated Xd ago" — same relative-time shape used in the
+ * notifications drawers elsewhere in the app, just inlined here since this
+ * is the only place on the Register that needs it. */
+function updatedAgoLabel(updatedAt: string): string {
+  const diffMs = Date.now() - new Date(updatedAt).getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days <= 0) return 'Updated today';
+  if (days === 1) return 'Updated 1d ago';
+  return `Updated ${days}d ago`;
 }
 
 interface Client {
@@ -530,6 +562,7 @@ function MattersChamberContent() {
         <div className="flex flex-col gap-3 animate-fadeIn">
           {filteredMatters.map((matter) => {
             const courtColor = courtForumColorFor(matter.court);
+            const urgency = rowUrgency(matter.next_hearing_date);
             return (
               <div
                 key={matter.id}
@@ -542,9 +575,12 @@ function MattersChamberContent() {
                     card-grid boxes used to take. The left edge is
                     court-category coloured (same palette as CourtBadge) so
                     an advocate can tell forums apart down the whole list
-                    without reading each badge individually. */}
+                    without reading each badge individually. Urgency (below)
+                    is deliberately a different visual channel — a small
+                    text pill next to Status, never the left border — so it
+                    never gets confused with court colour-coding. */}
                 <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 px-5 py-4">
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <span className="font-mono text-[10px] font-bold text-[#8A6D2F] bg-[#FBF6EA] px-2 py-0.5 rounded uppercase tracking-wider">
                       {matter.matter_number || matter.id.slice(0, 8)}
                     </span>
@@ -556,14 +592,23 @@ function MattersChamberContent() {
                     }`}>
                       {matter.status}
                     </span>
+                    {urgency.level && (
+                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full whitespace-nowrap tracking-wide ${
+                        urgency.level === 'OVERDUE' ? 'bg-red-50 text-red-700 border border-red-200' :
+                        urgency.level === 'TODAY' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                        'bg-[#FBF6EA] text-[#8A6D2F] border border-[#E7DFC9]'
+                      }`}>
+                        {urgency.level !== 'SOON' && '⚠ '}{urgency.label}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="min-w-0 md:w-64 md:shrink-0">
+                  <div className="min-w-0 md:w-56 md:shrink-0">
                     <h2 className="font-bold text-sm text-[#111111] group-hover:text-[#8A6D2F] transition-colors truncate">
                       {matter.title}
                     </h2>
                     <p className="text-[10px] text-[#726B58] font-bold uppercase tracking-wider truncate">
-                      Client: {matter.client_name || 'Not yet linked'}
+                      {matter.client_name || 'Not yet linked'}{matter.practice_area ? ` · ${matter.practice_area}` : ''}
                     </p>
                   </div>
 
@@ -572,14 +617,15 @@ function MattersChamberContent() {
                       {matter.engagement_type.replace('_', ' ')}
                     </span>
                     {matter.court ? <CourtBadge court={matter.court} /> : <span className="text-[10px] text-[#B0A588] font-semibold">No court set</span>}
-                    <span className="text-[#6F5624] font-medium truncate max-w-[220px]">
-                      {matter.practice_area || 'No practice area set.'}
-                    </span>
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-[8.5px] font-bold text-[#B0A588] uppercase tracking-wider">Next Hearing</span>
+                      <span className="font-mono font-bold text-[#3A3222]">{matter.next_hearing_date || 'Not scheduled'}</span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-4 shrink-0 md:ml-auto">
-                    <div className="text-[10px] font-mono text-[#726B58] uppercase tracking-widest whitespace-nowrap">
-                      Opened: <span className="font-sans font-bold text-[#5C5340]">{new Date(matter.created_at).toLocaleDateString()}</span>
+                    <div className="text-[9px] font-semibold text-[#B0A588] whitespace-nowrap">
+                      {updatedAgoLabel(matter.updated_at)}
                     </div>
                     <Link
                       href={`/matters/${matter.id}`}

@@ -49,12 +49,16 @@ interface MatterRow {
   updated_by_user_id: string | null;
 }
 
+// next_hearing_date is cast to text — see the matching comment in
+// api/matters/route.ts's own MATTER_COLUMNS for why (DATE columns
+// round-trip through node-pg as a JS Date, which JSON-serializes as a
+// full UTC timestamp instead of plain YYYY-MM-DD).
 const MATTER_COLUMNS = `m.id, m.tenant_id, m.title, m.matter_number, m.engagement_type, m.practice_area,
                         m.status, m.client_id, m.opposing_party_name, m.opposing_counsel, m.court,
                         m.bench, m.judge, m.description, m.opened_at, m.closed_at, m.created_at,
                         m.updated_at, c.name AS client_name, m.advocate_reference_number, m.matter_category,
                         m.state, m.district, m.court_establishment, m.case_type, m.filing_number,
-                        m.matter_year, m.cnr_number, m.current_stage, m.next_hearing_date,
+                        m.matter_year, m.cnr_number, m.current_stage, m.next_hearing_date::text AS next_hearing_date,
                         m.current_proceeding_id, m.created_by_user_id, m.updated_by_user_id`;
 
 const UpdateMatterSchema = z
