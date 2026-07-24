@@ -2,24 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { PRIMARY_APP_NAV_SECTIONS, type PrimaryAppNavSection } from '@/lib/nav/primary-app-nav-sections';
 
-/**
- * The one cross-module nav row shared by every authenticated-shell layout
- * (Case Diary, Matter Register/Workspace, Draft Builder) — replaces the
- * disabled "Matter Workspace ▾" placeholder button that used to sit here
- * (a non-functional "coming soon" control that also happened to collide
- * in name with the per-matter Matter Workspace page). Real, working links
- * so moving between modules never requires falling back to the public
- * marketing navbar (see NavbarWrapper.tsx's hide-list) or feels like
- * leaving the application.
- */
-export const PRIMARY_APP_NAV_SECTIONS = [
-  { key: 'cases', label: 'Case Diary', href: '/cases' },
-  { key: 'matters', label: 'Matter Register', href: '/matters' },
-  { key: 'draft-builder', label: 'Draft Builder', href: '/dashboard/draft-builder' },
-] as const;
-
-export type PrimaryAppNavSection = (typeof PRIMARY_APP_NAV_SECTIONS)[number]['key'];
+export { PRIMARY_APP_NAV_SECTIONS, type PrimaryAppNavSection };
 
 export function PrimaryAppNav({ active }: { active?: PrimaryAppNavSection }) {
   return (

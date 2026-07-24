@@ -15,6 +15,7 @@ import {
   type HearingOutcome,
 } from '@/lib/domain/court-note';
 import { classifyCourtForumType, courtForumColorFor } from '@/lib/domain/court-forum-colors';
+import { bucketFor, type DailyBucket } from '@/lib/domain/case-diary';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -48,33 +49,6 @@ interface LegalCase {
   client_name: string | null;
   updated_at: string;
   latest_hearing_outcome: HearingOutcome | null;
-}
-
-/**
- * Case Diary daily-bucket assignment. A Proceeding falls into exactly one
- * bucket, checked in this order (most specific/actionable first):
- *  1. Adjourned today — a Court Note was saved today and its outcome was
- *     ADJOURNED. The single most "needs follow-up" state.
- *  2. Today's Hearings — next hearing date is today and it hasn't been
- *     actioned yet today (once Save Hearing runs, hearing_date moves off
- *     today automatically, so this bucket naturally empties as the day
- *     goes on rather than needing separate "done" tracking).
- *  3. Completed today — a Court Note was saved today with any other
- *     outcome (conducted/disposed/etc.).
- *  4. Upcoming — a future hearing date, not yet due.
- *  5. Neither — no hearing_date, or last touched on an earlier day; these
- *     stay out of the daily view entirely and are only reachable through
- *     the "All Proceedings" section's filters/search below.
- */
-type DailyBucket = 'adjourned' | 'today' | 'completed' | 'upcoming' | 'other';
-
-function bucketFor(c: LegalCase, today: string): DailyBucket {
-  const updatedToday = c.updated_at.slice(0, 10) === today;
-  if (updatedToday && c.latest_hearing_outcome === 'ADJOURNED') return 'adjourned';
-  if (c.hearing_date === today) return 'today';
-  if (updatedToday) return 'completed';
-  if (c.hearing_date && c.hearing_date > today) return 'upcoming';
-  return 'other';
 }
 
 function CasesChamberContent() {

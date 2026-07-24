@@ -11,6 +11,7 @@ import { courtForumColorFor } from '@/lib/domain/court-forum-colors';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { COURT_FORUM_TYPES, COURT_FORUM_LABELS, type CourtForumType } from '@/lib/domain/court-note';
 import { COURT_FORUM_COLORS, classifyCourtForumType } from '@/lib/domain/court-forum-colors';
+import { rowUrgency, type RowUrgency } from '@/lib/domain/matter-urgency';
 
 interface Matter {
   id: string;
@@ -26,25 +27,6 @@ interface Matter {
   created_at: string;
   next_hearing_date: string | null;
   updated_at: string;
-}
-
-type RowUrgency = 'OVERDUE' | 'TODAY' | 'SOON' | null;
-
-/** Pure display computation off next_hearing_date — no new data, matches
- * the Phase 2 Register-as-decision-dashboard mandate. Deliberately silent
- * (returns null) once a matter is more than a week out: the point is to
- * flag what needs attention, not to reassure about everything that doesn't. */
-function rowUrgency(nextHearingDate: string | null): { level: RowUrgency; label: string } {
-  if (!nextHearingDate) return { level: null, label: '' };
-  const target = new Date(`${nextHearingDate}T00:00:00Z`);
-  if (Number.isNaN(target.getTime())) return { level: null, label: '' };
-  const today = new Date();
-  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  const diffDays = Math.round((target.getTime() - todayUtc.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return { level: 'OVERDUE', label: `OVERDUE ${Math.abs(diffDays)}D` };
-  if (diffDays === 0) return { level: 'TODAY', label: 'HEARING TODAY' };
-  if (diffDays <= 7) return { level: 'SOON', label: `DUE IN ${diffDays}D` };
-  return { level: null, label: '' };
 }
 
 /** Compact "Updated Xd ago" — same relative-time shape used in the

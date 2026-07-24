@@ -40,6 +40,7 @@
  */
 
 import { findDemoSearchItem, searchDemoLegalDataset } from './demo-search-data';
+import type { HearingOutcome } from '@/lib/domain/court-note';
 
 export const DEMO_MATTER_ID = 'deadbeef-0000-4000-8000-000000000000';
 
@@ -210,10 +211,10 @@ interface DemoCaseDiaryProceeding {
   matter_title: null;
   client_name: null;
   updated_at: string;
-  latest_hearing_outcome: string | null;
+  latest_hearing_outcome: HearingOutcome | null;
 }
 
-function getCaseDiaryDemoCases(): DemoCaseDiaryProceeding[] {
+export function getCaseDiaryDemoCases(): DemoCaseDiaryProceeding[] {
   return [
     {
       id: 'deadbeef-0001-4000-8000-000000000001',
@@ -340,7 +341,7 @@ function getCaseDiaryDemoCases(): DemoCaseDiaryProceeding[] {
 /** Court Notes per demo Proceeding — one to two per case, giving each an
  * actual hearing history instead of an empty "no notes yet" state when
  * opened. Keyed by the Proceeding id above. */
-function getCaseDiaryDemoCourtNotes(caseId: string) {
+export function getCaseDiaryDemoCourtNotes(caseId: string) {
   const notesById: Record<string, unknown[]> = {
     'deadbeef-0001-4000-8000-000000000001': [
       {
@@ -438,7 +439,7 @@ function getCaseDiaryDemoCourtNotes(caseId: string) {
 /** Court Orders per demo Proceeding — only where a real order would exist
  * (a concluded/judgment-stage matter), matching the app's own rule that
  * Court Orders are certified-record entries, not every hearing note. */
-function getCaseDiaryDemoOrders(caseId: string) {
+export function getCaseDiaryDemoOrders(caseId: string) {
   const ordersById: Record<string, unknown[]> = {
     'deadbeef-0001-4000-8000-000000000003': [
       {

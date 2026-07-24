@@ -10,8 +10,9 @@ import CourtBadge from '@/components/CourtBadge';
 import LitigationJourney from '@/components/LitigationJourney';
 import { MATTER_STATUSES, MATTER_ENGAGEMENT_TYPES, MATTER_CATEGORIES, type MatterStatus, type MatterEngagementType } from '@/lib/domain/matter';
 import { getDocumentType } from '@/lib/domain/document-type';
-import { CERTIFIED_COPY_STATUS_LABELS, type CertifiedCopyStatus } from '@/lib/domain/court-order';
+import { CERTIFIED_COPY_STATUS_LABELS } from '@/lib/domain/court-order';
 import { HEARING_OUTCOME_LABELS, isTerminalHearingOutcome, type HearingOutcome } from '@/lib/domain/court-note';
+import { buildActivityItems, mergeMatterOrders, type ActivityItem, type ActivityType, type MatterOrder } from '@/lib/domain/matter-activity';
 import MatterClosurePanel from './MatterClosurePanel';
 
 interface Matter {
@@ -133,35 +134,11 @@ interface MatterDocument {
   updated_at: string;
 }
 
-/** One Court Order, tagged with which Proceeding it came from — the tag is
- * what makes this view useful on a multi-proceeding Matter (trial court +
- * appeal, say), where the same list without it would be ambiguous. */
-interface MatterOrder {
-  id: string;
-  case_id: string;
-  proceeding_title: string;
-  order_date: string;
-  summary: string;
-  document_id: string | null;
-  certified_copy_required: boolean;
-  certified_copy_status: CertifiedCopyStatus;
-}
-
-type ActivityType = 'HEARING' | 'ORDER' | 'ACTION' | 'MILESTONE';
-
-/** The single merged, chronological feed Matter Activity renders — built
- * client-side from data already fetched for this page (Court Notes, Court
- * Orders, Pending Actions, manual Timeline entries). No new backend route:
- * this is a presentation-layer merge of four existing lists into one. */
-interface ActivityItem {
-  type: ActivityType;
-  date: string;
-  key: string;
-  courtNote?: MatterCourtNote;
-  order?: MatterOrder;
-  task?: MatterTaskItem;
-  event?: MatterEvent;
-}
+/** This page's own activity feed shape, parameterized with its fuller,
+ * page-local Court Note/Order/Task/Event interfaces — see
+ * @/lib/domain/matter-activity for the shared merge/sort logic this
+ * page and the /system/runtime diagnostics page both call. */
+type PageActivityItem = ActivityItem<MatterCourtNote, MatterOrder, MatterTaskItem, MatterEvent>;
 
 interface PreparationItem {
   case_id: string;
@@ -345,19 +322,14 @@ export default function MatterDetailsChamberPage() {
       setMatterOrders([]);
       return;
     }
-    const results = await Promise.all(
+    const perProceeding = await Promise.all(
       proceedingList.map(async (p) => {
         const res = await fetch(`/api/cases/${p.id}/orders`);
-        if (!res.ok) return [];
-        const data = await res.json();
-        return (data.orders as Array<Omit<MatterOrder, 'proceeding_title'>>).map((o) => ({
-          ...o,
-          proceeding_title: p.title,
-        }));
+        const orders: Array<Omit<MatterOrder, 'proceeding_title'>> = res.ok ? (await res.json()).orders : [];
+        return { proceedingTitle: p.title, orders };
       })
     );
-    const merged = results.flat().sort((a, b) => (a.order_date < b.order_date ? 1 : -1));
-    setMatterOrders(merged);
+    setMatterOrders(mergeMatterOrders(perProceeding));
   }, []);
 
   useEffect(() => {
@@ -429,19 +401,10 @@ export default function MatterDetailsChamberPage() {
   // are included; HEARING-sourced MatterEvents are deliberately excluded
   // here since matterCourtNotes already covers the same hearings with
   // richer detail — including both would show every hearing twice.
-  const activityItems = useMemo<ActivityItem[]>(() => {
-    const items: ActivityItem[] = [
-      ...matterCourtNotes.map((cn) => ({ type: 'HEARING' as const, date: cn.hearing_date, key: `note-${cn.id}`, courtNote: cn })),
-      ...matterOrders.map((o) => ({ type: 'ORDER' as const, date: o.order_date, key: `order-${o.id}`, order: o })),
-      ...matterTasks
-        .filter((t) => t.status === 'PENDING')
-        .map((t) => ({ type: 'ACTION' as const, date: t.hearing_date, key: `task-${t.id}`, task: t })),
-      ...events
-        .filter((e) => e.source_type === 'MANUAL')
-        .map((e) => ({ type: 'MILESTONE' as const, date: e.event_date, key: `event-${e.id}`, event: e })),
-    ];
-    return items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  }, [matterCourtNotes, matterOrders, matterTasks, events]);
+  const activityItems = useMemo<PageActivityItem[]>(
+    () => buildActivityItems(matterCourtNotes, matterOrders, matterTasks, events),
+    [matterCourtNotes, matterOrders, matterTasks, events]
+  );
 
   const filteredActivity = useMemo(
     () => (activityFilter === 'ALL' ? activityItems : activityItems.filter((i) => i.type === activityFilter)),
