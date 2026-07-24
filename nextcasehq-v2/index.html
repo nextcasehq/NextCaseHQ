@@ -1,0 +1,728 @@
+<title>NextCaseHQ v2 — Design Review</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ============================================================
+     TOKENS
+     ============================================================ */
+  :root {
+    --bg: #F6F5F3;
+    --surface: #FFFFFF;
+    --surface-sunken: #F0EEEB;
+    --ink: #17151A;
+    --ink-muted: #6B6570;
+    --ink-faint: #9B96A0;
+    --line: #E4E1DE;
+    --line-strong: #D3CFCB;
+
+    --accent: #5C3A66;
+    --accent-strong: #402849;
+    --accent-tint: #F1E9F2;
+    --accent-tint-line: #E2D2E5;
+
+    --good: #1F7A4D;
+    --good-tint: #E7F4EC;
+    --warn: #9A6A12;
+    --warn-tint: #FBF1DE;
+    --bad: #B23A3A;
+    --bad-tint: #FBEAEA;
+    --info: #2B5BA6;
+    --info-tint: #EAF1FB;
+
+    /* Court category identity system */
+    --court-supreme: #2C4870;      --court-supreme-tint: #E9EEF5;
+    --court-high: #2E6E7A;         --court-high-tint: #E7F1F2;
+    --court-district: #516072;     --court-district-tint: #EBEDF0;
+    --court-tribunal: #8A6D23;     --court-tribunal-tint: #F5EFDF;
+    --court-consumer: #9C5B5B;     --court-consumer-tint: #F5E9E9;
+    --court-family: #5C7A5C;       --court-family-tint: #EBF1EB;
+    --court-labour: #8C5A3C;       --court-labour-tint: #F3EAE4;
+    --court-commercial: #2E7D7A;   --court-commercial-tint: #E7F3F2;
+    --court-other: #7A7570;        --court-other-tint: #F0EFED;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --shadow-1: 0 1px 2px rgba(23,21,26,0.04), 0 1px 1px rgba(23,21,26,0.03);
+    --shadow-2: 0 4px 16px rgba(23,21,26,0.07);
+
+    --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121014;
+      --surface: #1B1820;
+      --surface-sunken: #221E27;
+      --ink: #EDEAF0;
+      --ink-muted: #A79FB0;
+      --ink-faint: #746C7E;
+      --line: #2E2A33;
+      --line-strong: #3B3641;
+
+      --accent: #B08EBC;
+      --accent-strong: #D3B7DC;
+      --accent-tint: #2A2130;
+      --accent-tint-line: #3D2F45;
+
+      --good: #4FBE83;   --good-tint: #16281E;
+      --warn: #D8A542;   --warn-tint: #2C2314;
+      --bad: #E17575;    --bad-tint: #2E1A1A;
+      --info: #7AA6E6;   --info-tint: #16233A;
+
+      --court-supreme: #7C9BC9;      --court-supreme-tint: #1B2436;
+      --court-high: #6FB9C2;         --court-high-tint: #142927;
+      --court-district: #9FADBC;     --court-district-tint: #1E2228;
+      --court-tribunal: #D0AE5C;     --court-tribunal-tint: #2B2413;
+      --court-consumer: #D69B9B;     --court-consumer-tint: #2C1D1D;
+      --court-family: #9EBD9E;       --court-family-tint: #1C2620;
+      --court-labour: #C99872;       --court-labour-tint: #2A2019;
+      --court-commercial: #6FC0BB;   --court-commercial-tint: #142826;
+      --court-other: #B3ACA6;        --court-other-tint: #232120;
+
+      --shadow-1: 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-2: 0 8px 28px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121014; --surface: #1B1820; --surface-sunken: #221E27;
+    --ink: #EDEAF0; --ink-muted: #A79FB0; --ink-faint: #746C7E;
+    --line: #2E2A33; --line-strong: #3B3641;
+    --accent: #B08EBC; --accent-strong: #D3B7DC; --accent-tint: #2A2130; --accent-tint-line: #3D2F45;
+    --good: #4FBE83; --good-tint: #16281E; --warn: #D8A542; --warn-tint: #2C2314;
+    --bad: #E17575; --bad-tint: #2E1A1A; --info: #7AA6E6; --info-tint: #16233A;
+    --court-supreme: #7C9BC9; --court-supreme-tint: #1B2436;
+    --court-high: #6FB9C2; --court-high-tint: #142927;
+    --court-district: #9FADBC; --court-district-tint: #1E2228;
+    --court-tribunal: #D0AE5C; --court-tribunal-tint: #2B2413;
+    --court-consumer: #D69B9B; --court-consumer-tint: #2C1D1D;
+    --court-family: #9EBD9E; --court-family-tint: #1C2620;
+    --court-labour: #C99872; --court-labour-tint: #2A2019;
+    --court-commercial: #6FC0BB; --court-commercial-tint: #142826;
+    --court-other: #B3ACA6; --court-other-tint: #232120;
+    --shadow-1: 0 1px 2px rgba(0,0,0,0.3); --shadow-2: 0 8px 28px rgba(0,0,0,0.45);
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F5F3; --surface: #FFFFFF; --surface-sunken: #F0EEEB;
+    --ink: #17151A; --ink-muted: #6B6570; --ink-faint: #9B96A0;
+    --line: #E4E1DE; --line-strong: #D3CFCB;
+    --accent: #5C3A66; --accent-strong: #402849; --accent-tint: #F1E9F2; --accent-tint-line: #E2D2E5;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+  ::selection { background: var(--accent-tint-line); }
+  a { color: inherit; }
+  button { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* ============================================================
+     REVIEW CHROME (not part of the product — the harness around it)
+     ============================================================ */
+  .review-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--ink); color: var(--bg);
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .review-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: none; }
+  .review-bar .sp { flex: 1; }
+  .review-bar select {
+    background: transparent; color: var(--bg); border: 1px solid rgba(255,255,255,0.3);
+    border-radius: var(--radius-sm); padding: 4px 8px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; font-family: inherit;
+  }
+  .review-bar select option { color: #111; }
+
+  .app-topbar {
+    position: sticky; top: 29px; z-index: 90;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 20px; height: 56px;
+  }
+  .wordmark { font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+  .wordmark .v { color: var(--accent); }
+  .nav-arrows { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .nav-btn {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .nav-btn:hover { background: var(--surface-sunken); border-color: var(--ink-faint); }
+  .nav-label { font-size: 12px; font-weight: 600; color: var(--ink-muted); min-width: 168px; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ============================================================
+     SHARED UI PRIMITIVES
+     ============================================================ */
+  .eyebrow { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-muted); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+    border-radius: var(--radius-sm); font-weight: 600; font-size: 13px; cursor: pointer;
+    border: 1px solid transparent; padding: 9px 15px; transition: background 0.15s, border-color .15s, color .15s;
+    font-family: var(--font-body); white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-strong); }
+  .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
+  .btn-secondary:hover { background: var(--surface-sunken); }
+  .btn-ghost { background: transparent; color: var(--ink-muted); border-color: transparent; }
+  .btn-ghost:hover { color: var(--ink); background: var(--surface-sunken); }
+  .btn-sm { padding: 6px 11px; font-size: 12px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 3px 8px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+  }
+  .badge-good { background: var(--good-tint); color: var(--good); }
+  .badge-warn { background: var(--warn-tint); color: var(--warn); }
+  .badge-bad { background: var(--bad-tint); color: var(--bad); }
+  .badge-info { background: var(--info-tint); color: var(--info); }
+  .badge-neutral { background: var(--surface-sunken); color: var(--ink-muted); border-color: var(--line); }
+
+  .court-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; padding: 3px 9px 3px 7px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .court-chip .sw { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .court-chip.supreme { background: var(--court-supreme-tint); color: var(--court-supreme); }
+  .court-chip.supreme .sw { background: var(--court-supreme); }
+  .court-chip.high { background: var(--court-high-tint); color: var(--court-high); }
+  .court-chip.high .sw { background: var(--court-high); }
+  .court-chip.district { background: var(--court-district-tint); color: var(--court-district); }
+  .court-chip.district .sw { background: var(--court-district); }
+  .court-chip.tribunal { background: var(--court-tribunal-tint); color: var(--court-tribunal); }
+  .court-chip.tribunal .sw { background: var(--court-tribunal); }
+  .court-chip.consumer { background: var(--court-consumer-tint); color: var(--court-consumer); }
+  .court-chip.consumer .sw { background: var(--court-consumer); }
+  .court-chip.family { background: var(--court-family-tint); color: var(--court-family); }
+  .court-chip.family .sw { background: var(--court-family); }
+  .court-chip.labour { background: var(--court-labour-tint); color: var(--court-labour); }
+  .court-chip.labour .sw { background: var(--court-labour); }
+  .court-chip.commercial { background: var(--court-commercial-tint); color: var(--court-commercial); }
+  .court-chip.commercial .sw { background: var(--court-commercial); }
+  .court-chip.other { background: var(--court-other-tint); color: var(--court-other); }
+  .court-chip.other .sw { background: var(--court-other); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-1);
+  }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .app-shell { display: flex; min-height: calc(100vh - 85px); }
+  .app-sidebar {
+    width: 216px; flex: none; background: var(--surface); border-right: 1px solid var(--line);
+    padding: 20px 12px; display: flex; flex-direction: column; gap: 2px;
+  }
+  .side-link {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;
+  }
+  .side-link .ic { width: 16px; text-align: center; opacity: 0.8; }
+  .side-link.active { background: var(--accent-tint); color: var(--accent-strong); }
+  .side-link:not(.active):hover { background: var(--surface-sunken); color: var(--ink); }
+  .side-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); padding: 16px 12px 6px; }
+
+  .app-main { flex: 1; min-width: 0; padding: 28px 32px 60px; max-width: 1180px; }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+  .page-title { font-size: 24px; font-weight: 700; }
+  .page-sub { font-size: 13px; color: var(--ink-muted); margin-top: 4px; }
+
+  @media (max-width: 900px) {
+    .app-sidebar { display: none; }
+    .app-main { padding: 18px 16px 48px; }
+  }
+
+  /* Matter Register strip */
+  .register-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-box {
+    flex: 1; min-width: 200px; display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    padding: 8px 12px; color: var(--ink-muted); font-size: 13px;
+  }
+  .filter-chip {
+    font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-muted); cursor: pointer;
+  }
+  .filter-chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  .strip-list { display: flex; flex-direction: column; gap: 8px; }
+  .strip {
+    display: grid; grid-template-columns: 3px 1.6fr 1fr 1fr 100px; align-items: center; gap: 18px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+    padding: 13px 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+  }
+  .strip:hover { border-color: var(--line-strong); box-shadow: var(--shadow-1); }
+  .strip-accent { align-self: stretch; border-radius: 3px; }
+  .strip-title { font-size: 13.5px; font-weight: 700; }
+  .strip-meta { font-size: 11.5px; color: var(--ink-muted); margin-top: 2px; }
+  .strip-mid { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .strip-mid .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); }
+  .strip-cta { justify-self: end; font-size: 12px; font-weight: 700; color: var(--accent); }
+
+  @media (max-width: 720px) {
+    .strip { grid-template-columns: 3px 1fr; grid-template-areas: "a title" "a mid1" "a mid2" "a cta"; row-gap: 6px; padding: 14px; }
+    .strip-mid:nth-of-type(2) { display: none; }
+  }
+
+  /* Case Diary */
+  .diary-section { margin-bottom: 26px; }
+  .diary-section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .diary-section-head h2 { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body); }
+  .count-pill { font-size: 10.5px; font-weight: 700; background: var(--surface-sunken); color: var(--ink-muted); padding: 2px 7px; border-radius: 999px; }
+  .diary-row {
+    display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 13px 16px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .diary-row .title-block { flex: 1; min-width: 220px; }
+  .diary-row .case-title { font-size: 13.5px; font-weight: 700; }
+  .diary-row .case-meta { font-size: 11.5px; color: var(--ink-muted); margin-top: 2px; }
+  .diary-row .stat { font-size: 12px; }
+  .diary-row .stat .lbl { font-size: 9.5px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 1px; }
+
+  /* Matter Workspace */
+  .glance-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; margin: 22px 0; }
+  .glance-cell { background: var(--surface); padding: 16px 18px; }
+  .glance-cell .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); margin-bottom: 6px; }
+  .glance-cell .val { font-size: 14px; font-weight: 700; }
+  @media (max-width: 760px) { .glance-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .ws-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  @media (max-width: 980px) { .ws-grid { grid-template-columns: 1fr; } }
+  .section-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 18px; }
+  .section-card h3 { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body); color: var(--ink-muted); margin-bottom: 14px; }
+  .timeline-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .timeline-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex: none; }
+  .timeline-item.dot-bad .timeline-dot { background: var(--bad); }
+  .timeline-body .date { font-size: 11px; color: var(--ink-faint); font-weight: 700; }
+  .timeline-body .txt { font-size: 13px; margin-top: 2px; }
+
+  /* Landing */
+  .landing-nav { display: flex; align-items: center; padding: 18px 40px; gap: 28px; }
+  .landing-nav a { font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none; }
+  .landing-hero { max-width: 760px; margin: 0 auto; text-align: center; padding: 70px 24px 40px; }
+  .landing-hero h1 { font-size: 46px; line-height: 1.12; letter-spacing: -0.01em; }
+  .landing-hero p { font-size: 16.5px; color: var(--ink-muted); max-width: 540px; margin: 18px auto 0; line-height: 1.6; }
+  .landing-cta { display: flex; gap: 12px; justify-content: center; margin-top: 28px; }
+  .landing-feats { max-width: 980px; margin: 40px auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 0 24px 80px; }
+  .feat-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 22px; }
+  .feat-card .ic { font-size: 20px; margin-bottom: 10px; }
+  .feat-card h3 { font-family: var(--font-body); font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+  .feat-card p { font-size: 13px; color: var(--ink-muted); line-height: 1.55; margin: 0; }
+  @media (max-width: 760px) { .landing-hero h1 { font-size: 32px; } .landing-feats { grid-template-columns: 1fr; } .landing-nav { padding: 16px 20px; } }
+
+  /* eCourt login */
+  .ecourt-wrap { min-height: calc(100vh - 85px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+  .ecourt-card { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-2); }
+  .ecourt-seal { width: 44px; height: 44px; border-radius: 10px; background: var(--accent-tint); color: var(--accent-strong); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 18px; margin-bottom: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11.5px; font-weight: 700; color: var(--ink-muted); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    background: var(--bg); color: var(--ink); font-size: 13.5px; font-family: inherit;
+  }
+  .divider-or { display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  /* Dashboard */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  @media (max-width: 760px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 18px 20px; }
+  .stat-card .num { font-size: 26px; font-weight: 700; font-family: var(--font-display); }
+  .stat-card .lbl { font-size: 11.5px; color: var(--ink-muted); margin-top: 4px; }
+</style>
+
+<div class="review-bar">
+  <span class="dot"></span>
+  <span>Design Review — Static Layout · No Backend · No Auth · No Live Data</span>
+  <span class="sp"></span>
+  <span>Jump to:</span>
+  <select id="jump"></select>
+</div>
+
+<div class="app-topbar">
+  <div class="wordmark">NextCase<span class="v">HQ</span></div>
+  <div class="nav-arrows">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous layout">‹</button>
+    <span class="nav-label" id="navLabel"></span>
+    <button class="nav-btn" id="nextBtn" aria-label="Next layout">›</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     1. LANDING PAGE
+     ============================================================ -->
+<section class="screen" data-name="1 · Landing Page">
+  <nav class="landing-nav">
+    <div class="wordmark" style="margin-right:auto;">NextCase<span class="v">HQ</span></div>
+    <a href="#">Product</a>
+    <a href="#">Pricing</a>
+    <a href="#">Resources</a>
+    <a class="btn btn-secondary btn-sm" href="#">Sign in</a>
+  </nav>
+  <div class="landing-hero">
+    <span class="eyebrow" style="display:block; margin-bottom:14px;">For Advocates &amp; Chambers</span>
+    <h1>Every matter, every hearing, one place of record.</h1>
+    <p>NextCaseHQ replaces the diary, the register, and the loose file notes with a single system built around how litigation actually gets worked — one hearing at a time.</p>
+    <div class="landing-cta">
+      <a class="btn btn-primary" href="#">Start free</a>
+      <a class="btn btn-secondary" href="#">See a live matter →</a>
+    </div>
+  </div>
+  <div class="landing-feats">
+    <div class="feat-card">
+      <div class="ic">📔</div>
+      <h3>Case Diary</h3>
+      <p>Today's hearings, adjournments, and what just happened — bucketed automatically so nothing from this morning's cause list gets missed.</p>
+    </div>
+    <div class="feat-card">
+      <div class="ic">📁</div>
+      <h3>Matter Register</h3>
+      <p>Every engagement in one scannable register — court, stage, and urgency visible without opening a single file.</p>
+    </div>
+    <div class="feat-card">
+      <div class="ic">⚖️</div>
+      <h3>Court Orders</h3>
+      <p>Every order, from every proceeding under a matter, aggregated in one place — never buried three clicks deep again.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     2. DASHBOARD
+     ============================================================ -->
+<section class="screen" data-name="2 · Dashboard">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="side-section-label">Workspace</div>
+      <a class="side-link active" href="#"><span class="ic">◧</span> Dashboard</a>
+      <a class="side-link" href="#"><span class="ic">📔</span> Case Diary</a>
+      <a class="side-link" href="#"><span class="ic">📁</span> Matter Register</a>
+      <a class="side-link" href="#"><span class="ic">✎</span> Draft Builder</a>
+      <div class="side-section-label">Firm</div>
+      <a class="side-link" href="#"><span class="ic">👤</span> Clients</a>
+      <a class="side-link" href="#"><span class="ic">⚙</span> Settings</a>
+    </aside>
+    <main class="app-main">
+      <div class="page-head">
+        <div><div class="page-title">Good morning, Advocate Rao</div><div class="page-sub">Tuesday, 24 July · 3 hearings listed today</div></div>
+        <a class="btn btn-primary" href="#">+ New Matter</a>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="num">3</div><div class="lbl">Hearings today</div></div>
+        <div class="stat-card"><div class="num">7</div><div class="lbl">Pending actions</div></div>
+        <div class="stat-card"><div class="num">42</div><div class="lbl">Active matters</div></div>
+        <div class="stat-card"><div class="num">2</div><div class="lbl">Orders this week</div></div>
+      </div>
+      <div class="ws-grid">
+        <div>
+          <div class="section-card">
+            <h3>Today's Hearings</h3>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-body"><div class="date">10:30 · Sessions Court, Delhi</div><div class="txt">State vs. Ramesh Yadav — Bail Application, arguments</div></div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-body"><div class="date">11:45 · High Court of Karnataka</div><div class="txt">Metro Builders vs. City Development Authority — Writ Petition</div></div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-body"><div class="date">14:00 · Family Court, Bengaluru</div><div class="txt">Priya Nair vs. Nair — Evidence, cross-examination continues</div></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-card">
+            <h3>Needs Attention</h3>
+            <div class="timeline-item dot-bad"><div class="timeline-dot"></div><div class="timeline-body"><div class="date">Overdue 2d</div><div class="txt">File rejoinder — Orion Freight Carriers matter</div></div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-body"><div class="date">Due tomorrow</div><div class="txt">Certified copy application — Commercial Court order</div></div></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ============================================================
+     3. CASE DIARY
+     ============================================================ -->
+<section class="screen" data-name="3 · Case Diary">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="side-section-label">Workspace</div>
+      <a class="side-link" href="#"><span class="ic">◧</span> Dashboard</a>
+      <a class="side-link active" href="#"><span class="ic">📔</span> Case Diary</a>
+      <a class="side-link" href="#"><span class="ic">📁</span> Matter Register</a>
+      <a class="side-link" href="#"><span class="ic">✎</span> Draft Builder</a>
+    </aside>
+    <main class="app-main">
+      <div class="page-head">
+        <div><div class="page-title">Case Diary</div><div class="page-sub">Today's hearings and the complete proceeding register</div></div>
+        <a class="btn btn-primary" href="#">+ New Proceeding</a>
+      </div>
+
+      <div class="diary-section">
+        <div class="diary-section-head"><h2>Today's Hearings</h2><span class="count-pill">1</span></div>
+        <div class="diary-row">
+          <span class="court-chip supreme"><span class="sw"></span>Sessions Court</span>
+          <div class="title-block"><div class="case-title">State vs. Ramesh Yadav — Bail Application</div><div class="case-meta">BA-2201/2026 · Standalone</div></div>
+          <div class="stat"><span class="lbl">Stage</span>Arguments on Bail</div>
+          <div class="stat mono"><span class="lbl">Next</span>Today</div>
+          <a class="btn btn-secondary btn-sm" href="#">Open →</a>
+        </div>
+      </div>
+
+      <div class="diary-section">
+        <div class="diary-section-head"><h2>Adjourned Hearings</h2><span class="count-pill">1</span></div>
+        <div class="diary-row">
+          <span class="court-chip family"><span class="sw"></span>Family Court</span>
+          <div class="title-block"><div class="case-title">Priya Nair vs. Nair — Divorce &amp; Maintenance</div><div class="case-meta">MC-118/2025 · Standalone</div></div>
+          <div class="stat"><span class="lbl">Stage</span>Evidence</div>
+          <div class="stat mono"><span class="lbl">Next</span>07 Aug</div>
+          <a class="btn btn-secondary btn-sm" href="#">Open →</a>
+        </div>
+      </div>
+
+      <div class="diary-section">
+        <div class="diary-section-head"><h2>Completed Hearings</h2><span class="count-pill">1</span></div>
+        <div class="diary-row">
+          <span class="court-chip commercial"><span class="sw"></span>Commercial Court</span>
+          <div class="title-block"><div class="case-title">Orion Freight Carriers vs. Continental Shipping Co.</div><div class="case-meta">COMM-77/2024 · Judgment pronounced</div></div>
+          <div class="stat"><span class="lbl">Stage</span>Judgment</div>
+          <div class="stat"><span class="badge badge-good">Disposed</span></div>
+          <a class="btn btn-secondary btn-sm" href="#">Open →</a>
+        </div>
+      </div>
+
+      <div class="diary-section">
+        <div class="diary-section-head"><h2>Upcoming Hearings</h2><span class="count-pill">3</span></div>
+        <div class="diary-row">
+          <span class="court-chip labour"><span class="sw"></span>Labour Court</span>
+          <div class="title-block"><div class="case-title">Ashok Pawar vs. Everfresh Foods — Termination Dispute</div><div class="case-meta">LC-902/2025</div></div>
+          <div class="stat"><span class="lbl">Stage</span>Cross-Examination</div>
+          <div class="stat mono"><span class="lbl">Next</span>29 Jul</div>
+          <a class="btn btn-secondary btn-sm" href="#">Open →</a>
+        </div>
+        <div class="diary-row">
+          <span class="court-chip tribunal"><span class="sw"></span>Tribunal</span>
+          <div class="title-block"><div class="case-title">Bharti Textile Mills vs. State of Maharashtra</div><div class="case-meta">REV-58/2026 · Revision Petition</div></div>
+          <div class="stat"><span class="lbl">Stage</span>Admission</div>
+          <div class="stat mono"><span class="lbl">Next</span>14 Aug</div>
+          <a class="btn btn-secondary btn-sm" href="#">Open →</a>
+        </div>
+        <div class="diary-row">
+          <span class="court-chip supreme"><span class="sw"></span>Supreme Court</span>
+          <div class="title-block"><div class="case-title">Meera Krishnan vs. Union of India — SLP</div><div class="case-meta">SLP(C)-9987/2026</div></div>
+          <div class="stat"><span class="lbl">Stage</span>Notice Issued</div>
+          <div class="stat mono"><span class="lbl">Next</span>23 Aug</div>
+          <a class="btn btn-secondary btn-sm" href="#">Open →</a>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ============================================================
+     4. MATTER REGISTER
+     ============================================================ -->
+<section class="screen" data-name="4 · Matter Register">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="side-section-label">Workspace</div>
+      <a class="side-link" href="#"><span class="ic">◧</span> Dashboard</a>
+      <a class="side-link" href="#"><span class="ic">📔</span> Case Diary</a>
+      <a class="side-link active" href="#"><span class="ic">📁</span> Matter Register</a>
+      <a class="side-link" href="#"><span class="ic">✎</span> Draft Builder</a>
+    </aside>
+    <main class="app-main">
+      <div class="page-head">
+        <div><div class="page-title">Matter Register</div><div class="page-sub">Client engagements — litigation, advisory, and everything in between</div></div>
+        <a class="btn btn-primary" href="#">+ New Matter</a>
+      </div>
+      <div class="register-toolbar">
+        <div class="search-box">🔍 Search matters by title, number, or client…</div>
+        <button class="filter-chip active">All</button>
+        <button class="filter-chip">Active</button>
+        <button class="filter-chip">On Hold</button>
+        <button class="filter-chip">Closed</button>
+      </div>
+      <div class="strip-list">
+        <div class="strip">
+          <div class="strip-accent" style="background:var(--court-supreme);"></div>
+          <div><div class="strip-title">Meera Krishnan vs. Union of India</div><div class="strip-meta">SLP(C)-9987/2026 · Meera Krishnan</div></div>
+          <div class="strip-mid"><span class="lbl">Court</span><span class="court-chip supreme"><span class="sw"></span>Supreme Court</span></div>
+          <div class="strip-mid"><span class="lbl">Next hearing</span><span class="mono">23 Aug 2026</span></div>
+          <div class="strip-cta">Open →</div>
+        </div>
+        <div class="strip">
+          <div class="strip-accent" style="background:var(--bad);"></div>
+          <div><div class="strip-title">State vs. Ramesh Yadav</div><div class="strip-meta">BA-2201/2026 · Standalone</div></div>
+          <div class="strip-mid"><span class="lbl">Status</span><span class="badge badge-bad">Hearing Today</span></div>
+          <div class="strip-mid"><span class="lbl">Next hearing</span><span class="mono">Today</span></div>
+          <div class="strip-cta">Open →</div>
+        </div>
+        <div class="strip">
+          <div class="strip-accent" style="background:var(--court-family);"></div>
+          <div><div class="strip-title">Priya Nair vs. Nair</div><div class="strip-meta">MC-118/2025 · Priya Nair</div></div>
+          <div class="strip-mid"><span class="lbl">Court</span><span class="court-chip family"><span class="sw"></span>Family Court</span></div>
+          <div class="strip-mid"><span class="lbl">Next hearing</span><span class="mono">07 Aug 2026</span></div>
+          <div class="strip-cta">Open →</div>
+        </div>
+        <div class="strip" style="opacity:0.62;">
+          <div class="strip-accent" style="background:var(--court-other);"></div>
+          <div><div class="strip-title">Nimbus Retail Pvt Ltd — Advisory</div><div class="strip-meta">ADV-014/2025 · Not linked to a Proceeding</div></div>
+          <div class="strip-mid"><span class="lbl">Status</span><span class="badge badge-neutral">Inactive 45d</span></div>
+          <div class="strip-mid"><span class="lbl">Updated</span><span class="mono">45d ago</span></div>
+          <div class="strip-cta">Open →</div>
+        </div>
+        <div class="strip">
+          <div class="strip-accent" style="background:var(--court-commercial);"></div>
+          <div><div class="strip-title">Orion Freight Carriers vs. Continental Shipping Co.</div><div class="strip-meta">COMM-77/2024 · Orion Freight Carriers</div></div>
+          <div class="strip-mid"><span class="lbl">Status</span><span class="badge badge-good">Disposed</span></div>
+          <div class="strip-mid"><span class="lbl">Updated</span><span class="mono">Today</span></div>
+          <div class="strip-cta">Open →</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ============================================================
+     5. MATTER WORKSPACE
+     ============================================================ -->
+<section class="screen" data-name="5 · Matter Workspace">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="side-section-label">This Matter</div>
+      <a class="side-link active" href="#">Overview</a>
+      <a class="side-link" href="#">Court Orders</a>
+      <a class="side-link" href="#">Proceedings</a>
+      <a class="side-link" href="#">Activity</a>
+      <a class="side-link" href="#">Documents</a>
+    </aside>
+    <main class="app-main">
+      <div class="page-head">
+        <div>
+          <span class="badge badge-bad" style="margin-bottom:8px; display:inline-flex;">Needs Attention</span>
+          <div class="page-title">State vs. Ramesh Yadav — Bail Application</div>
+          <div class="page-sub">Standalone Proceeding · Sessions Court, Delhi</div>
+        </div>
+        <a class="btn btn-secondary" href="#">Edit Matter</a>
+      </div>
+
+      <!-- The five-question glance strip — §13.4 -->
+      <div class="glance-grid">
+        <div class="glance-cell"><div class="lbl">Next Hearing</div><div class="val mono">Today</div></div>
+        <div class="glance-cell"><div class="lbl">Latest Activity</div><div class="val">Bail application taken up, arguments part-heard</div></div>
+        <div class="glance-cell"><div class="lbl">Latest Court Order</div><div class="val">None recorded yet</div></div>
+        <div class="glance-cell"><div class="lbl">Needs Attention</div><div class="val" style="color:var(--bad);">Rejoinder due before next hearing</div></div>
+      </div>
+
+      <div class="ws-grid">
+        <div>
+          <div class="section-card">
+            <h3>Activity</h3>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-body"><div class="date">18 Jul · Hearing</div><div class="txt">Bail application taken up. Prosecution sought time to file reply. Adjourned for arguments.</div></div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-body"><div class="date">12 Jul · Milestone</div><div class="txt">Application filed and numbered.</div></div></div>
+          </div>
+          <div class="section-card">
+            <h3>Proceedings <span class="badge badge-neutral" style="margin-left:6px;">1 linked</span></h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0;">
+              <div>
+                <div style="font-weight:700; font-size:13px;">Sessions Court, Delhi</div>
+                <div style="font-size:11.5px; color:var(--ink-muted); margin-top:2px;">Status: Hearing · Stage: Arguments on Bail</div>
+              </div>
+              <a class="btn btn-secondary btn-sm" href="#">Open →</a>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-card">
+            <h3>Overview</h3>
+            <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px;">
+              <div><span class="eyebrow" style="display:block;">Client</span>Vikram Yadav (accused's family)</div>
+              <div><span class="eyebrow" style="display:block;">Opposing Counsel</span>Public Prosecutor's Office</div>
+              <div><span class="eyebrow" style="display:block;">Opened</span><span class="mono">18 Jul 2026</span></div>
+            </div>
+          </div>
+          <div class="section-card">
+            <h3>Matter Notes</h3>
+            <p style="font-size:12.5px; color:var(--ink-muted); line-height:1.6; margin:0;">Informal working notes — not part of the official record.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ============================================================
+     6. eCOURT LOGIN
+     ============================================================ -->
+<section class="screen" data-name="6 · eCourt Login">
+  <div class="ecourt-wrap">
+    <div class="ecourt-card">
+      <div class="ecourt-seal">॥</div>
+      <h2 style="font-size:19px; margin-bottom:6px;">Connect to eCourts</h2>
+      <p style="font-size:13px; color:var(--ink-muted); margin:0 0 22px; line-height:1.55;">Link a matter to the National eCourts Services to pull verified case status, next hearing dates, and orders directly from the court record.</p>
+      <div class="field">
+        <label>CNR Number</label>
+        <input type="text" placeholder="e.g. DLND010012342026" />
+      </div>
+      <div class="field">
+        <label>State</label>
+        <select><option>Delhi</option><option>Karnataka</option><option>Maharashtra</option></select>
+      </div>
+      <a class="btn btn-primary" style="width:100%;" href="#">Look up case</a>
+      <div class="divider-or">or connect by case details</div>
+      <div class="field">
+        <label>Case Type</label>
+        <select><option>Bail Application</option><option>Writ Petition</option><option>Civil Suit</option></select>
+      </div>
+      <div class="field" style="margin-bottom: 0;">
+        <label>Case Number / Year</label>
+        <input type="text" placeholder="e.g. 2201 / 2026" />
+      </div>
+      <a class="btn btn-secondary" style="width:100%; margin-top:14px;" href="#">Search case</a>
+    </div>
+  </div>
+</section>
+
+<script>
+  const screens = Array.from(document.querySelectorAll('.screen'));
+  const jump = document.getElementById('jump');
+  const label = document.getElementById('navLabel');
+  let idx = 0;
+
+  screens.forEach((s, i) => {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = s.dataset.name;
+    jump.appendChild(opt);
+  });
+
+  function render() {
+    screens.forEach((s, i) => s.classList.toggle('active', i === idx));
+    jump.value = idx;
+    label.textContent = screens[idx].dataset.name;
+    window.scrollTo({ top: 0 });
+  }
+  document.getElementById('prevBtn').addEventListener('click', () => { idx = (idx - 1 + screens.length) % screens.length; render(); });
+  document.getElementById('nextBtn').addEventListener('click', () => { idx = (idx + 1) % screens.length; render(); });
+  jump.addEventListener('change', () => { idx = Number(jump.value); render(); });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') { idx = (idx + 1) % screens.length; render(); }
+    if (e.key === 'ArrowLeft') { idx = (idx - 1 + screens.length) % screens.length; render(); }
+  });
+  render();
+</script>
